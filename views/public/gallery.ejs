@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/head', { title: title }) %>
+    <link rel="stylesheet" href="/css/viewer.css">
+    <link rel="stylesheet" href="/css/gallery.css">
+</head>
+<body>
+<%- include('../partials/nav', { navVariant: 'gallery' }) %>
+
+<section id="gallery">
+    <div style="padding-top: 50px;">
+        <h2><%= content['gallery.heading'] %></h2>
+        <p><%- content['gallery.intro'] %></p>
+        <div style="display: flex;justify-content: center;padding: 20px">
+            <div id="colorinfo">
+                <p><%- content['gallery.colorinfo'] %></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="projects" class="project-section">
+        <% rows.forEach(function (row) { %>
+        <div class="<%= row.layout %>">
+            <% row.projects.forEach(function (p) { %>
+            <div class="project" data-project-id="<%= p.id %>">
+                <div class="project-media">
+                <% if (p.thumb) { %>
+                    <% /* Uniform height (--thumb-h); width derives from each item's own ratio. */ %>
+                    <% if (p.thumb.type === 'video') { %>
+                        <div class="video-container">
+                            <video class="preview-video" style="aspect-ratio: <%= p.thumb.ratio %>;" data-project-open muted playsinline loop autoplay preload="metadata">
+                                <source src="<%= p.thumb.preview_url %>" type="video/mp4">
+                            </video>
+                        </div>
+                    <% } else if (p.thumb.type === 'embed') { %>
+                        <div class="image-container">
+                            <div class="image-preview">
+                                <img class="thumbnail current-image" style="aspect-ratio: <%= p.thumb.ratio %>;" data-project-open
+                                     loading="lazy" decoding="async"
+                                     src="<%= p.thumb.poster_path ? imgUrl(p.thumb.poster_path, 1200) : ('https://img.youtube.com/vi/' + p.thumb.embed_id + '/hqdefault.jpg') %>" alt="<%= p.title %>">
+                            </div>
+                        </div>
+                    <% } else { %>
+                        <% var thumbSrc = p.thumb.preview_path || p.thumb.full_path; %>
+                        <div class="image-container">
+                            <div class="image-preview">
+                                <%# Thumbnails are at most ~700px wide, so 480/800/1200 covers every
+                                    breakpoint including high-DPI screens. %>
+                                <img class="thumbnail current-image" style="aspect-ratio: <%= p.thumb.ratio %>;" data-project-open
+                                     loading="lazy" decoding="async"
+                                     src="<%= imgUrl(thumbSrc, 800) %>"
+                                     srcset="<%= imgSrcset(thumbSrc, [480, 800, 1200]) %>"
+                                     sizes="(max-width: 1200px) 90vw, 700px"
+                                     alt="<%= p.thumb.alt_text || p.title %>">
+                            </div>
+                        </div>
+                    <% } %>
+                <% } %>
+                    <% if (p.imageCount || p.videoCount) { %>
+                    <div class="media-count" aria-label="<%= p.imageCount %> image<%= p.imageCount === 1 ? '' : 's' %>, <%= p.videoCount %> video<%= p.videoCount === 1 ? '' : 's' %> in this project">
+                        <% if (p.imageCount) { %>
+                        <span class="mc-item"><%= p.imageCount %><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></span>
+                        <% } %>
+                        <% if (p.videoCount) { %>
+                        <span class="mc-item"><%= p.videoCount %><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg></span>
+                        <% } %>
+                    </div>
+                    <% } %>
+                </div>
+                <div class="project-text">
+                    <h3 class="nopadding"><%= p.title %></h3>
+                    <h4 class="nopadding"><%= p.year %></h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding"><%- nl2br(p.description) %></p>
+                    <% if (p.downloads && p.downloads.length) { %>
+                    <div class="download">
+                        <% p.downloads.forEach(function (d) { %>
+                        <a class="downloadbutton" href="<%= d.file_path %>" download><%= d.label %><% if (d.sizeLabel) { %> (<%= d.sizeLabel %>)<% } %></a>
+                        <% }); %>
+                    </div>
+                    <% } %>
+                </div>
+                <script type="application/json" class="project-media-data"><%- JSON.stringify(p.viewerMedia) %></script>
+            </div>
+            <% }); %>
+        </div>
+        <% }); %>
+    </div>
+</section>
+
+<!-- Unified media viewer -->
+<div id="mediaViewer" class="vidmodal">
+    <div class="vidmodal-content">
+        <span class="close-video" data-viewer-close>&times;</span>
+        <div class="viewer-stage"></div>
+        <button class="prev" data-viewer-prev aria-label="Previous">&lt;</button>
+        <button class="next" data-viewer-next aria-label="Next">&gt;</button>
+        <button class="fullscreen-video" data-viewer-fullscreen>⛶ Fullscreen</button>
+    </div>
+</div>
+<script src="/js/viewer.js"></script>
+
+<%- include('../partials/scroll-nav') %>
+
+    <div class="barrior nopadding"></div>
+
+</body>
+</html>

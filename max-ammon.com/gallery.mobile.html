@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="stylesheet.css">
+    <title>Document</title>
+
+    <script>
+        function handleResponsiveRedirect() {
+          const currentURL = window.location.href;
+      
+          // Redirect to mobile version if screen is <= 1200px
+          if (window.matchMedia("(max-width: 1200px)").matches &&
+              !currentURL.includes("gallery.mobile.html")) {
+            window.location.href = "gallery.mobile.html";
+          }
+      
+          // Redirect back to desktop version if screen is >= 1201px
+          if (window.matchMedia("(min-width: 1201px)").matches &&
+              currentURL.includes("gallery.mobile.html")) {
+            window.location.href = "gallery.html"; // Or your original file
+          }
+        }
+      
+        // Check on load
+        handleResponsiveRedirect();
+      
+        // Check again on resize
+        window.addEventListener('resize', handleResponsiveRedirect);
+    </script>
+
+</head>
+<body>
+    <nav>
+        <div id="name" style="display:flex; gap:200px" class="headerbox">
+            <h1 class="sitetitle"><a href="index.html">Max Ammon</a></h1>
+            <h1 class="jobtitle">3D Artist</h1> 
+        </div>
+        <ul style="font-size:2cap" class="headerbox nopadding">
+            <li><a href="index.html" rel="noopener noreferrer">go back to main site</a></li>
+        </ul>
+    </nav>
+
+<section id="gallery">
+    <div style="padding-top: 50px;">
+        <h2>Gallery Mobile</h2>
+        <p>In this gallery you will find some concepts, unfinished and finished personal projects and assets, both older and current.<br>To view the content in full resolution, you can just click on it!</p>
+        <div style="display: flex;justify-content: center;padding: 20px">
+            <div id="colorinfo">
+                <p>Depending on your browser, operating-system and hardware, the web-player may display the P3-D65 colorspace and 10bit color-depth incorrectly.<br><br>By clicking on the marked versions:<br>you can download the content
+                    <b><u>uncompressed</u></b> in <b><u>rec2020</u></b> colors with <b><u>10bit</u></b> depth(.mxf/DNxHQX), you will also find one <b><u>sRGB</u></b> and one <b><u>P3-D65</u></b> version(.mp4/h.265).<br>By using a local color-managed
+                    player, you will get the most accurate representation of the colors.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="projects" class="project-section_mobile">
+        
+        <!-- Project -->
+            <div class="project_mobile">
+                <!-- Video Preview and Popup -->
+                <div class="video-container-mobile">
+                    <video id="popupVideo" class="preview-video-mobile" data-main="assets/images/gallery/demointro.mp4" muted playsinline loop autoplay>
+                        <source id="videoSource" src="assets/images/gallery/demointro_preview.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <!-- Text -->
+                <div class="project-text-mobile">
+                    <h3 class="nopadding">Intro For Demo 2024-25</h3>
+                        <h4 class="nopadding">2024</h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding">I created these shots specificly to act as an intro to my current demo-video.</p>
+                </div>
+            </div>
+    
+            <!-- Project -->
+            <div class="project_mobile">
+                <!-- Video Preview and Popup -->
+                <div class="video-container">
+                    <video id="popupVideo" class="preview-video cinemascope" data-main="assets/images/gallery/download/planetearth_p3d65.mp4" muted playsinline loop autoplay>
+                        <source id="videoSource" src="assets/images/gallery/planetearth_preview_p3d65.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <!-- Text -->
+                <div class="project-text">
+                    <h3 class="nopadding">Planet Earth</h3>
+                    <h4 class="nopadding">2024</h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding">Taking a look at a very famliar planet, while in transit.</p>
+                </div>
+            </div>
+        
+            <!-- Project -->
+                <div class="project_mobile">
+                    <!-- Video Preview and Popup -->
+                    <div class="video-container">
+                        <video id="popupVideo" class="preview-video cinemascope" data-main="assets/images/gallery/download/fruitdrink_p3d65.mp4" muted playsinline loop autoplay>
+                            <source id="videoSource" src="assets/images/gallery/fruitdrink_preview_p3d65.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <!-- Text -->
+                    <div class="project-text">
+                        <h3 class="nopadding">Fruty Drink</h3>
+                        <h4 class="nopadding">2024</h4>
+                        <p style="text-align: left;padding-top: 5%;" class="nopadding">Based on a prior conzept you can find here, this is a simulation that could have been part of a commercial for some type of fruity drink.</p>
+                        <div class="download">
+                            <a class="downloadbutton" href="assets/images/gallery/download/fruitdrink_rec2020.mxf" download>
+                                rec2020 10bit .mxf/DNxHQX (~110mb)
+                            </a>
+                            <a class="downloadbutton" href="assets/images/gallery/download/fruidrink_p3d65.mp4" download>
+                                P3-D65 10bit .mp4/h.265 (~8mb)
+                            </a>
+                            <a class="downloadbutton" href="assets/images/gallery/download/fruidrink_srgb.mp4" download>
+                                sRGB 8bit .mp4/h.265 (~8mb)
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            <!-- Project -->
+            <div class="project_mobile">
+                <!-- Video Preview and Popup -->
+                <div class="video-container">
+                    <video id="popupVideo" class="preview-video cinemascope" data-main="assets/images/gallery/download/planetearth_p3d65.mp4" muted playsinline loop autoplay>
+                        <source id="videoSource" src="assets/images/gallery/planetearth_preview_p3d65.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <!-- Text -->
+                <div class="project-text">
+                    <h3 class="nopadding">Planet Earth</h3>
+                    <h4 class="nopadding">2024</h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding">Taking a look at a very famliar planet, while in transit.</p>
+                    <div class="download">
+                        <a class="downloadbutton" href="assets/images/gallery/download/planetearth_rec2020.mxf" download>
+                            rec2020 10bit .mxf/DNxHQX (~379mb)  &darr;
+                        </a>
+                        <a class="downloadbutton" href="assets/images/gallery/download/planetearth_p3d65.mp4" download>
+                            P3-D65 10bit .mp4/h.265 (~27mb)
+                        </a>
+                        <a class="downloadbutton" href="assets/images/gallery/download/planetearth_srgb.mp4" download>
+                            sRGB 8bit .mp4/h.265 (~27mb)
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project -->
+            <div class="project_mobile">
+                <!-- Video Preview and Popup -->
+                <div class="video-container">
+                    <video id="popupVideo" class="preview-video cinemascope" data-main="assets/images/gallery/download/hoveringcubes_p3d65.mp4" muted playsinline loop autoplay>
+                        <source id="videoSource" src="assets/images/gallery/hoveringcubes_preview_p3d65.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <!-- Text -->
+                <div class="project-text">
+                    <h3 class="nopadding">Floating Cubes</h3>
+                    <h4 class="nopadding">2024</h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding">A little abstract motion graphics project.</p>
+                    <div class="download">
+                        <a class="downloadbutton" href="assets/images/gallery/download/hoveringcubes_reg2020.mxf" download>
+                                rec2020 10bit .mxf/DNxHQX (~640mb)
+                        </a>
+                        <a class="downloadbutton" href="assets/images/gallery/download/hoveringcubes_p3d65.mp4" download>
+                            P3-D65 10bit .mp4/h.265 (~12mb)
+                        </a>
+                        <a class="downloadbutton" href="assets/images/gallery/download/hoveringcubes_srgb.mp4" download>
+                            sRGB 8bit .mp4/h.265 (~12mb)
+                        </a>
+                    </div>
+                </div>
+            </div>
+    
+                <!-- Project -->
+                <div class="project_mobile">
+                    <!-- Video Preview and Popup -->
+                    <div class="video-container">
+                        <video id="popupVideo" class="preview-video cinemascope" data-main="assets/images/gallery/download/ember_p3d65.mp4" muted playsinline loop autoplay>
+                            <source id="videoSource" src="assets/images/gallery/ember1_preview.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <!-- Text -->
+                    <div class="project-text">
+                        <h3 class="nopadding">Ember</h3>
+                        <h4 class="nopadding">2024</h4>
+                        <p style="text-align: left;padding-top: 5%;" class="nopadding">Something consisting or containing paper probably did catch fire.</p>
+                        <div class="download">
+                            <a class="downloadbutton" href="assets/images/gallery/download/ember_reg2020.mxf" download>
+                                rec2020 10bit .mxf/DNxHQX (~244mb)
+                            </a>
+                            <a class="downloadbutton" href="assets/images/gallery/download/ember_p3d65.mp4" download>
+                                P3-D65 10bit .mp4/h.265 (~16mb)
+                            </a>
+                            <a class="downloadbutton" href="assets/images/gallery/download/ember_srgb.mp4" download>
+                                sRGB 8bit .mp4/h.265 (~16mb)
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            <!-- Project -->
+            <div class="project_mobile">
+                <!-- Video Preview and Popup -->
+                <div class="video-container">
+                    <video id="popupVideo" class="preview-video cinemascope" data-main="assets/images/gallery/rasberry.mp4" muted playsinline loop autoplay>
+                        <source id="videoSource" src="assets/images/gallery/rasberry_preview.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <!-- Text -->
+                <div class="project-text">
+                    <h3 class="nopadding">"Rasberry"</h3>
+                    <h4 class="nopadding">2023</h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding">This is a concept, in which i tried to match the style of a commercial for some type of fruity drink.</p>
+                </div>
+            </div>
+
+            <!-- Project -->
+            <div class="project_mobile">
+                <!-- Video Preview and Popup -->
+                <div class="video-container">
+                    <video id="popupVideo" class="preview-video cinemascope" data-main="assets/images/gallery/download/forresting_p3d65.mp4" muted playsinline loop autoplay>
+                        <source id="videoSource" src="assets/images/gallery/forresting_preview_p3d65.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <!-- Text -->
+                <div class="project-text">
+                    <h3 class="nopadding">Foresting</h3>
+                    <h4 class="nopadding">2023</h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding">An asset depicting a tree-stump, with an axe driven into it. Some type of forrest-work is apperantly going on...</p>
+                    <div class="download">
+                        <a class="downloadbutton" href="assets/images/gallery/download/forresting_reg2020.mxf" download>
+                            rec2020 10bit .mxf/DNxHQX (~145mb)
+                        </a>
+                        <a class="downloadbutton" href="assets/images/gallery/download/forresting_p3d65.mp4" download>
+                            P3-D65 10bit .mp4/h.265 (~11mb)
+                        </a>
+                        <a class="downloadbutton" href="assets/images/gallery/download/forresting_srgb.mp4" download>
+                            sRGB 8bit .mp4/h.265 (~11mb)
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project -->
+            <div class="project_mobile">
+                <!-- Video Preview and Popup -->
+                <div class="video-container">
+                    <video id="popupVideo" class="preview-video sixtybynine" data-main="assets/images/gallery/the_growing_floor.mp4" muted playsinline loop autoplay>
+                        <source id="videoSource" src="assets/images/gallery/the_growing_floor_preview.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <!-- Text -->
+                <div class="project-text">
+                    <h3 class="nopadding">The Growing Floor</h3>
+                    <h4 class="nopadding">2021</h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding">This is a motion-graphics concept, which I didn't pursue further.<br>What your seing is not a rendered image, instead just a capture of the viewport of the 3D-software.</p>
+                </div>
+            </div>
+
+            <!-- Project -->
+            <div class="project_mobile">
+                <!-- Video Preview and Popup -->
+                <div class="video-container">
+                    <video id="popupVideo" class="preview-video sixtybynine" data-main="assets/images/gallery/collision_sim.mp4" muted playsinline loop autoplay>
+                        <source id="videoSource" src="assets/images/gallery/collision_sim_preview.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <!-- Text -->
+                <div class="project-text">
+                    <h3 class="nopadding">Material Simunlation</h3>
+                    <h4 class="nopadding">2022</h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding">This was just a fun little project, where i played with different solvers.</p>
+                </div>
+            </div>
+
+        <!-- Horizontal - 1 Project -->
+            <div class="project_mobile">
+                <!-- Video Preview and Popup -->
+                <div>
+                    <div class="video-container">
+                        <video id="popupVideo" class="preview-video cinemascope" data-main="assets/images/gallery/tatra1.mp4" muted playsinline loop autoplay>
+                            <source id="videoSource" src="assets/images/gallery/tatra1_preview.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <div id="tatra" class="image-container" style="padding-left: 10px;">
+                        <div class="image-preview">
+                            <img class="thumbnail current-image cinemascope" src="assets/images/gallery/tatra0_preview.png" data-full="assets/images/gallery/tatra0.png" data-index="0">
+                            <img class="thumbnail" src="assets/images/gallery/tatra2.png" data-full="assets/images/gallery/tatra2.png" data-index="1">
+                        </div>
+                    </div>
+                </div>    
+                <div class="project-text">
+                    <h3 class="nopadding">Tatra 815-7 8x8 Offroad Truck</h3>
+                    <h4 class="nopadding">2019</h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding">Here you can see an asset, based on a czech build all terrain truck bei the company "Tatra".</p>
+                </div> 
+            </div>
+
+            <!-- Project 3 -->
+            <div class="project_mobile">
+                <div id="speaker" class="image-container">
+                    <div class="image-preview">
+                        <img class="thumbnail current-image square" src="assets/images/gallery/mbquart_speaker1.png" data-full="assets/images/gallery/mbquart_speaker1.png" data-index="0">
+                    </div>
+                </div>
+                <div class="project-text">
+                    <h3 class="nopadding">mbQuart HiFi Speaker</h3>
+                    <h4 class="nopadding">2019</h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding">This asset depicts one hifi speaker, that i once had a pair of. My goal was to kind of "immortalize" it.</p>
+                </div>
+            </div>
+
+            <!-- Project 3 -->
+            <div class="project_mobile">
+                <div id="speaker" class="image-container">
+                    <div class="image-preview">
+                        <img class="thumbnail current-image custom-aspect" src="assets/images/gallery/dual_recordplayer.png" data-full="assets/images/gallery/dual_recordplayer.png" data-index="0">
+                    </div>
+                </div>
+                <div class="project-text">
+                    <h3 class="nopadding">Dual Record Player</h3>
+                    <h4 class="nopadding">2019</h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding">This asset depicts a recordplayer, that i used in the past. I wanted to kind of "immortalize" it.</p>
+                </div>
+            </div>
+
+            <!-- Project -->
+            <div class="project_mobile">
+                <!-- Video Preview and Popup -->
+                <div class="video-container">
+                    <video id="popupVideo" class="preview-video sixtybynine" data-main="assets/images/gallery/wichters_amulet.mp4" muted playsinline loop autoplay>
+                        <source id="videoSource" src="assets/images/gallery/wichters_amulet_preview.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <!-- Text -->
+                <div class="project-text">
+                    <h3 class="nopadding">Witchers Amulet</h3>
+                    <h4 class="nopadding">2017</h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding">A "fan-art" referencing the video-game "The Wichter 3: Wild Hunt"</p>
+                </div>
+            </div>
+            
+            <!-- Project 2 -->
+            <div class="project_mobile">
+                <div id="gamingcomputer" class="image-container">
+                    <div class="image-preview">
+                        <img class="thumbnail current-image square" src="assets/images/gallery/gaming_computer_preview.png" data-full="assets/images/gallery/gaming_computer.png" data-index="0">
+                        <img class="thumbnail" src="assets/images/gallery/tatra2.png" data-full="assets/images/gallery/gaming_computer_ao.png" data-index="1">
+                    </div>
+                </div>
+                <div class="project-text">
+                    <h3 class="nopadding">Gaming Computer</h3>
+                    <h4 class="nopadding">2018</h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding">High-end gaming machine for serious players.</p>
+                </div>
+            </div>
+
+        <!-- Horizontal-2 Projects -->
+        <div class="project-layout1">
+            <!-- Project 2 -->
+            <div class="project">
+                <div id="can" class="image-container">
+                    <div class="image-preview">
+                        <img class="thumbnail current-image square" src="assets/images/gallery/can_preview.png" data-full="assets/images/gallery/can.png" data-index="0">
+                        <img class="thumbnail square" src="assets/images/gallery/knife_preview.png" data-full="assets/images/gallery/knife.png" data-index="1">
+                        <img class="thumbnail sixtybynine" src="assets/images/gallery/coffeemaker_preview.png" data-full="assets/images/gallery/coffeemaker.png" data-index="2">
+                    </div>
+                </div>
+                <div id="knife" class="image-container">
+                    <div class="image-preview" style="padding-left: 10px;">
+                        <img class="thumbnail square" src="assets/images/gallery/can_preview.png" data-full="assets/images/gallery/can.png" data-index="0">
+                        <img class="thumbnail current-image square" src="assets/images/gallery/knife_preview.png" data-full="assets/images/gallery/knife.png" data-index="1">
+                        <img class="thumbnail sixtybynine" src="assets/images/gallery/coffeemaker_preview.png" data-full="assets/images/gallery/coffeemaker.png" data-index="2">
+                    </div>
+                </div>
+                <div id="coffeemaker" class="image-container">
+                    <div class="image-preview" style="padding-left: 10px;">
+                        <img class="thumbnail square" src="assets/images/gallery/can_preview.png" data-full="assets/images/gallery/can.png" data-index="0">
+                        <img class="thumbnail square" src="assets/images/gallery/knife_preview.png" data-full="assets/images/gallery/knife.png" data-index="1">
+                        <img class="thumbnail current-image sixtybynine" src="assets/images/gallery/coffeemaker_preview.png" data-full="assets/images/gallery/coffeemaker.png" data-index="2">
+                    </div>
+                </div>
+                <div class="project-text">
+                    <h3 class="nopadding">Really Old Models</h3>
+                    <h4 class="nopadding">2015-16</h4>
+                    <p style="text-align: left;padding-top: 5%;" class="nopadding">Some really old models, from when I just started messing arround with 3D-software for fun..</p>
+                </div>
+            </div>
+        </div>
+    
+    
+    </div>
+
+    
+
+    
+    <!-- Popup Video Modal -->
+    <div id="videoModal" class="vidmodal">
+        <div class="vidmodal-content">
+            <span class="close-video">&times;</span>
+            <video id="modalVideo" controls>
+                <source id="modalVideoSource" src="" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            <button class="fullscreen-video">⛶ Fullscreen</button>
+        </div>
+    </div>
+    <script src="assets/scripts/videoPopup.js"></script>
+
+   
+    <!-- Image Modal -->
+    <div id="imageModal" class="image-modal">
+        <div class="image-modal-content">
+            <span class="close">&times;</span>
+            <canvas id="colorManagedCanvas" src="" alt="Expanded Image"></canvas>
+            <button class="prev">&lt;</button>
+            <button class="next">&gt;</button>
+        </div>
+    </div>
+    <script src="assets/scripts/imagePopup.js"></script>
+
+    <script>let lastScroll = 0;
+        let isScrolling;
+        
+        window.addEventListener("scroll", function () {
+            clearTimeout(isScrolling); // Clear previous timeout
+            isScrolling = setTimeout(() => {
+                let navbar = document.querySelector("nav");
+        
+                if (window.scrollY > 10) {
+                    navbar.classList.add("scrolled");
+                } else {
+                    navbar.classList.remove("scrolled");
+                }
+            }, 100); // Adjust the delay (in milliseconds) if needed
+        });
+    </script>
+
+    <div class="barrior nopadding"></div>
+
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin">← Dashboard</a></p>
+        <h1>Messages</h1>
+        <% if (!messages.length) { %><p class="muted">No messages yet. They'll appear here when someone uses your contact form.</p><% } %>
+        <ul class="msg-list">
+            <% messages.forEach(function (m) { %>
+                <li class="msg<%= m.status === 'new' ? ' is-new' : '' %>">
+                    <div class="msg-head">
+                        <strong><%= m.name %></strong>
+                        <a href="mailto:<%= m.email %>"><%= m.email %></a>
+                        <span class="muted"><%= m.created_at %></span>
+                        <span class="tag"><%= m.status %></span>
+                    </div>
+                    <% if (m.subject) { %><div class="msg-subject"><%= m.subject %></div><% } %>
+                    <div class="msg-body"><%= m.message %></div>
+                    <div class="msg-ctrls">
+                        <% if (m.status !== 'read') { %><form method="post" action="/admin/messages/<%= m.id %>/status" class="inline"><input type="hidden" name="status" value="read"><button class="btn-link btn-sm">Mark read</button></form><% } %>
+                        <% if (m.status !== 'archived') { %><form method="post" action="/admin/messages/<%= m.id %>/status" class="inline"><input type="hidden" name="status" value="archived"><button class="btn-link btn-sm">Archive</button></form><% } %>
+                        <form method="post" action="/admin/messages/<%= m.id %>/delete" class="inline" onsubmit="return confirm('Delete this message?');"><button class="btn-link btn-sm danger">Delete</button></form>
+                    </div>
+                </li>
+            <% }); %>
+        </ul>
+    </main>
+</body>
+</html>

@@ -1,0 +1,95 @@
+/* Shared site tweaks loaded on every public page, after stylesheet.css. */
+
+/* Profile picture always renders as a circle, so any photo uploaded via the
+   admin comes out round even if it isn't square (centre-cropped, not squashed).
+   The existing image is already a round 1500x1500 PNG with transparent corners,
+   so this doesn't change how it looks today. Sizing still comes from the
+   #profilepic max-width rules in stylesheet.css. */
+#profilepic {
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Everything below is scoped to small screens, so desktop is unchanged. Makes
+   the sticky header responsive (the original had a fixed 200px gap that
+   overflowed phones). */
+
+@media (max-width: 1200px) {
+  nav {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding-inline: 14px;
+  }
+  nav #name {
+    gap: 20px !important;
+    flex-wrap: wrap;
+  }
+  .sitetitle { font-size: 3.2cap; }
+  .jobtitle { font-size: 1.7em; }
+  nav ul {
+    padding-left: 0 !important;
+    flex-wrap: wrap;
+    max-width: 100% !important;
+  }
+  nav li { padding-left: 0 !important; padding-right: 1.4rem; }
+}
+
+@media (max-width: 700px) {
+  nav #name { gap: 12px !important; }
+  .sitetitle { font-size: 2.6cap; }
+  .jobtitle { font-size: 1.2em; }
+}
+
+/* Main-page sections: stack on small screens (desktop layout unchanged). */
+@media (max-width: 1200px) {
+  /* About: drop the large 75px padding and stack picture over text. */
+  #about > div:not(.barrior) {
+    display: block !important;
+    padding: 24px 5vw !important;
+    text-align: center;
+  }
+  #about #profilepic { max-width: 55vw !important; margin: 0 auto 12px; }
+  #about [style*="padding-left: 75px"] { padding-left: 0 !important; }
+  #about h2 { text-align: center !important; }
+  #about p { max-width: 90vw; margin-left: auto; margin-right: auto; text-align: left; }
+
+  /* Skills: pull the absolutely-positioned text back into normal flow, and
+     stop the images spilling past the viewport. */
+  #skills .modelingtext,
+  #skills .texturingtext,
+  #skills .animationtext,
+  #skills .gradingtext {
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    max-width: 92vw !important;
+    margin: 0 auto !important;
+    padding: 0 4vw !important;
+  }
+  #skills .modelingbox [style*="inline-flex"] { flex-wrap: wrap; justify-content: center; }
+  #skills .modelingbox img { max-width: 46vw !important; }
+  #skills .texturingimage,
+  #skills .animationimage,
+  #skills .gradingimage {
+    position: static !important;
+    display: block;
+    width: 90vw !important;
+    max-width: 90vw !important;
+    margin: 12px auto 0 !important;
+    padding: 0 !important;
+  }
+  #skills [style*="padding-top: 100px"] {
+    display: block !important;
+    padding: 24px 0 !important;
+    text-align: center;
+  }
+
+  /* Contact: the form and details stack (via flex-wrap); tighten the gap
+     between labels and values and let long URLs wrap within the screen. */
+  #contact .contact-columns { gap: 24px; }
+  #contact .contact-info { column-gap: 20px; max-width: 92vw; }
+  #contact .ci-label { text-align: right; }
+  #contact .ci-value { min-width: 0; }
+}

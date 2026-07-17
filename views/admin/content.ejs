@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin">← Dashboard</a></p>
+        <h1>Edit text</h1>
+        <p class="muted">Change the wording on your site. Fields marked “HTML” accept simple tags like <code>&lt;br&gt;</code>, <code>&lt;b&gt;</code>, <code>&lt;u&gt;</code>.</p>
+        <% if (saved) { %><div class="alert ok">Saved. <a href="/" target="_blank" rel="noopener">View site ↗</a></div><% } %>
+
+        <form method="post" action="/admin/content">
+            <% Object.keys(groups).forEach(function (grp) { %>
+                <section class="edit-group">
+                    <h2><%= grp.charAt(0).toUpperCase() + grp.slice(1) %></h2>
+                    <% groups[grp].forEach(function (b) { %>
+                        <label>
+                            <span><%= b.label %><% if (b.format === 'html') { %> <span class="tag">HTML</span><% } %></span>
+                            <% if (b.format === 'text') { %>
+                                <input type="text" name="<%= b.block_key %>" value="<%= b.value %>">
+                            <% } else { %>
+                                <textarea name="<%= b.block_key %>" rows="<%= Math.min(14, Math.max(3, b.value.split('\n').length + 1)) %>"><%= b.value %></textarea>
+                            <% } %>
+                        </label>
+                    <% }); %>
+                </section>
+            <% }); %>
+            <div class="form-actions">
+                <button type="submit" class="btn">Save changes</button>
+            </div>
+        </form>
+    </main>
+</body>
+</html>

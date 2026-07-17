@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin">← Dashboard</a></p>
+        <h1>Gallery</h1>
+        <p class="muted">Add and arrange projects. Click a project to manage its media, thumbnail and downloads. <a href="/gallery" target="_blank" rel="noopener">View gallery ↗</a></p>
+        <p class="muted">New projects appear at the <strong>top</strong> and start <strong>hidden</strong> — add your media, then tick “Visible on the site” to publish.</p>
+
+        <form method="post" action="/admin/gallery" class="add-project">
+            <input type="text" name="title" placeholder="New project title" required>
+            <select name="layout">
+                <option value="project-layout0">Half width (pairs up)</option>
+                <option value="project-layout1">Full width</option>
+            </select>
+            <button type="submit" class="btn">Add project</button>
+        </form>
+
+        <ul class="project-list">
+            <% projects.forEach(function (p, i) { %>
+                <li class="project-row">
+                    <div class="project-thumb">
+                        <% if (p.thumb && p.thumb.type === 'image') { %>
+                            <img src="<%= p.thumb.preview_path || p.thumb.full_path %>" alt="">
+                        <% } else if (p.thumb && p.thumb.type === 'video') { %>
+                            <video src="<%= p.thumb.preview_path || p.thumb.full_path %>" muted preload="metadata"></video>
+                        <% } else if (p.thumb && p.thumb.type === 'embed') { %>
+                            <img src="<%= p.thumb.poster_path || ('https://img.youtube.com/vi/' + p.thumb.embed_id + '/default.jpg') %>" alt="">
+                        <% } else { %>
+                            <div class="no-thumb">no media</div>
+                        <% } %>
+                    </div>
+                    <div class="project-meta">
+                        <a href="/admin/gallery/<%= p.id %>"><strong><%= p.title %></strong></a>
+                        <span class="muted"><%= p.year || '—' %> · <%= p.mediaCount %> media · <%= p.layout === 'project-layout1' ? 'full width' : 'half width' %><%= p.published ? '' : ' · hidden' %></span>
+                    </div>
+                    <div class="project-ctrls">
+                        <form method="post" action="/admin/gallery/<%= p.id %>/move" class="inline"><input type="hidden" name="dir" value="up"><button class="btn-icon"<%= i === 0 ? ' disabled' : '' %>>▲</button></form>
+                        <form method="post" action="/admin/gallery/<%= p.id %>/move" class="inline"><input type="hidden" name="dir" value="down"><button class="btn-icon"<%= i === projects.length - 1 ? ' disabled' : '' %>>▼</button></form>
+                        <a class="btn-secondary btn-sm" href="/admin/gallery/<%= p.id %>">Edit</a>
+                    </div>
+                </li>
+            <% }); %>
+        </ul>
+        <% if (!projects.length) { %><p class="muted">No projects yet. Add your first one above.</p><% } %>
+    </main>
+</body>
+</html>

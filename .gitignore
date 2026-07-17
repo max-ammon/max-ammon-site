@@ -1,0 +1,22 @@
+# Dependencies — reinstalled with `npm install`
+node_modules/
+npm-debug.log*
+
+# Secrets. Never commit this. .env.example documents the keys instead.
+.env
+
+# Runtime state, deliberately NOT in git:
+#   data/     the SQLite database, sessions and the image cache
+#   uploads/  every image and video (currently ~2.3 GB)
+# Git keeps every version of a binary forever, so committing media makes the
+# repo grow without bound — that's how the old repo reached 349 MB. Back these
+# up and deploy them separately (see README).
+data/
+uploads/
+
+# Local tooling / editor config
+.claude/
+
+# OS junk
+Thumbs.db
+.DS_Store

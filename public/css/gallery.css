@@ -1,0 +1,128 @@
+/* Media-count badge: "3 [img]  2 [video]" in the bottom-left of each project
+   box, hinting how much is inside before a visitor clicks.
+   It's anchored to the media wrapper rather than the whole card: on desktop the
+   wrapper stretches to the card's full height (so the badge lands in the card's
+   bottom-left corner), while on mobile — where the card stacks — it stays over
+   the thumbnail instead of covering the description text below it. */
+#projects .project-media { position: relative; display: flex; }
+
+.media-count {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-family: 'uni_regular', sans-serif;
+  font-size: 1.1cap;
+  line-height: 1;
+  pointer-events: none; /* never swallow a click meant for the thumbnail */
+}
+
+.mc-item { display: inline-flex; align-items: center; gap: 4px; }
+.mc-item svg { width: 1.15em; height: 1.15em; fill: currentColor; display: block; }
+
+/* --- Uniform-height thumbnails -------------------------------------------
+   Every preview is scaled to the SAME height; its width comes from its own
+   aspect ratio (emitted inline per item from the DB). This replaces the old
+   .cinemascope/.sixtybynine/.square/.custom-aspect* classes, whose fixed widths
+   were hand-computed per aspect ratio to land on a common height — 5 classes x
+   4 breakpoints of numbers to maintain, and they still drifted (272-279px).
+   Now it's one number per breakpoint, and any new aspect ratio just works.
+
+   The steps below are chosen so the widest shape (the 2.33 ultrawide) lands on
+   the widths verified not to overflow a two-up row: 700 / 650 / 450 / 375px.
+   The legacy classes are left defined in stylesheet.css but are no longer
+   emitted, so they're simply inert (and this stays reversible). */
+#projects { --thumb-h: 300px; }                                 /* >=2116px */
+@media (max-width: 2115px) { #projects { --thumb-h: 278px; } }  /* 1838-2115 */
+@media (max-width: 1837px) { #projects { --thumb-h: 193px; } }  /* 1350-1837 */
+@media (max-width: 1349px) { #projects { --thumb-h: 161px; } }  /* 1201-1349 */
+
+#projects .preview-video,
+#projects .thumbnail {
+  height: var(--thumb-h);
+  width: auto;            /* derived from the inline aspect-ratio */
+  min-width: 0;
+  max-width: none;
+  object-fit: cover;      /* no distortion if a stored ratio is slightly off */
+}
+
+/* The text columns still step in fixed sizes, so keep those in step with the
+   thumbnail height (this is also what keeps a two-up row fitting). */
+@media (max-width: 2115px) {
+  #projects h3 { font-size: 1.4cap; min-width: 200px; max-width: 200px; }
+  #projects h4 { font-size: 1.3cap; }
+  #projects p  { font-size: 1.3cap; min-width: 200px; max-width: 200px; }
+  #projects .downloadbutton { font-size: 1cap; }
+  #projects.project-section { padding-inline: 25px; }
+}
+
+@media (max-width: 1837px) {
+  #projects h3 { font-size: 1.2cap; min-width: 150px; max-width: 150px; }
+  #projects h4 { font-size: 1.2cap; }
+  #projects p  { font-size: 1.1cap; min-width: 160px; max-width: 160px; }
+  #projects .downloadbutton { font-size: 0.9cap; }
+  #projects.project-section { padding-inline: 10px; }
+}
+
+@media (max-width: 1349px) {
+  #projects p { min-width: 150px; max-width: 150px; }
+}
+
+/* Responsive gallery — folds the old separate gallery.mobile.html into the one
+   data-driven gallery template. On narrow screens the project rows and cards
+   stack into a single column and media is constrained to the viewport width
+   (overriding the fixed aspect-class widths from stylesheet.css). */
+
+@media (max-width: 1200px) {
+  #projects.project-section { padding-inline: 8px; }
+
+  #projects .project-layout0,
+  #projects .project-layout1 {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  #projects .project {
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 94vw;
+    margin-left: 0;
+  }
+
+  /* On phones the card is a single column, so previews go width-first: fill the
+     screen and let the height follow from each item's aspect ratio. */
+  #projects .preview-video,
+  #projects .thumbnail {
+    min-width: 0 !important;
+    max-width: 90vw !important;
+    width: 90vw !important;
+    height: auto !important;
+  }
+
+  #projects .image-container,
+  #projects .video-container { padding-left: 0 !important; display: flex; justify-content: center; }
+
+  #projects .project-text { padding-inline: 4vw; }
+
+  /* The text columns have fixed pixel widths in stylesheet.css — let them flow. */
+  #projects .project-text h3,
+  #projects .project-text h4,
+  #projects .project-text p {
+    min-width: 0 !important;
+    max-width: 90vw !important;
+    width: auto !important;
+  }
+
+  #projects .download { max-width: 90vw; }
+
+  #colorinfo p { max-width: 90vw; }
+}

@@ -1,0 +1,199 @@
+/* Demo section — full-width ultrawide embed with a click-to-play facade.
+   The container's aspect-ratio matches the source video (e.g. 3840/1646), so
+   the YouTube player fills it edge-to-edge with no letterbox / black bars. */
+
+.demobox .demo-embed {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  cursor: pointer;
+  background: #000;
+}
+
+.demo-embed .demo-poster {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.demo-embed .demo-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.demo-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.demo-embed.playing .demo-poster,
+.demo-embed.playing .demo-play {
+  display: none;
+}
+
+/* Uni Sans Bold — the file ships with the site but stylesheet.css only ever
+   declared the light/regular/italic faces, so there was no real bold to ask
+   for. Declaring it here means the pipeline labels use the genuine bold
+   design rather than a browser-faked one. */
+@font-face {
+  font-family: 'uni_bold';
+  src: url('/assets/fonts/Uni Sans Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* --- Skills "production pipeline" bar ------------------------------------
+   A vertical rail down the left of the Skills section, running from the first
+   skill (concept) to the last (finished product), with a dot that tracks your
+   scroll position. z-index:-1 keeps it *behind* the skill images; the wrapper
+   deliberately doesn't create a stacking context, so the rail still paints
+   above the page background. pointer-events:none so it can never intercept a
+   click. */
+.skills-pipeline { position: relative; }
+
+.pipeline-rail {
+  position: absolute;
+  right: 2.5%;
+  top: 0;
+  bottom: 100px; /* the last skill block has 100px of bottom padding */
+  width: 150px;
+  z-index: -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.pipeline-line {
+  position: relative;
+  flex: 1;
+  width: 4px;
+  margin: 12px 0;
+  background: var(--lightcolor);
+}
+
+.pipeline-dot {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 2; /* always rides on top of the repeated labels */
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--titlecolor);
+  box-shadow: 0 0 0 4px var(--basecolor);
+  transform: translate(-50%, -50%);
+  will-change: transform; /* keeps the dot on the compositor */
+}
+
+.pipeline-cap {
+  font-family: 'uni_bold', 'uni_regular', sans-serif;
+  font-weight: 700;
+  font-size: 1.4cap;
+  line-height: 1;
+  color: var(--lightcolor);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* The label repeated down the line. Each copy carries the page background so it
+   visually interrupts the line — i.e. the words read as written ON it. */
+.pipeline-titles {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.pipeline-title {
+  writing-mode: vertical-rl;
+  font-family: 'uni_bold', 'uni_regular', sans-serif;
+  font-weight: 700;
+  font-size: 1.4cap;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--lightcolor);
+  background: var(--basecolor);
+  padding: 12px 0;
+  white-space: nowrap;
+}
+
+/* The rail would crowd the stacked mobile layout — hide it there. */
+@media (max-width: 1200px) {
+  .pipeline-rail { display: none; }
+}
+
+/* Contact form (main page) — styled with the theme variables so it follows
+   colour changes made in the admin. */
+/* Message form and contact details sit side by side, wrapping to stacked when
+   there isn't room for both. */
+.contact-columns {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 50px;
+  padding: 25px 20px 50px;
+}
+.contact-form-wrap { display: flex; justify-content: center; flex: 0 1 560px; }
+.contact-form { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 560px; }
+/* Label/value pairs as a 2-column grid: same look as the original two columns,
+   but each label stays glued to its own value when a long URL wraps. */
+.contact-info {
+  display: grid;
+  grid-template-columns: auto auto;
+  /* Was 100px when this block sat centred on its own; tightened so the whole
+     two-column section still fits side by side on 1366px laptops. */
+  column-gap: 50px;
+  align-items: baseline;
+  flex: 0 1 auto;
+}
+.ci-label { text-align: center; }
+.ci-value { overflow-wrap: anywhere; }
+.contact-form input,
+.contact-form textarea {
+  font-family: inherit;
+  font-size: 1.4cap;
+  padding: 12px 14px;
+  border: 2px solid var(--secondarycolor);
+  border-radius: 2px;
+  background: var(--lightcolor);
+  color: var(--secondarycolor);
+}
+.contact-form textarea { resize: vertical; }
+.contact-form input::placeholder,
+.contact-form textarea::placeholder { color: var(--secondarycolor); opacity: 0.65; }
+.contact-form button {
+  font-family: inherit;
+  font-size: 1.6cap;
+  padding: 12px;
+  cursor: pointer;
+  border: 2px solid var(--secondarycolor);
+  border-radius: 2px;
+  background: var(--headercolor);
+  color: var(--lightcolor);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.contact-form button:hover { transform: scale(1.02); box-shadow: 0 0 15px rgba(255, 255, 255, 0.3); }
+
+/* Honeypot — hidden from real users. */
+.hp { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; opacity: 0; }
+
+.contact-flash { text-align: center; font-size: 1.3cap; font-weight: bold; padding-top: 10px; }
+.contact-flash.ok { color: #2e7d32; }
+.contact-flash.err { color: #c0392b; }
+

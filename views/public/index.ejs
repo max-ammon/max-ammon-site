@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/head', { title: title }) %>
+    <link rel="stylesheet" href="/css/demo.css">
+</head>
+<body>
+<%- include('../partials/nav', { navVariant: 'main' }) %>
+
+    <section id="demo">
+        <div style="padding-top:50px" class="nopadding">
+            <h2><%= content['demo.title'] %></h2>
+            <p><%= content['demo.year'] %></p>
+                <div class="demobox">
+                    <div class="demo-embed" data-youtube="<%= settings.demo_youtube_id %>" style="aspect-ratio: <%= settings.demo_aspect_w %> / <%= settings.demo_aspect_h %>;">
+                        <%# The hero image: loaded eagerly and prioritised — everything below is lazy. %>
+                        <img class="demo-poster" src="<%= imgUrl(settings.demo_poster, 1600) %>"
+                             srcset="<%= imgSrcset(settings.demo_poster, [800, 1200, 1600, 2400, 3200]) %>"
+                             sizes="100vw" fetchpriority="high" decoding="async" alt="demothumbnail">
+                        <img src="/assets/paths/demo_thumbnail_button.svg" alt="playbuttonsvg" class="playbutton-svg demo-play" style="width: 3.5%;">
+                    </div>
+                </div>
+            <div class="barrior nopadding"></div>
+        </div>
+    </section>
+
+    <section id="skills">
+        <div style="padding-top:50px" class="nopadding" >
+            <h2><%= content['skills.heading'] %></h2>
+        </div>
+
+        <div class="skills-pipeline">
+        <div class="pipeline-rail" aria-hidden="true">
+            <span class="pipeline-cap"><%= content['skills.pipeline.start'] %></span>
+            <span class="pipeline-line">
+                <span class="pipeline-titles">
+                    <% for (var i = 0; i < 4; i++) { %><span class="pipeline-title"><%= content['skills.pipeline.title'] %></span><% } %>
+                </span>
+                <span class="pipeline-dot"></span>
+            </span>
+            <span class="pipeline-cap"><%= content['skills.pipeline.end'] %></span>
+        </div>
+
+        <div class="modelingbox" style="position:relative">
+            <div class="modelingtext">
+                <h3><%= content['skills.modeling.title'] %></h3>
+                <%- paragraphs(content['skills.modeling.body']) %>
+            </div>
+            <div style="display:inline-flex">
+                <img style="max-width: 50%;" src="<%= imgUrl(settings.skills_modeling_img1, 1200) %>"
+                     srcset="<%= imgSrcset(settings.skills_modeling_img1, [480, 800, 1200, 1600]) %>"
+                     sizes="50vw" loading="lazy" decoding="async" alt="">
+                <img style="max-width: 50%;" src="<%= imgUrl(settings.skills_modeling_img2, 1200) %>"
+                     srcset="<%= imgSrcset(settings.skills_modeling_img2, [480, 800, 1200, 1600]) %>"
+                     sizes="50vw" loading="lazy" decoding="async" alt="">
+            </div>
+        </div>
+
+        <div style="padding-top: 0%;">
+            <div class="texturingtext">
+                <h3><%= content['skills.texturing.title'] %></h3>
+                <%- paragraphs(content['skills.texturing.body']) %>
+            </div>
+            <div style="padding-top: 1%">
+                <img class="texturingimage" src="<%= imgUrl(settings.skills_texturing_img, 1600) %>"
+                     srcset="<%= imgSrcset(settings.skills_texturing_img, [800, 1200, 1600, 2400, 3200]) %>"
+                     sizes="100vw" loading="lazy" decoding="async" alt="">
+            </div>
+
+        <div style="padding-top: 50px;">
+            <div>
+                <div class="animationtext">
+                    <h3><%= content['skills.animation.title'] %></h3>
+                    <%- paragraphs(content['skills.animation.body']) %>
+                </div>
+                <img class="animationimage" src="<%= imgUrl(settings.skills_animation_img, 1200) %>"
+                     srcset="<%= imgSrcset(settings.skills_animation_img, [480, 800, 1200, 1600]) %>"
+                     sizes="50vw" loading="lazy" decoding="async" alt="">
+            </div>
+        </div>
+
+        <div style="padding-top: 100px;display: inline-flex; padding-bottom: 100px;">
+            <img class="gradingimage" src="<%= imgUrl(settings.skills_grading_img, 1200) %>"
+                 srcset="<%= imgSrcset(settings.skills_grading_img, [480, 800, 1200, 1600]) %>"
+                 sizes="45vw" loading="lazy" decoding="async" alt="">
+            <div class="gradingtext">
+                <h3><%= content['skills.grading.title'] %></h3>
+                <%- paragraphs(content['skills.grading.body']) %>
+            </div>
+        </div>
+        </div><%# closes the (originally unclosed) padding-top:0% wrapper %>
+        </div><%# closes .skills-pipeline — the rail spans exactly these four skills %>
+        <div class="barrior nopadding"></div>
+    </section>
+
+    <section id="about">
+        <img style="max-width: 100%;" src="<%= imgUrl(settings.about_banner, 1600) %>"
+             srcset="<%= imgSrcset(settings.about_banner, [800, 1200, 1600, 2400, 3200]) %>"
+             sizes="100vw" loading="lazy" decoding="async" alt="">
+        <div style="display:inline-flex;padding:75px;">
+            <div>
+                <img id="profilepic" src="<%= imgUrl(settings.about_profile, 800) %>"
+                     srcset="<%= imgSrcset(settings.about_profile, [480, 800]) %>"
+                     sizes="(max-width: 1500px) 250px, (max-width: 2048px) 400px, 500px"
+                     loading="lazy" decoding="async" alt="">
+            </div>
+            <div>
+                <div style="padding-left: 75px;">
+                    <h2 style="text-align: left;"><%= content['about.heading'] %></h2>
+                    <div style="padding-top: 20px;">
+                        <%- paragraphs(content['about.body']) %>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="barrior nopadding"></div>
+    </section>
+
+    <section id="contact" style="padding-top: 25px;">
+        <h2><%= content['contact.heading'] %></h2>
+        <% var cflash = (typeof contactStatus !== 'undefined') ? contactStatus : ''; %>
+        <% if (cflash === 'sent') { %><p class="contact-flash ok">Thanks — your message has been sent!</p><% } %>
+        <% if (cflash === 'error') { %><p class="contact-flash err">Please enter your name, a valid email, and a message, then try again.</p><% } %>
+        <% if (cflash === 'throttled') { %><p class="contact-flash err">Too many messages just now — please try again in a little while.</p><% } %>
+        <div class="contact-columns">
+            <div class="contact-form-wrap">
+                <form class="contact-form" method="post" action="/contact">
+                    <input type="text" name="name" placeholder="Your name" required>
+                    <input type="email" name="email" placeholder="Your email" required>
+                    <input type="text" name="subject" placeholder="Subject (optional)">
+                    <textarea name="message" placeholder="Your message" rows="5" required></textarea>
+                    <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+                    <button type="submit">Send message</button>
+                </form>
+            </div>
+            <div class="contact-info">
+                <p class="ci-label lighttitle">Email:</p>
+                <p class="ci-value secondarytitle"><%= content['contact.email'] %></p>
+                <p class="ci-label lighttitle">Internet:</p>
+                <p class="ci-value secondarytitle"><%= content['contact.internet'] %></p>
+                <p class="ci-label lighttitle">YouTube:</p>
+                <p class="ci-value secondarytitle"><%= content['contact.youtube'] %></p>
+                <p class="ci-label lighttitle">LinkedIn:</p>
+                <p class="ci-value secondarytitle"><%= content['contact.linkedin'] %></p>
+                <p class="ci-label lighttitle">Xing:</p>
+                <p class="ci-value secondarytitle"><%= content['contact.xing'] %></p>
+            </div>
+        </div>
+    </section>
+
+    <div class="barrior nopadding"></div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Apply tabindex="-1" to all headings
+            document.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach(function (heading) {
+                heading.setAttribute("tabindex", "-1");
+
+                // Remove focus when clicked
+                heading.addEventListener("click", function () {
+                    setTimeout(() => document.body.focus(), 10);
+                });
+            });
+
+            // If URL changes (e.g., clicking an anchor link), remove focus
+            window.addEventListener("hashchange", function () {
+                setTimeout(() => document.body.focus(), 10);
+            });
+
+            // Prevent focus on page load if there's a hash in the URL
+            if (window.location.hash) {
+                setTimeout(() => document.body.focus(), 10);
+            }
+        });
+    </script>
+
+<%- include('../partials/scroll-nav') %>
+    <script src="/js/demo.js"></script>
+    <script src="/js/pipeline.js"></script>
+
+</body>
+</html>

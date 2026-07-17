@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main colors-layout">
+        <div class="colors-controls">
+            <p class="muted"><a href="/admin">← Dashboard</a></p>
+            <h1>Edit colours</h1>
+            <p class="muted">Changes preview live on the right. They only go live on your real site after you press Save.</p>
+            <% if (saved) { %><div class="alert ok">Saved.</div><% } %>
+
+            <form method="post" action="/admin/colors" id="colorsForm">
+                <% ['section', 'text'].forEach(function (cat) { %>
+                    <section class="edit-group">
+                        <h2><%= cat === 'section' ? 'Sections & background' : 'Text' %></h2>
+                        <% tokens.filter(function (t) { return t.category === cat; }).forEach(function (t) { %>
+                            <div class="color-row">
+                                <input type="color" class="swatch" data-token="<%= t.token %>" value="<%= t.value.substring(0, 7) %>" aria-label="<%= t.label %> picker">
+                                <input type="text" class="hex" name="<%= t.token %>" data-token="<%= t.token %>" value="<%= t.value %>" spellcheck="false" aria-label="<%= t.label %> hex">
+                                <span class="color-label"><%= t.label %></span>
+                            </div>
+                        <% }); %>
+                    </section>
+                <% }); %>
+                <div class="form-actions">
+                    <button type="submit" class="btn">Save colours</button>
+                    <button type="submit" class="btn-secondary" name="action" value="reset"
+                        onclick="return confirm('Reset all colours to the original defaults?');">Reset to defaults</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="colors-preview">
+            <div class="preview-tabs">
+                <button type="button" data-src="/" class="active">Main page</button>
+                <button type="button" data-src="/gallery">Gallery</button>
+            </div>
+            <iframe id="preview" src="/" title="Live colour preview"></iframe>
+        </div>
+    </main>
+    <script src="/js/admin-colors.js"></script>
+</body>
+</html>

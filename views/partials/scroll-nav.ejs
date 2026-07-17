@@ -1,0 +1,16 @@
+    <script>let lastScroll = 0;
+        let isScrolling;
+
+        window.addEventListener("scroll", function () {
+            clearTimeout(isScrolling); // Clear previous timeout
+            isScrolling = setTimeout(() => {
+                let navbar = document.querySelector("nav");
+
+                if (window.scrollY > 10) {
+                    navbar.classList.add("scrolled");
+                } else {
+                    navbar.classList.remove("scrolled");
+                }
+            }, 100); // Adjust the delay (in milliseconds) if needed
+        });
+    </script>

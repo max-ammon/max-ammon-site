@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin/gallery">← All projects</a></p>
+        <h1>Edit project</h1>
+        <% if (saved) { %><div class="alert ok">Saved. <a href="/gallery" target="_blank" rel="noopener">View gallery ↗</a></div><% } %>
+        <% if (err === 'upload') { %><div class="alert error">That file couldn't be processed. Check its type and size, then try again.</div><% } %>
+        <% if (err === 'nofile') { %><div class="alert error">No file was added. Either none was chosen, or the type isn't supported — images (PNG/JPG/WebP/GIF) and video (MP4/WebM/MOV/MKV) only.</div><% } %>
+        <% if (err === 'embed') { %><div class="alert error">That doesn't look like a YouTube link. Paste a full URL (e.g. <code>https://www.youtube.com/watch?v=…</code>) or the video ID.</div><% } %>
+
+        <form method="post" action="/admin/gallery/<%= project.id %>">
+            <label>Title <input type="text" name="title" value="<%= project.title %>"></label>
+            <label>Year <input type="text" name="year" value="<%= project.year %>"></label>
+            <label>Description <textarea name="description" rows="3"><%= project.description %></textarea></label>
+            <label>Width
+                <select name="layout">
+                    <option value="project-layout0"<%= project.layout === 'project-layout0' ? ' selected' : '' %>>Half width (pairs up)</option>
+                    <option value="project-layout1"<%= project.layout === 'project-layout1' ? ' selected' : '' %>>Full width</option>
+                </select>
+            </label>
+            <label class="checkbox"><input type="checkbox" name="published"<%= project.published ? ' checked' : '' %>> Visible on the site</label>
+            <div class="form-actions"><button class="btn">Save project</button></div>
+        </form>
+
+        <section class="edit-group">
+            <h2>Media <span class="muted">— the order visitors click through</span></h2>
+            <% if (!project.media.length) { %><p class="muted">No media yet. Add some below.</p><% } %>
+            <ul class="media-list">
+                <% project.media.forEach(function (m, i) { %>
+                    <li class="media-row<%= m.id === project.thumbnail_media_id ? ' is-thumb' : '' %>">
+                        <div class="media-thumb">
+                            <% if (m.type === 'image') { %>
+                                <img src="<%= m.preview_path || m.full_path %>" alt="">
+                            <% } else if (m.type === 'video') { %>
+                                <video src="<%= m.preview_path || m.full_path %>" muted preload="metadata"></video>
+                            <% } else { %>
+                                <img src="<%= m.poster_path || ('https://img.youtube.com/vi/' + m.embed_id + '/default.jpg') %>" alt="">
+                            <% } %>
+                        </div>
+                        <div class="media-info">
+                            <div class="media-meta">
+                                <span class="tag"><%= m.type %></span>
+                                <span class="muted" title="Shape detected from the file — all previews are scaled to the same height."><% if (m.width && m.height) { %><%= m.width %>×<%= m.height %> · <% } %><%= m.aspect_ratio ? m.aspect_ratio.toFixed(2) + ':1' : 'auto' %></span>
+                                <% if (m.id === project.thumbnail_media_id) { %><span class="thumb-badge">★ thumbnail</span><% } %>
+                            </div>
+                            <% if (m.type === 'embed') { %>
+                                <div class="file-row"><span class="file-label">Embed</span><span class="media-path muted">youtube: <%= m.embed_id %></span></div>
+                            <% } else { %>
+                                <div class="file-row">
+                                    <span class="file-label">Full</span>
+                                    <span class="media-path muted" title="<%= m.files.full.path %>"><%= m.files.full.path %></span>
+                                    <% if (m.files.full.exists) { %><span class="file-size"><%= m.files.full.label %></span>
+                                    <% } else { %><span class="file-missing">file missing</span><% } %>
+                                </div>
+                                <div class="file-row">
+                                    <span class="file-label">Preview</span>
+                                    <% if (m.files.hasSeparatePreview) { %>
+                                        <span class="media-path muted" title="<%= m.files.preview.path %>"><%= m.files.preview.path %></span>
+                                        <% if (m.files.preview.exists) { %><span class="file-size"><%= m.files.preview.label %></span>
+                                        <% } else { %><span class="file-missing">file missing</span><% } %>
+                                    <% } else { %>
+                                        <span class="muted">none — the full file above is used as the preview<% if (m.type === 'video') { %>, so the whole video loads on the gallery page<% } %></span>
+                                    <% } %>
+                                </div>
+                                <div class="file-row preview-actions">
+                                    <span class="file-label"></span>
+                                    <form method="post" action="/admin/gallery/<%= project.id %>/media/<%= m.id %>/preview" enctype="multipart/form-data" class="inline preview-form">
+                                        <input type="file" name="preview" accept="video/*,image/*" required>
+                                        <button type="submit" class="btn-link btn-sm"><%= m.files.hasSeparatePreview ? 'Replace preview' : 'Add preview' %></button>
+                                    </form>
+                                    <% if (m.files.hasSeparatePreview) { %>
+                                        <form method="post" action="/admin/gallery/<%= project.id %>/media/<%= m.id %>/preview/remove" class="inline" onsubmit="return confirm('Remove the preview clip? The full file will be used instead.');">
+                                            <button type="submit" class="btn-link btn-sm danger">Remove</button>
+                                        </form>
+                                    <% } %>
+                                </div>
+                            <% } %>
+                        </div>
+                        <div class="media-ctrls">
+                            <form method="post" action="/admin/gallery/<%= project.id %>/media/<%= m.id %>/move" class="inline"><input type="hidden" name="dir" value="up"><button class="btn-icon"<%= i === 0 ? ' disabled' : '' %>>▲</button></form>
+                            <form method="post" action="/admin/gallery/<%= project.id %>/media/<%= m.id %>/move" class="inline"><input type="hidden" name="dir" value="down"><button class="btn-icon"<%= i === project.media.length - 1 ? ' disabled' : '' %>>▼</button></form>
+                            <% if (m.id !== project.thumbnail_media_id) { %>
+                                <form method="post" action="/admin/gallery/<%= project.id %>/thumbnail" class="inline"><input type="hidden" name="media_id" value="<%= m.id %>"><button class="btn-link btn-sm">Set thumbnail</button></form>
+                            <% } %>
+                            <form method="post" action="/admin/media/<%= m.id %>/delete" class="inline" onsubmit="return confirm('Delete this media item?');"><button class="btn-link btn-sm danger">Delete</button></form>
+                        </div>
+                    </li>
+                <% }); %>
+            </ul>
+
+            <div class="card-inset">
+                <h3>Add media</h3>
+                <form method="post" action="/admin/gallery/<%= project.id %>/media" enctype="multipart/form-data">
+                    <label>Type
+                        <select name="media_type" id="mediaType">
+                            <option value="image">Image (upload)</option>
+                            <option value="video">Video (upload)</option>
+                            <option value="embed">YouTube embed</option>
+                        </select>
+                    </label>
+                    <div data-when="image,video">
+                        <label>File <input type="file" name="file" accept="image/*,video/*"></label>
+                    </div>
+                    <div data-when="video">
+                        <label>Preview clip <span class="muted">(optional small looping mp4)</span> <input type="file" name="preview" accept="video/*"></label>
+                    </div>
+                    <div data-when="embed">
+                        <label>YouTube URL <input type="text" name="embed_url" placeholder="https://www.youtube.com/watch?v=..."></label>
+                    </div>
+                    <input type="hidden" name="media_width" id="mediaW">
+                    <input type="hidden" name="media_height" id="mediaH">
+                    <p class="muted" style="font-size:0.8rem;margin:0 0 12px;">Thumbnail shape is detected from the file — every preview is scaled to the same height automatically.</p>
+                    <button class="btn" type="submit">Add media</button>
+                    <% if (!hasSharp) { %><p class="muted" style="font-size:0.8rem;margin-top:8px;">Note: image previews aren't auto-generated here; originals are used as-is.</p><% } %>
+                </form>
+            </div>
+        </section>
+
+        <section class="edit-group">
+            <h2>Downloads <span class="muted">— colour-managed files visitors can download</span></h2>
+            <ul class="download-list">
+                <% project.downloads.forEach(function (d) { %>
+                    <li class="download-row">
+                        <span><strong><%= d.label %></strong><% if (d.sizeLabel) { %> (<%= d.sizeLabel %>)<% } %></span>
+                        <span class="media-path muted"><%= d.file_path %></span>
+                        <form method="post" action="/admin/downloads/<%= d.id %>/delete" class="inline" onsubmit="return confirm('Delete this download?');"><button class="btn-link btn-sm danger">Delete</button></form>
+                    </li>
+                <% }); %>
+            </ul>
+            <div class="card-inset">
+                <h3>Add download</h3>
+                <form method="post" action="/admin/gallery/<%= project.id %>/downloads" enctype="multipart/form-data">
+                    <label>File <span class="muted">(.mp4 / .mxf / .mov / .webm)</span> <input type="file" name="file" accept=".mp4,.mxf,.mov,.webm"></label>
+                    <label>Label <input type="text" name="label" placeholder="rec2020 10bit .mxf/DNxHQX"></label>
+                    <label>Kind
+                        <select name="kind"><option value="">—</option><option value="rec2020">rec2020</option><option value="p3d65">p3d65</option><option value="srgb">srgb</option></select>
+                    </label>
+                    <button class="btn" type="submit">Add download</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="edit-group danger-zone">
+            <h2>Danger zone</h2>
+            <form method="post" action="/admin/gallery/<%= project.id %>/delete" onsubmit="return confirm('Delete this whole project? (Uploaded files stay on disk.)');">
+                <button class="btn-danger">Delete project</button>
+            </form>
+        </section>
+    </main>
+    <script src="/js/admin-gallery.js"></script>
+</body>
+</html>

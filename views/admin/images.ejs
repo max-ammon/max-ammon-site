@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin">← Dashboard</a></p>
+        <h1><%= group.title %></h1>
+        <p class="muted"><%= group.desc %> Upload a new file, or point at an image path you already have.</p>
+        <% if (saved) { %><div class="alert ok">Saved. <a href="/" target="_blank" rel="noopener">View site ↗</a></div><% } %>
+        <% if (err) { %><div class="alert error">That image couldn't be processed. Use a JPG/PNG/WebP under 25&nbsp;MB.</div><% } %>
+
+        <form method="post" action="/admin/images/<%= slug %>" enctype="multipart/form-data">
+            <% group.fields.forEach(function (f) { %>
+                <section class="edit-group">
+                    <h2><%= f.label %></h2>
+                    <div class="img-editor">
+                        <div class="img-preview <%= f.shape === 'round' ? 'img-preview-round' : 'img-preview-wide' %>">
+                            <img src="<%= settings[f.key] %>" alt="Current <%= f.label %>">
+                        </div>
+                        <div class="img-fields">
+                            <% if (f.hint) { %><p class="muted" style="margin-top:0;font-size:0.85rem;"><%= f.hint %></p><% } %>
+                            <label>Upload a new image <input type="file" name="file__<%= f.key %>" accept="image/*"></label>
+                            <label>…or use this path <input type="text" name="path__<%= f.key %>" value="<%= settings[f.key] %>" spellcheck="false"></label>
+                        </div>
+                    </div>
+                </section>
+            <% }); %>
+            <div class="form-actions"><button class="btn">Save images</button></div>
+        </form>
+    </main>
+</body>
+</html>

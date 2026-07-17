@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <h1>Welcome, <%= user.username %></h1>
+        <p class="muted">Manage your site's text, colours, gallery and messages here.</p>
+
+        <div class="card-grid">
+            <% sections.forEach(function (s) { %>
+                <a class="card" href="<%= s.href %>">
+                    <h2><%= s.title %></h2>
+                    <p><%= s.desc %></p>
+                </a>
+            <% }); %>
+        </div>
+        <% if (!sections.length) { %>
+            <p class="muted" style="margin-top:24px;">Editing tools will appear here as they are built.</p>
+        <% } %>
+    </main>
+</body>
+</html>

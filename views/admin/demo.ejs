@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin">← Dashboard</a></p>
+        <h1>Demo video</h1>
+        <p class="muted">The video shown at the top of your main page. It plays inline, full-width, when clicked.</p>
+        <% if (saved) { %><div class="alert ok">Saved. <a href="/" target="_blank" rel="noopener">View site ↗</a></div><% } %>
+
+        <form method="post" action="/admin/demo" enctype="multipart/form-data">
+            <label>YouTube URL or ID
+                <input type="text" name="demo_youtube_id" value="<%= settings.demo_youtube_id %>" placeholder="https://www.youtube.com/watch?v=...">
+            </label>
+            <div style="display:flex;gap:16px;">
+                <label style="flex:1">Video width <input type="text" name="demo_aspect_w" value="<%= settings.demo_aspect_w %>"></label>
+                <label style="flex:1">Video height <input type="text" name="demo_aspect_h" value="<%= settings.demo_aspect_h %>"></label>
+            </div>
+            <p class="muted" style="font-size:0.85rem;margin-top:-6px;">These set the player's shape so it fills the width with no black bars — e.g. <strong>3840 × 1646</strong> for your ultrawide demo.</p>
+            <label>Poster image path <input type="text" name="demo_poster" value="<%= settings.demo_poster %>"></label>
+            <label>…or upload a new poster <input type="file" name="poster" accept="image/*"></label>
+            <div class="form-actions"><button class="btn">Save</button></div>
+        </form>
+
+        <div class="card-inset" style="margin-top:24px;">
+            <h3>Preview</h3>
+            <iframe src="/" style="width:100%;height:60vh;border:1px solid var(--a-border);border-radius:8px;background:#fff;"></iframe>
+        </div>
+    </main>
+</body>
+</html>
