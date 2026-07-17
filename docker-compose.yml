@@ -28,10 +28,11 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
 
-    # If a reverse proxy fronts this on the same host, prefer:
-    #   - "127.0.0.1:3000:3000"   (only the proxy can reach it)
+    # Published on loopback only: Apache (same host) reverses onto it, but the
+    # public internet cannot reach port 3000 directly — all traffic goes through
+    # Apache + HTTPS. Drop the "127.0.0.1:" prefix only if you have no proxy.
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
     # Persistent bind mounts. These sit beside the repo and are git-ignored, so
     # `git pull` never touches them. This is where your real site lives.

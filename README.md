@@ -97,6 +97,10 @@ saved (and logged to the console) — nothing is emailed.
 
 ## Putting it online (Docker)
 
+> **Full step-by-step VPS runbook — Apache reverse proxy, HTTPS via Certbot,
+> IONOS DNS, and a cron auto-deploy — is in [`DEPLOY.md`](DEPLOY.md).** The
+> summary below is the gist.
+
 The repo ships a `Dockerfile` + `docker-compose.yml`. The image is built from the
 code in git; **your media and database are NOT in git** — they live in mounted
 volumes, so they survive rebuilds and re-pulls.
