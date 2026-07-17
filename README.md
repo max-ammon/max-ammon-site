@@ -95,43 +95,71 @@ saved (and logged to the console) — nothing is emailed.
 
 ---
 
-## Putting it online
+## Putting it online (Docker)
 
-This is a normal Node app, so any host that runs Node works. You need somewhere
-with **persistent disk** (for `data/` and `uploads/`) — a small VPS, or a
-platform like Render / Railway / Fly.io.
+The repo ships a `Dockerfile` + `docker-compose.yml`. The image is built from the
+code in git; **your media and database are NOT in git** — they live in mounted
+volumes, so they survive rebuilds and re-pulls.
 
-Typical VPS setup:
+### The one thing that matters: seed the volumes
 
-1. Copy the project to the server (git clone, then copy `max-ammon.com/assets`,
-   `uploads/` and `data/` separately — media and the DB are **not** in git).
-2. `npm install --omit=dev` (or `npm install`).
-3. Create `.env` with `NODE_ENV=production`, a strong `SESSION_SECRET`
-   (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`),
-   your `PORT`, and the SMTP settings.
-4. Keep it running with a process manager, e.g. **pm2**:
-   `pm2 start server/index.js --name max-ammon`.
-5. Put a reverse proxy (Caddy or nginx) in front for your domain + HTTPS.
-   Caddy example:
-   ```
-   max-ammon.com {
-       reverse_proxy 127.0.0.1:3000
-   }
-   ```
-   (Caddy gets HTTPS certificates automatically.)
+Git gives the VPS the *code*, not the *site*. On the VPS, before the first run:
 
-`NODE_ENV=production` turns on secure cookies and `trust proxy`, so run it behind
-HTTPS in production.
+```bash
+git clone https://github.com/max-ammon/max-ammon-site.git
+cd max-ammon-site
+
+# 1. secrets (never in git)
+cp .env.example .env
+#    then set a strong SESSION_SECRET (reuse the one from your backup to keep
+#    existing logins), plus SMTP if you want contact emails.
+
+# 2. YOUR CONTENT — copy from your backup into these two folders:
+#      <backup>/uploads/  ->  ./uploads/
+#      <backup>/data/     ->  ./data/     (site.db + -wal + -shm together)
+#    Skip this and the gallery is empty (the first-run seed only produces the
+#    original demo content, whose media isn't shipped either).
+
+# 3. build + run
+docker compose up -d --build
+```
+
+Because `./uploads` and `./data` are git-ignored bind mounts, `git pull` never
+touches them — so your auto-deploy loop (`git pull && docker compose up -d
+--build`) updates the code and leaves your content alone. Code-only changes
+rebuild fast (dependencies are a cached layer).
+
+### Reverse proxy + HTTPS (required in production)
+
+`NODE_ENV=production` (set in compose) turns on secure cookies and trusts one
+proxy hop, so the app must sit behind HTTPS that forwards `X-Forwarded-Proto` —
+any normal reverse proxy does. Point the proxy at the container's port. Caddy:
+
+```
+max-ammon.com {
+    reverse_proxy 127.0.0.1:3000
+}
+```
+
+(For a proxy on the same host, change the compose port mapping to
+`"127.0.0.1:3000:3000"` so only the proxy can reach the app.)
+
+### Without Docker
+
+It's a plain Node app: `npm ci --omit=dev`, create `.env`, `npm start`, keep it
+alive with pm2, same reverse proxy. Node 20+ and **ffmpeg** on the PATH (for
+gallery video previews; the app runs without it, just can't generate them).
 
 ### Backups
 
-Everything that matters is two things — back them up regularly:
+Two folders are your whole site — back them up regularly (a copy on external
+media is fine):
 
-- `data/site.db` — all your text, colours, gallery structure and messages.
-- `uploads/` — media you uploaded through the admin.
+- `data/` — `site.db` holds all text, colours, gallery structure and messages.
+  Copy the whole folder, or stop the app first so `-wal`/`-shm` are merged in.
+- `uploads/` — every image and video.
 
-(Your original media under `max-ammon.com/assets/` should also be kept safe; it
-isn't in git either.)
+Everything else is code, safe on GitHub.
 
 ---
 

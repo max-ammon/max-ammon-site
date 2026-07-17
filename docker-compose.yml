@@ -1,0 +1,40 @@
+# Deploy: `docker compose up -d --build`
+# (a git-poll → pull → re-compose loop on the VPS picks up code changes; code
+#  changes rebuild fast because deps are a cached layer.)
+#
+# BEFORE the first run, on the VPS:
+#   1. create .env next to this file (see .env.example) with a strong SESSION_SECRET
+#   2. seed your content into the volumes from your backup:
+#        copy your backed-up  uploads/  ->  ./uploads/
+#        copy your backed-up  data/     ->  ./data/
+#      Without this the gallery is empty (media + DB are not in git — by design).
+#   3. put it behind a reverse proxy for your domain + HTTPS (see README).
+
+services:
+  web:
+    build: .
+    image: max-ammon-site
+    restart: unless-stopped
+
+    # Secrets + mail settings live here (NOT in git). See .env.example.
+    env_file:
+      - .env
+
+    # Deployment config. These override anything of the same name in .env.
+    # HOST=0.0.0.0 is required so the published port is reachable — the app
+    # defaults to loopback-only otherwise.
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+
+    # If a reverse proxy fronts this on the same host, prefer:
+    #   - "127.0.0.1:3000:3000"   (only the proxy can reach it)
+    ports:
+      - "3000:3000"
+
+    # Persistent bind mounts. These sit beside the repo and are git-ignored, so
+    # `git pull` never touches them. This is where your real site lives.
+    volumes:
+      - ./data:/app/data        # SQLite database + image cache
+      - ./uploads:/app/uploads  # every image and video

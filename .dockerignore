@@ -1,0 +1,21 @@
+# The host's node_modules holds Windows/native binaries that WON'T run on the
+# Linux image — the builder stage reinstalls them cleanly. Excluding it is
+# mandatory, not just an optimisation.
+node_modules
+npm-debug.log*
+
+# Secrets: provided at runtime via compose env_file, never baked into the image.
+.env
+
+# Runtime state / your actual content — mounted as volumes, never in the image.
+data
+uploads
+
+# Not needed inside the container.
+.git
+.gitignore
+.claude
+Dockerfile
+.dockerignore
+docker-compose.yml
+max-ammon.com/.git
