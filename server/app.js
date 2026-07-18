@@ -148,11 +148,13 @@ function attachSiteContext(req, res, next) {
 }
 
 app.get('/', attachSiteContext, (req, res) => {
-  res.render('public/index', { title: 'Document', contactStatus: req.query.contact || '' });
+  const owner = res.locals.settings.site_title || 'Max Ammon';
+  res.render('public/index', { title: owner, contactStatus: req.query.contact || '' });
 });
 
 app.get('/gallery', attachSiteContext, (req, res) => {
-  res.render('public/gallery', { title: 'Document', rows: getPublicRows() });
+  const owner = res.locals.settings.site_title || 'Max Ammon';
+  res.render('public/gallery', { title: owner + "'s Gallery", rows: getPublicRows() });
 });
 
 // Public contact form handler.
