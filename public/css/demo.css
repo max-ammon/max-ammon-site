@@ -56,15 +56,22 @@
    deliberately doesn't create a stacking context, so the rail still paints
    above the page background. pointer-events:none so it can never intercept a
    click. */
-.skills-pipeline { position: relative; }
+.skills-pipeline {
+  position: relative;
+  /* Reserve a column on the right for the pipeline rail, pushing the skills
+     content to the left so the bar sits in its own space with the page
+     background showing behind it (rather than overlapping the images). */
+  --rail-w: clamp(150px, 13vw, 220px);
+  padding-right: var(--rail-w);
+}
 
 .pipeline-rail {
   position: absolute;
-  right: 2.5%;
+  right: 0;                 /* fills the reserved column exactly */
   top: 0;
   bottom: 100px; /* the last skill block has 100px of bottom padding */
-  width: 150px;
-  z-index: -1;
+  width: var(--rail-w);
+  z-index: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -132,9 +139,11 @@
   white-space: nowrap;
 }
 
-/* The rail would crowd the stacked mobile layout — hide it there. */
+/* The rail would crowd the stacked mobile layout — hide it there, and drop the
+   reserved column so the skills content uses the full width again. */
 @media (max-width: 1200px) {
   .pipeline-rail { display: none; }
+  .skills-pipeline { padding-right: 0; }
 }
 
 /* Contact form (main page) — styled with the theme variables so it follows
