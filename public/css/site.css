@@ -11,6 +11,12 @@
   border-radius: 50%;
 }
 
+/* Header side padding. stylesheet.css meant to set this
+   (nav { padding-inline: 25px^^ }) but a stray "^^" made the declaration
+   invalid, so the header text sat flush against the edges. Restore it, scaling
+   gently with the viewport. The mobile rules below override it on small screens. */
+nav { padding-inline: clamp(24px, 2.5vw, 48px); }
+
 /* Everything below is scoped to small screens, so desktop is unchanged. Makes
    the sticky header responsive (the original had a fixed 200px gap that
    overflowed phones). */
