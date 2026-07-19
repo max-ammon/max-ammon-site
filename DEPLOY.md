@@ -206,9 +206,10 @@ Create `/etc/apache2/sites-available/max-ammon.com.conf`:
     ProxyPass        / http://127.0.0.1:3000/
     ProxyPassReverse / http://127.0.0.1:3000/
 
-    # Big video uploads trigger server-side processing; don't let the proxy
-    # time out at Apache's 60s default.
-    ProxyTimeout 600
+    # Uploading a clip/master (especially over a slow connection) plus its
+    # server-side processing can take a while; don't let the proxy time out at
+    # Apache's 60s default. 1800s = 30 min, matching the app's request timeout.
+    ProxyTimeout 1800
 
     # Tells the app the request arrived over HTTPS, so its secure login cookies
     # work. Correct once Certbot has run: it moves this block to the :443 vhost
@@ -294,6 +295,6 @@ stopped (or copy `site.db`, `site.db-wal`, `site.db-shm` together).
 | **403 on login / contact form** | `ProxyPreserveHost On` missing from the vhost. |
 | **Login doesn't stay signed in** | `RequestHeader set X-Forwarded-Proto "https"` missing on the `:443` vhost. |
 | **Certbot fails to validate** | DNS not resolving to the VPS yet, or port 80 blocked (`sudo ufw allow 'Apache Full'`), or the `ProxyPass /.well-known/... !` line is missing. |
-| **Big video upload → 502** | Raise `ProxyTimeout` (already 600 above). |
+| **Upload times out / 502 / 504** (esp. slow connection) | Proxy gave up before the upload finished. Raise `ProxyTimeout` (1800 above) and reload Apache; the app itself allows 30 min (`REQUEST_TIMEOUT_MS`). A short, small clip also uploads far faster — previews are downscaled to 700px anyway. |
 | **Gallery empty after deploy** | The `uploads/` + `data/` volumes weren't seeded from your backup (step 1). |
 | **`git pull` fails in cron** | A git-tracked file was edited on the VPS. Revert it (`git checkout -- <file>`); keep all config in `.env`. |
