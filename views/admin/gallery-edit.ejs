@@ -38,6 +38,8 @@
                                 <img src="<%= m.preview_path || m.full_path %>" alt="">
                             <% } else if (m.type === 'video') { %>
                                 <video src="<%= m.preview_path || m.full_path %>" muted preload="metadata"></video>
+                            <% } else if (m.preview_path) { %>
+                                <video src="<%= m.preview_path %>" muted preload="metadata"></video>
                             <% } else { %>
                                 <img src="<%= m.poster_path || ('https://img.youtube.com/vi/' + m.embed_id + '/default.jpg') %>" alt="">
                             <% } %>
@@ -50,6 +52,29 @@
                             </div>
                             <% if (m.type === 'embed') { %>
                                 <div class="file-row"><span class="file-label">Embed</span><span class="media-path muted">youtube: <%= m.embed_id %></span></div>
+                                <div class="file-row">
+                                    <span class="file-label">Preview</span>
+                                    <% if (m.files.hasSeparatePreview) { %>
+                                        <span class="media-path muted" title="<%= m.files.preview.path %>"><%= m.files.preview.path %></span>
+                                        <% if (m.files.preview.exists) { %><span class="file-size"><%= m.files.preview.label %></span>
+                                        <% } else { %><span class="file-missing">file missing</span><% } %>
+                                    <% } else { %>
+                                        <span class="muted">none — the card shows the static YouTube thumbnail</span>
+                                    <% } %>
+                                </div>
+                                <div class="file-row preview-actions">
+                                    <span class="file-label"></span>
+                                    <form method="post" action="/admin/gallery/<%= project.id %>/media/<%= m.id %>/preview" enctype="multipart/form-data" class="inline preview-form">
+                                        <input type="file" name="preview" accept="video/*" required>
+                                        <button type="submit" class="btn-link btn-sm"><%= m.files.hasSeparatePreview ? 'Replace preview' : 'Add preview' %></button>
+                                    </form>
+                                    <% if (m.files.hasSeparatePreview) { %>
+                                        <form method="post" action="/admin/gallery/<%= project.id %>/media/<%= m.id %>/preview/remove" class="inline" onsubmit="return confirm('Remove the looping preview? The card will show the static YouTube thumbnail instead.');">
+                                            <button type="submit" class="btn-link btn-sm danger">Remove</button>
+                                        </form>
+                                    <% } %>
+                                </div>
+                                <p class="muted" style="font-size:0.78rem;margin:6px 0 0;">Upload a short clip (from your own footage) to play a muted, looping preview on the gallery card. Clicking the card still opens the YouTube video.</p>
                             <% } else { %>
                                 <div class="file-row">
                                     <span class="file-label">Full</span>

@@ -117,4 +117,35 @@ async function processVideo(file) {
   return result;
 }
 
-module.exports = { processImage, processVideo, fileInfo, resolvePublicPath, versionedUrl, hasSharp: !!sharp };
+/*
+ * An owner-uploaded preview clip — the small looping thumbnail itself. Used for
+ * embeds (which have no full file to derive one from) and to shrink any clip
+ * attached by hand. Unlike a full video this is meant to be short, so it is
+ * NEVER trimmed (maxSeconds: 0) — only scaled and re-encoded to a small, muted,
+ * fast-starting mp4. Falls back to the uploaded file as-is when ffmpeg is
+ * missing or the encode fails.
+ */
+async function processPreviewClip(file) {
+  const raw = toPublicPath(file.path);
+  if (!video.hasFfmpeg()) return { preview_path: raw };
+  const dir = path.dirname(file.path);
+  const base = path.basename(file.path, path.extname(file.path));
+  const outDisk = path.join(dir, base + '_preview.mp4');
+  try {
+    const made = await video.makePreview(file.path, outDisk, { maxSeconds: 0 });
+    if (made && made !== file.path) {
+      // The raw upload was only the source for the optimized clip — don't orphan it.
+      try {
+        fs.unlinkSync(file.path);
+      } catch (e) {
+        /* already gone */
+      }
+      return { preview_path: toPublicPath(made) };
+    }
+  } catch (e) {
+    /* fall through to the raw upload */
+  }
+  return { preview_path: raw };
+}
+
+module.exports = { processImage, processVideo, processPreviewClip, fileInfo, resolvePublicPath, versionedUrl, hasSharp: !!sharp };

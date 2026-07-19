@@ -34,13 +34,22 @@
                             </video>
                         </div>
                     <% } else if (p.thumb.type === 'embed') { %>
-                        <div class="image-container">
-                            <div class="image-preview">
-                                <img class="thumbnail current-image" style="aspect-ratio: <%= p.thumb.ratio %>;" data-project-open
-                                     loading="lazy" decoding="async"
-                                     src="<%= p.thumb.poster_path ? imgUrl(p.thumb.poster_path, 1200) : ('https://img.youtube.com/vi/' + p.thumb.embed_id + '/hqdefault.jpg') %>" alt="<%= p.title %>">
+                        <% if (p.thumb.hasVideoPreview) { %>
+                            <% /* An owner-attached clip loops on the card; clicking still opens the YouTube embed. */ %>
+                            <div class="video-container">
+                                <video class="preview-video" style="aspect-ratio: <%= p.thumb.ratio %>;" data-project-open muted playsinline loop autoplay preload="metadata">
+                                    <source src="<%= p.thumb.preview_url %>" type="video/mp4">
+                                </video>
                             </div>
-                        </div>
+                        <% } else { %>
+                            <div class="image-container">
+                                <div class="image-preview">
+                                    <img class="thumbnail current-image" style="aspect-ratio: <%= p.thumb.ratio %>;" data-project-open
+                                         loading="lazy" decoding="async"
+                                         src="<%= p.thumb.poster_path ? imgUrl(p.thumb.poster_path, 1200) : ('https://img.youtube.com/vi/' + p.thumb.embed_id + '/hqdefault.jpg') %>" alt="<%= p.title %>">
+                                </div>
+                            </div>
+                        <% } %>
                     <% } else { %>
                         <% var thumbSrc = p.thumb.preview_path || p.thumb.full_path; %>
                         <div class="image-container">

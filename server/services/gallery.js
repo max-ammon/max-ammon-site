@@ -46,6 +46,8 @@ function decorateProject(p) {
         ...thumbRow,
         ratio: Number(mediaRatio(thumbRow).toFixed(4)),
         preview_url: mediaSvc.versionedUrl(thumbRow.preview_path || thumbRow.full_path),
+        // An embed shows the static YouTube image unless a looping clip is attached.
+        hasVideoPreview: !!thumbRow.preview_path && /\.(mp4|webm|mov|m4v|ogv)$/i.test(thumbRow.preview_path),
       }
     : null;
   // Counts for the little badge on each gallery card. Embeds are videos too.
@@ -96,7 +98,23 @@ function listProjects() {
 // clip exists alongside the full file. Deliberately not used by the public
 // render, which shouldn't stat files on every page load.
 function describeMediaFiles(m) {
-  if (m.type === 'embed') return { ...m, files: null };
+  if (m.type === 'embed') {
+    // Embeds have no full file, but they CAN carry an optional looping preview
+    // clip that the gallery card plays instead of the static YouTube thumbnail.
+    const hasSeparatePreview = !!m.preview_path;
+    const preview = hasSeparatePreview ? mediaSvc.fileInfo(m.preview_path) : null;
+    return {
+      ...m,
+      files: {
+        isEmbed: true,
+        hasSeparatePreview,
+        full: null,
+        preview: preview
+          ? { path: m.preview_path, exists: preview.exists, bytes: preview.bytes, label: formatBytes(preview.bytes) }
+          : null,
+      },
+    };
+  }
   const hasSeparatePreview = !!m.preview_path && m.preview_path !== m.full_path;
   const full = mediaSvc.fileInfo(m.full_path);
   const preview = hasSeparatePreview ? mediaSvc.fileInfo(m.preview_path) : null;

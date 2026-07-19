@@ -250,9 +250,10 @@ router.post(
           // Probes the file and, with ffmpeg present, derives a small looping
           // preview so the gallery card doesn't stream the whole video.
           info = await mediaSvc.processVideo(file);
-          // An explicitly uploaded preview always beats the generated one.
+          // An explicitly uploaded preview always beats the generated one
+          // (optimized to a small looping clip, same as the "Add preview" button).
           const pv = req.files.preview && req.files.preview[0];
-          if (pv) info.preview_path = toPublicPath(pv.path);
+          if (pv) info.preview_path = (await mediaSvc.processPreviewClip(pv)).preview_path;
           // Fall back to the browser's measurement only if ffprobe couldn't read it.
           if (!info.width) info.width = Number(req.body.media_width) || null;
           if (!info.height) info.height = Number(req.body.media_height) || null;
@@ -272,13 +273,22 @@ router.post(
 
 // Attach or replace the small preview clip on an existing media item — avoids
 // having to delete and re-upload a large full file just to add a preview.
-router.post('/gallery/:id/media/:mediaId/preview', uploadMedia.single('preview'), (req, res) => {
+router.post('/gallery/:id/media/:mediaId/preview', uploadMedia.single('preview'), async (req, res) => {
   const pid = Number(req.params.id);
   const m = gallery.getMedia(Number(req.params.mediaId));
   if (!m || m.project_id !== pid) return res.redirect('/admin/gallery/' + pid);
-  if (m.type === 'embed') return res.redirect('/admin/gallery/' + pid);
   if (!req.file) return res.redirect('/admin/gallery/' + pid + '?err=nofile');
-  gallery.setPreview(m.id, toPublicPath(req.file.path));
+  try {
+    // Works for videos and embeds alike: an embed has no full file, so this
+    // clip becomes the looping thumbnail the gallery card plays instead of the
+    // static YouTube image (clicking the card still opens the real video).
+    const { preview_path } = await mediaSvc.processPreviewClip(req.file);
+    gallery.setPreview(m.id, preview_path);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('preview upload error:', e.message);
+    return res.redirect('/admin/gallery/' + pid + '?err=upload');
+  }
   res.redirect('/admin/gallery/' + pid);
 });
 
