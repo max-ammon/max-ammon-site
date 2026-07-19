@@ -178,6 +178,8 @@ const insDownload = db.prepare(
 );
 const nextDownloadSort = db.prepare('SELECT COALESCE(MAX(sort), 0) + 1 AS s FROM media_downloads WHERE project_id = ?');
 const delDownload = db.prepare('DELETE FROM media_downloads WHERE id = ?');
+const qDownload = db.prepare('SELECT * FROM media_downloads WHERE id = ?');
+const updDownloadLabel = db.prepare('UPDATE media_downloads SET label = @label WHERE id = @id');
 
 function createProject(data) {
   const sort = nextProjectSort.get().s;
@@ -379,8 +381,18 @@ function addDownload(projectId, data) {
   return info.lastInsertRowid;
 }
 
+// Edit the visible button text of a download. Returns the project id (for the
+// redirect) or null if the row is gone. An empty label is ignored — the button
+// would otherwise render blank — so the existing label is kept.
+function updateDownloadLabel(id, label) {
+  const cur = qDownload.get(id);
+  if (!cur) return null;
+  if (label != null && String(label).trim() !== '') updDownloadLabel.run({ id, label });
+  return cur.project_id;
+}
+
 function deleteDownload(id) {
-  const d = db.prepare('SELECT * FROM media_downloads WHERE id = ?').get(id);
+  const d = qDownload.get(id);
   delDownload.run(id);
   if (d) removeUploadIfUnused(d.file_path);
 }
@@ -403,5 +415,6 @@ module.exports = {
   reorderMedia,
   moveMedia,
   addDownload,
+  updateDownloadLabel,
   deleteDownload,
 };

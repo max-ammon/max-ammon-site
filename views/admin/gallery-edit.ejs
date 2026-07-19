@@ -151,7 +151,11 @@
             <ul class="download-list">
                 <% project.downloads.forEach(function (d) { %>
                     <li class="download-row">
-                        <span><strong><%= d.label %></strong><% if (d.sizeLabel) { %> (<%= d.sizeLabel %>)<% } %></span>
+                        <form method="post" action="/admin/downloads/<%= d.id %>/label" class="download-edit">
+                            <input type="text" name="label" value="<%= d.label %>" required aria-label="Download button text" title="The text shown on the download button">
+                            <button type="submit" class="btn-link btn-sm">Save</button>
+                        </form>
+                        <% if (d.sizeLabel) { %><span class="muted">(<%= d.sizeLabel %>)</span><% } %>
                         <span class="media-path muted"><%= d.file_path %></span>
                         <form method="post" action="/admin/downloads/<%= d.id %>/delete" class="inline" onsubmit="return confirm('Delete this download?');"><button class="btn-link btn-sm danger">Delete</button></form>
                     </li>

@@ -197,6 +197,9 @@ a.btn-secondary { text-decoration: none; display: inline-block; }
 .download-row { display: flex; align-items: center; gap: 16px; padding: 10px 12px; background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 8px; margin-bottom: 8px; }
 .download-row > span:first-child { flex: none; }
 .download-row .media-path { flex: 1; }
+/* In-place editor for a download button's text. */
+.download-edit { display: flex; align-items: center; gap: 8px; flex: none; margin: 0; }
+.download-edit input[type="text"] { width: 18rem; max-width: 42vw; margin: 0; }
 
 .danger-zone h2 { color: var(--a-danger); border-color: rgba(255,107,107,0.3); }
 

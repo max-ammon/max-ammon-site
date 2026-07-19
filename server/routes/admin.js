@@ -327,6 +327,12 @@ router.post('/gallery/:id/downloads', uploadDownload.single('file'), (req, res) 
   res.redirect('/admin/gallery/' + pid);
 });
 
+// Rename a download button (the text visitors see on it).
+router.post('/downloads/:id/label', (req, res) => {
+  const pid = gallery.updateDownloadLabel(Number(req.params.id), req.body.label);
+  res.redirect(pid ? '/admin/gallery/' + pid : req.get('Referer') || '/admin/gallery');
+});
+
 router.post('/downloads/:id/delete', (req, res) => {
   gallery.deleteDownload(Number(req.params.id));
   res.redirect(req.get('Referer') || '/admin/gallery');
