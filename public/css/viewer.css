@@ -11,9 +11,18 @@
   min-height: 200px;
 }
 
+/* The rounded clip on .vidmodal-content (border-radius + overflow:hidden) forced
+   YouTube embeds and videos into an sRGB compositing surface, so their colours
+   looked washed-out until fullscreen (which escapes the clip). Dropping the clip
+   fixes the colour inline. The rounded corners are kept — border-radius only
+   clips when overflow isn't visible — and the media is capped to the frame's
+   inner width below, so nothing spills past the corners. */
+#mediaViewer .vidmodal-content { overflow: visible; }
+
 .viewer-media {
   display: block;
-  max-width: 86vw;
+  /* Fit inside the frame: content box is max 90vw with 20px padding each side. */
+  max-width: min(86vw, calc(90vw - 48px));
   max-height: 80vh;
 }
 
@@ -21,7 +30,7 @@ img.viewer-media { object-fit: contain; }
 video.viewer-media { background: #000; }
 
 iframe.viewer-media {
-  width: min(86vw, calc(80vh * 16 / 9));
+  width: min(86vw, calc(90vw - 48px), calc(80vh * 16 / 9));
   aspect-ratio: 16 / 9;
   max-height: 80vh;
   border: 0;
