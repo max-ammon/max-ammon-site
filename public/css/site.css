@@ -86,8 +86,14 @@ nav { padding-inline: clamp(24px, 2.5vw, 48px); }
     margin: 12px auto 0 !important;
     padding: 0 !important;
   }
+  /* Compositing & grading: its image sits to the LEFT on desktop, so in source
+     order the image comes before the text. Stacking it as-is on mobile would put
+     the image on top; a reversed flex column drops the image below the text
+     (matching the other categories) without reordering the DOM. */
   #skills [style*="padding-top: 100px"] {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column-reverse;
+    align-items: center;
     padding: 24px 0 !important;
     text-align: center;
   }
