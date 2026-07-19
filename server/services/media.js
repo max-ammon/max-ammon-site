@@ -127,7 +127,12 @@ async function processVideo(file) {
  */
 async function processPreviewClip(file) {
   const raw = toPublicPath(file.path);
-  if (!video.hasFfmpeg()) return { preview_path: raw };
+  // The clip's real shape, so an embed card can size itself to the clip rather
+  // than assuming 16:9 (which would crop a wider clip). makePreview scales with
+  // height -2, preserving this ratio.
+  const meta = await video.probe(file.path);
+  const dims = { width: meta ? meta.width : null, height: meta ? meta.height : null };
+  if (!video.hasFfmpeg()) return { preview_path: raw, ...dims };
   const dir = path.dirname(file.path);
   const base = path.basename(file.path, path.extname(file.path));
   const outDisk = path.join(dir, base + '_preview.mp4');
@@ -140,12 +145,12 @@ async function processPreviewClip(file) {
       } catch (e) {
         /* already gone */
       }
-      return { preview_path: toPublicPath(made) };
+      return { preview_path: toPublicPath(made), ...dims };
     }
   } catch (e) {
     /* fall through to the raw upload */
   }
-  return { preview_path: raw };
+  return { preview_path: raw, ...dims };
 }
 
 module.exports = { processImage, processVideo, processPreviewClip, fileInfo, resolvePublicPath, versionedUrl, hasSharp: !!sharp };

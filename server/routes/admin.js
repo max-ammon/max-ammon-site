@@ -282,8 +282,10 @@ router.post('/gallery/:id/media/:mediaId/preview', uploadMedia.single('preview')
     // Works for videos and embeds alike: an embed has no full file, so this
     // clip becomes the looping thumbnail the gallery card plays instead of the
     // static YouTube image (clicking the card still opens the real video).
-    const { preview_path } = await mediaSvc.processPreviewClip(req.file);
+    const { preview_path, width, height } = await mediaSvc.processPreviewClip(req.file);
     gallery.setPreview(m.id, preview_path);
+    // Size an embed card to its clip so a wider-than-16:9 clip isn't cropped.
+    if (m.type === 'embed') gallery.setEmbedPreviewShape(m.id, width, height);
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('preview upload error:', e.message);
@@ -298,6 +300,8 @@ router.post('/gallery/:id/media/:mediaId/preview/remove', (req, res) => {
   const m = gallery.getMedia(Number(req.params.mediaId));
   if (!m || m.project_id !== pid) return res.redirect('/admin/gallery/' + pid);
   gallery.setPreview(m.id, m.full_path);
+  // Back to the 16:9 of the static YouTube thumbnail now shown in the clip's place.
+  if (m.type === 'embed') gallery.setEmbedPreviewShape(m.id, null, null);
   res.redirect('/admin/gallery/' + pid);
 });
 

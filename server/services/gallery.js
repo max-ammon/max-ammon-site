@@ -346,6 +346,20 @@ function setPreview(mediaId, previewPath) {
   removeUploadIfUnused(previous);
 }
 
+// The card ratio for an EMBED follows its attached preview clip, so a wider clip
+// is not cropped to the default 16:9. Passing null dimensions (clip removed)
+// restores 16:9 — the shape of the static YouTube thumbnail shown in its place.
+// Guarded to embeds so it can never reshape a real uploaded video.
+const updEmbedShape = db.prepare(
+  "UPDATE media_items SET width=@w, height=@h, aspect_ratio=@ratio WHERE id=@id AND type='embed'"
+);
+function setEmbedPreviewShape(id, width, height) {
+  const w = Number(width) || null;
+  const h = Number(height) || null;
+  const ratio = Number((w && h ? w / h : 16 / 9).toFixed(4));
+  updEmbedShape.run({ id, w, h, ratio });
+}
+
 function deleteMedia(id) {
   const m = qMedia.get(id);
   if (!m) return;
@@ -411,6 +425,7 @@ module.exports = {
   addMedia,
   updateMedia,
   setPreview,
+  setEmbedPreviewShape,
   deleteMedia,
   reorderMedia,
   moveMedia,
