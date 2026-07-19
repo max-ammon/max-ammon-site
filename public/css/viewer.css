@@ -37,6 +37,16 @@ iframe.viewer-media {
   background: #000;
 }
 
+/* Chromium on Windows can render inline YouTube video through a hardware overlay
+   that mishandles colour (washed-out, green/yellow cast, weak reds) — correct
+   only in fullscreen and on other devices. Forcing the iframe onto its own
+   composited layer pushes it off that overlay onto the colour-managed compositor.
+   Scoped to hover + fine-pointer (desktops), so touch devices — which already
+   render correctly — are left exactly as they are. */
+@media (hover: hover) and (pointer: fine) {
+  #mediaViewer iframe.viewer-media { transform: translateZ(0); }
+}
+
 #mediaViewer .prev,
 #mediaViewer .next { z-index: 2; }
 
