@@ -17,6 +17,26 @@
    gently with the viewport. The mobile rules below override it on small screens. */
 nav { padding-inline: clamp(24px, 2.5vw, 48px); }
 
+/* The final bottom bar carries the trademark disclaimer. Only this .barrior has
+   the .site-disclaimer class; the section-divider bars are untouched. It grows
+   to fit the text rather than staying at the fixed 25px. */
+.barrior.site-disclaimer {
+  height: auto;
+  min-height: 25px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+}
+.barrior.site-disclaimer small {
+  max-width: 900px;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 /* Everything below is scoped to small screens, so desktop is unchanged. Makes
    the sticky header responsive (the original had a fixed 200px gap that
    overflowed phones). */
