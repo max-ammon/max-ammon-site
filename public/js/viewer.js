@@ -49,10 +49,10 @@
       stage.appendChild(el);
     }
 
-    // Colour-accuracy note applies only to the cross-origin YouTube embed, whose
-    // inline colours some browsers render wrong until fullscreen. (CSS hides it
-    // again while fullscreen.)
-    if (note) note.hidden = it.type !== 'embed';
+    // Colour-accuracy note: shown for video and YouTube embeds, whose inline
+    // colours some browsers (Chromium on Windows) render wrong until fullscreen.
+    // Not for stills. (CSS hides it again while fullscreen.)
+    if (note) note.hidden = it.type !== 'embed' && it.type !== 'video';
 
     var multi = items.length > 1;
     btnPrev.style.display = multi ? '' : 'none';

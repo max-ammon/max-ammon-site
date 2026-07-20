@@ -62,6 +62,9 @@ iframe.viewer-media {
 
 #mediaViewer .prev,
 #mediaViewer .next { z-index: 2; }
+/* The composited iframe (translateZ above) otherwise paints over the corner
+   close button, which sits earlier in the DOM — lift the close control above it. */
+#mediaViewer .close-video { z-index: 3; }
 
 /* When the viewer is fullscreen, let the stage fill the screen. */
 .vidmodal-content:fullscreen {
