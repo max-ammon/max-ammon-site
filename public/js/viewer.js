@@ -10,6 +10,7 @@
   var btnClose = modal.querySelector('[data-viewer-close]');
   var btnFull = modal.querySelector('[data-viewer-fullscreen]');
   var content = modal.querySelector('.vidmodal-content');
+  var note = modal.querySelector('[data-viewer-note]');
 
   var items = [];
   var index = 0;
@@ -47,6 +48,11 @@
       el.className = 'viewer-media';
       stage.appendChild(el);
     }
+
+    // Colour-accuracy note applies only to the cross-origin YouTube embed, whose
+    // inline colours some browsers render wrong until fullscreen. (CSS hides it
+    // again while fullscreen.)
+    if (note) note.hidden = it.type !== 'embed';
 
     var multi = items.length > 1;
     btnPrev.style.display = multi ? '' : 'none';

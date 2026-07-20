@@ -47,6 +47,19 @@ iframe.viewer-media {
   #mediaViewer iframe.viewer-media { transform: translateZ(0); }
 }
 
+/* Colour-accuracy note — shown by viewer.js only for embeds, hidden in
+   fullscreen (where colours render correctly). */
+.viewer-note {
+  margin: 8px auto 0;
+  max-width: min(86vw, 540px);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.82);
+  text-align: center;
+}
+.viewer-note[hidden] { display: none; }
+.vidmodal-content:fullscreen .viewer-note { display: none; }
+
 #mediaViewer .prev,
 #mediaViewer .next { z-index: 2; }
 
