@@ -152,6 +152,7 @@
   transform: translateY(-50%);
   z-index: 1;
   display: flex;
+  flex-direction: column;   /* icon on top, the vertical label reading down below it */
   align-items: center;
   gap: 6px;
   white-space: nowrap;

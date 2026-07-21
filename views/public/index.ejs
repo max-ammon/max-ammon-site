@@ -41,7 +41,7 @@
                 <%# Owner-placed software logos, positioned along the bar (0=top .. 100=bottom). %>
                 <% _markers.forEach(function (m) { %>
                 <span class="pipeline-marker<%= m.vertical ? ' vertical' : '' %>" style="top: <%= m.position %>%;">
-                    <span class="pm-icon"><img src="<%= imgUrl(m.image_path, 200) %>" alt="<%= m.label %>" loading="lazy" decoding="async"></span>
+                    <span class="pm-icon"><img src="<%= imgUrl(m.image_path, 480) %>" alt="<%= m.label %>" loading="lazy" decoding="async"></span>
                     <% if (m.label) { %><span class="pm-label"><%= m.label %></span><% } %>
                 </span>
                 <% }); %>
@@ -101,7 +101,7 @@
         <% if (_markers.length) { %>
         <ul class="skills-software" aria-label="Software I use">
             <% _markers.forEach(function (m) { %>
-            <li><img src="<%= imgUrl(m.image_path, 160) %>" alt="<%= m.label %>" loading="lazy" decoding="async"><% if (m.label) { %><span><%= m.label %></span><% } %></li>
+            <li><img src="<%= imgUrl(m.image_path, 480) %>" alt="<%= m.label %>" loading="lazy" decoding="async"><% if (m.label) { %><span><%= m.label %></span><% } %></li>
             <% }); %>
         </ul>
         <% } %>
