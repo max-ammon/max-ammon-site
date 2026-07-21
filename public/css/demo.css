@@ -212,14 +212,17 @@
 .contact-info {
   display: grid;
   grid-template-columns: auto auto;
-  /* Was 100px when this block sat centred on its own; tightened so the whole
-     two-column section still fits side by side on 1366px laptops. */
-  column-gap: 50px;
+  column-gap: 20px;
+  row-gap: 12px;
   align-items: baseline;
   flex: 0 1 auto;
 }
-.ci-label { text-align: center; }
-.ci-value { overflow-wrap: anywhere; }
+/* Right-aligned labels form a clean gutter against the values, which are now
+   clickable links (tidied to drop the scheme / www / trailing slash). */
+.ci-label { text-align: right; margin: 0; white-space: nowrap; }
+.ci-value { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+a.ci-value { color: var(--secondarycolor); text-decoration: none; }
+a.ci-value:hover { text-decoration: underline; }
 .contact-form input,
 .contact-form textarea {
   font-family: inherit;

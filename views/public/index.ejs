@@ -150,16 +150,38 @@
                 </form>
             </div>
             <div class="contact-info">
-                <p class="ci-label lighttitle">Email:</p>
-                <p class="ci-value secondarytitle"><%= content['contact.email'] %></p>
-                <p class="ci-label lighttitle">Internet:</p>
-                <p class="ci-value secondarytitle"><%= content['contact.internet'] %></p>
-                <p class="ci-label lighttitle">YouTube:</p>
-                <p class="ci-value secondarytitle"><%= content['contact.youtube'] %></p>
-                <p class="ci-label lighttitle">LinkedIn:</p>
-                <p class="ci-value secondarytitle"><%= content['contact.linkedin'] %></p>
-                <p class="ci-label lighttitle">Xing:</p>
-                <p class="ci-value secondarytitle"><%= content['contact.xing'] %></p>
+                <%
+                  var contactRows = [
+                    { label: 'Email',    key: 'contact.email' },
+                    { label: 'Internet', key: 'contact.internet' },
+                    { label: 'YouTube',  key: 'contact.youtube' },
+                    { label: 'LinkedIn', key: 'contact.linkedin' },
+                    { label: 'Xing',     key: 'contact.xing' }
+                  ];
+                  contactRows.forEach(function (item) {
+                    var val = String(content[item.key] || '').trim();
+                    if (!val) return;
+                    // Turn the stored value into a clean, clickable link: mailto for an
+                    // email, https for a URL/bare domain, and a tidied display string
+                    // (no scheme / www / trailing slash). Anything else stays plain text.
+                    var href = '', text = val, external = false;
+                    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+                      href = 'mailto:' + val;
+                    } else if (/^https?:\/\//i.test(val)) {
+                      href = val; external = true;
+                      text = val.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/+$/, '');
+                    } else if (/^[\w.-]+\.[a-z]{2,}(\/\S*)?$/i.test(val)) {
+                      href = 'https://' + val; external = true;
+                      text = val.replace(/^www\./i, '').replace(/\/+$/, '');
+                    }
+                %>
+                <span class="ci-label lighttitle"><%= item.label %></span>
+                <% if (href) { %>
+                <a class="ci-value secondarytitle" href="<%= href %>"<% if (external) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= text %></a>
+                <% } else { %>
+                <span class="ci-value secondarytitle"><%= val %></span>
+                <% } %>
+                <% }); %>
             </div>
         </div>
     </section>
