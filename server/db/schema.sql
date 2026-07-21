@@ -83,6 +83,18 @@ CREATE TABLE IF NOT EXISTS media_downloads (
   sort           INTEGER NOT NULL DEFAULT 0
 );
 
+-- Software logos placed along the Skills "production pipeline" bar. Each marker
+-- is an icon (SVG/PNG) at a vertical position (0 = top/"concept" .. 100 =
+-- bottom/"finished product") with an optional label (shown vertically on the
+-- rail and as the name in the mobile list; empty = icon-only).
+CREATE TABLE IF NOT EXISTS pipeline_markers (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  image_path TEXT NOT NULL DEFAULT '',
+  label      TEXT NOT NULL DEFAULT '',
+  position   INTEGER NOT NULL DEFAULT 50,       -- 0..100 down the bar
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Contact form submissions (also emailed).
 CREATE TABLE IF NOT EXISTS contact_messages (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,

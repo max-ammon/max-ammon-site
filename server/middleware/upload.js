@@ -30,14 +30,17 @@ function makeStorage(subdir) {
   });
 }
 
-const IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif'];
+// SVG is allowed too — logos are commonly vector. It's only ever rendered via
+// <img src> (scripts inside an SVG don't execute there) and the CSP is
+// `imgSrc 'self'`, so a stored SVG can't run script.
+const IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/svg+xml'];
 const VIDEO_MIMES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-matroska'];
 
 // The browser-supplied mime type isn't dependable (some clients send
 // application/octet-stream for perfectly good video), so accept a file when
 // EITHER its mime type OR its extension is on the allow-list. Uploads are
 // owner-only, stored under generated names, and never executed.
-const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.avif'];
+const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.avif', '.svg'];
 const VIDEO_EXTS = ['.mp4', '.webm', '.mov', '.mkv', '.m4v'];
 
 function isImage(file) {
@@ -78,10 +81,22 @@ const uploadSiteImage = multer({
   limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB
 });
 
+// Pipeline software-marker icons (SVG/PNG logos placed along the Skills bar).
+// Logos are tiny; kept in their own folder so a deleted marker's file is easy
+// to clean up.
+const uploadPipeline = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, ensureDir(path.join(UPLOADS_DIR, 'pipeline'))),
+    filename: (req, file, cb) => cb(null, crypto.randomUUID() + safeExt(file.originalname)),
+  }),
+  fileFilter: (req, file, cb) => cb(null, isImage(file)),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+});
+
 // Disk path -> public URL under /uploads.
 function toPublicPath(diskPath) {
   const rel = path.relative(UPLOADS_DIR, diskPath).split(path.sep).join('/');
   return '/uploads/' + rel;
 }
 
-module.exports = { uploadMedia, uploadDownload, uploadSiteImage, toPublicPath, UPLOADS_DIR, IMAGE_MIMES, VIDEO_MIMES };
+module.exports = { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, toPublicPath, UPLOADS_DIR, IMAGE_MIMES, VIDEO_MIMES };

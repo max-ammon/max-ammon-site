@@ -30,6 +30,7 @@
         </div>
 
         <div class="skills-pipeline">
+        <% var _markers = (typeof markers !== 'undefined' && markers) ? markers : []; %>
         <div class="pipeline-rail" aria-hidden="true">
             <span class="pipeline-cap"><%= content['skills.pipeline.start'] %></span>
             <span class="pipeline-line">
@@ -37,6 +38,13 @@
                     <% for (var i = 0; i < 4; i++) { %><span class="pipeline-title"><%= content['skills.pipeline.title'] %></span><% } %>
                 </span>
                 <span class="pipeline-dot"></span>
+                <%# Owner-placed software logos, positioned along the bar (0=top .. 100=bottom). %>
+                <% _markers.forEach(function (m) { %>
+                <span class="pipeline-marker" style="top: <%= m.position %>%;">
+                    <img src="<%= imgUrl(m.image_path, 200) %>" alt="<%= m.label %>" loading="lazy" decoding="async">
+                    <% if (m.label) { %><span class="pm-label"><%= m.label %></span><% } %>
+                </span>
+                <% }); %>
             </span>
             <span class="pipeline-cap"><%= content['skills.pipeline.end'] %></span>
         </div>
@@ -89,6 +97,14 @@
             </div>
         </div>
         </div><%# closes the (originally unclosed) padding-top:0% wrapper %>
+        <%# The rail is hidden on small screens, so the software shows here as a plain list instead. %>
+        <% if (_markers.length) { %>
+        <ul class="skills-software" aria-label="Software I use">
+            <% _markers.forEach(function (m) { %>
+            <li><img src="<%= imgUrl(m.image_path, 160) %>" alt="<%= m.label %>" loading="lazy" decoding="async"><% if (m.label) { %><span><%= m.label %></span><% } %></li>
+            <% }); %>
+        </ul>
+        <% } %>
         </div><%# closes .skills-pipeline — the rail spans exactly these four skills %>
         <div class="barrior nopadding"></div>
     </section>

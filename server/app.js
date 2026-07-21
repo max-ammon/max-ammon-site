@@ -9,6 +9,7 @@ const SqliteStore = require('better-sqlite3-session-store')(session);
 const db = require('./db');
 const { loadPublicContext } = require('./services/content');
 const { getPublicRows } = require('./services/gallery');
+const { getMarkers } = require('./services/pipeline');
 const { UPLOADS_DIR } = require('./middleware/upload');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
@@ -149,7 +150,7 @@ function attachSiteContext(req, res, next) {
 
 app.get('/', attachSiteContext, (req, res) => {
   const owner = res.locals.settings.site_title || 'Max Ammon';
-  res.render('public/index', { title: owner, contactStatus: req.query.contact || '' });
+  res.render('public/index', { title: owner, contactStatus: req.query.contact || '', markers: getMarkers() });
 });
 
 app.get('/gallery', attachSiteContext, (req, res) => {

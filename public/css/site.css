@@ -37,6 +37,26 @@ nav { padding-inline: clamp(24px, 2.5vw, 48px); }
   color: rgba(255, 255, 255, 0.7);
 }
 
+/* Pipeline software: the plain list shown where the rail is hidden (≤1200px).
+   On desktop the rail carries the logos, so this is hidden there. Names inherit
+   the surrounding Skills text colour. */
+.skills-software { display: none; }
+@media (max-width: 1200px) {
+  .skills-software {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 20px 26px;
+    list-style: none;
+    margin: 0;
+    padding: 28px 5vw 0;
+  }
+  .skills-software li { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 96px; text-align: center; }
+  .skills-software img { width: 46px; height: 46px; object-fit: contain; }
+  .skills-software span { font-size: 0.82rem; line-height: 1.2; }
+}
+
 /* Everything below is scoped to small screens, so desktop is unchanged. Makes
    the sticky header responsive (the original had a fixed 200px gap that
    overflowed phones). */

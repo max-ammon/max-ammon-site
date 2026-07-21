@@ -14,7 +14,8 @@ const {
 const gallery = require('../services/gallery');
 const messages = require('../services/messages');
 const mediaSvc = require('../services/media');
-const { uploadMedia, uploadDownload, uploadSiteImage, toPublicPath } = require('../middleware/upload');
+const pipeline = require('../services/pipeline');
+const { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, toPublicPath } = require('../middleware/upload');
 const { parseYouTubeId } = require('../lib/format');
 
 const router = express.Router();
@@ -36,6 +37,7 @@ const SECTIONS = [
   { href: '/admin/colors', title: 'Colours', desc: 'Adjust the colour scheme with a live preview.' },
   { href: '/admin/images/about', title: 'Profile & banner', desc: 'Change your profile picture and the About banner image.' },
   { href: '/admin/images/skills', title: 'Skills images', desc: 'Swap the images shown with your four skill categories.' },
+  { href: '/admin/pipeline', title: 'Pipeline software', desc: 'Place software logos along the production-pipeline bar in Skills.' },
   { href: '/admin/demo', title: 'Demo video', desc: 'Set the YouTube video and shape of the Demo embed.' },
   { href: '/admin/gallery', title: 'Gallery', desc: 'Add projects, upload media, embed videos, arrange the gallery.' },
   { href: '/admin/messages', title: 'Messages', desc: 'Read messages sent through your contact form.' },
@@ -155,6 +157,39 @@ router.post('/images/:slug', uploadSiteImage.any(), (req, res) => {
   }
   updateSettings(updates);
   res.redirect('/admin/images/' + req.params.slug + '?saved=1');
+});
+
+// --- Pipeline software markers ----------------------------------------------
+router.get('/pipeline', (req, res) => {
+  res.render('admin/pipeline', {
+    title: 'Pipeline software',
+    markers: pipeline.getMarkers(),
+    saved: req.query.saved === '1',
+    err: req.query.err || '',
+  });
+});
+
+router.post('/pipeline', uploadPipeline.single('image'), (req, res) => {
+  // multer's filter drops non-images silently — tell the owner rather than
+  // redirecting as if it worked.
+  if (!req.file) return res.redirect('/admin/pipeline?err=nofile');
+  pipeline.addMarker({ image_path: toPublicPath(req.file.path), label: req.body.label, position: req.body.position });
+  res.redirect('/admin/pipeline?saved=1');
+});
+
+router.post('/pipeline/:id', uploadPipeline.single('image'), (req, res) => {
+  pipeline.updateMarker(Number(req.params.id), {
+    // A new upload replaces the icon; omitting the field keeps the current one.
+    image_path: req.file ? toPublicPath(req.file.path) : undefined,
+    label: req.body.label,
+    position: req.body.position,
+  });
+  res.redirect('/admin/pipeline?saved=1');
+});
+
+router.post('/pipeline/:id/delete', (req, res) => {
+  pipeline.deleteMarker(Number(req.params.id));
+  res.redirect('/admin/pipeline?saved=1');
 });
 
 // --- Demo video ------------------------------------------------------------

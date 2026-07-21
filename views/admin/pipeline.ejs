@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+<style>
+  .pipeline-admin { display: flex; gap: 28px; align-items: flex-start; }
+  .pipeline-editor { flex: 1; min-width: 0; }
+
+  /* Live preview of the vertical bar with the markers at their positions. */
+  .pipeline-preview {
+    flex: none; width: 210px; position: sticky; top: 20px;
+    display: flex; flex-direction: column; align-items: center;
+    background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 8px; padding: 14px 8px;
+  }
+  .pp-cap { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--a-muted); }
+  .pp-bar { position: relative; width: 4px; height: 340px; background: var(--a-border); margin: 10px 0; align-self: center; margin-left: 34px; }
+  .pp-marker { position: absolute; left: 100%; transform: translateY(-50%); display: flex; align-items: center; gap: 5px; white-space: nowrap; padding-left: 8px; }
+  .pp-marker img { width: 26px; height: 26px; object-fit: contain; flex: none; }
+  .pp-marker span { writing-mode: vertical-rl; font-size: 0.62rem; line-height: 1; color: var(--a-muted); max-height: 90px; overflow: hidden; }
+  .pp-empty { color: var(--a-muted); font-size: 0.8rem; text-align: center; }
+
+  .marker-list { list-style: none; padding: 0; margin: 0 0 22px; }
+  .marker-row { display: flex; align-items: flex-start; gap: 14px; padding: 12px; background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 8px; margin-bottom: 10px; }
+  .marker-thumb { width: 48px; height: 48px; flex: none; background: rgba(255,255,255,0.06); border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .marker-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .marker-form { flex: 1; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; margin: 0; }
+  .marker-form .field { display: flex; flex-direction: column; gap: 3px; font-size: 0.8rem; }
+  .marker-form .field.pos { align-items: flex-start; }
+  .marker-form input[type="text"] { margin: 0; min-width: 180px; }
+  .marker-form input[type="range"] { width: 160px; vertical-align: middle; }
+  .marker-form output { font-weight: 700; margin-left: 6px; }
+  .marker-form input[type="file"] { font-size: 0.78rem; }
+  .marker-actions { align-self: flex-end; }
+
+  @media (max-width: 720px) { .pipeline-admin { flex-direction: column-reverse; } .pipeline-preview { position: static; width: 100%; } }
+</style>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin">← Dashboard</a></p>
+        <h1>Pipeline software</h1>
+        <p class="muted">Place the software you use along the “production pipeline” bar in your Skills section. <strong>Position</strong> runs 0 (concept, top) to 100 (finished product, bottom). Leave the name blank if the logo already spells it out. On phones — where the bar is hidden — these show as a simple list instead.</p>
+        <% if (saved) { %><div class="alert ok">Saved. <a href="/#skills" target="_blank" rel="noopener">View site ↗</a></div><% } %>
+        <% if (err === 'nofile') { %><div class="alert error">No image was added. Choose an SVG or a PNG/JPG/WebP logo.</div><% } %>
+
+        <div class="pipeline-admin">
+            <aside class="pipeline-preview" aria-hidden="true">
+                <div class="pp-cap">concept</div>
+                <div class="pp-bar" id="ppBar">
+                    <% markers.forEach(function (m) { %>
+                        <div class="pp-marker" data-marker="<%= m.id %>" style="top: <%= m.position %>%;">
+                            <img src="<%= m.image_path %>" alt="">
+                            <% if (m.label) { %><span><%= m.label %></span><% } %>
+                        </div>
+                    <% }); %>
+                    <% if (!markers.length) { %><div class="pp-empty" style="position:absolute;top:50%;left:8px;transform:translateY(-50%);width:120px;">Add software to see it here</div><% } %>
+                </div>
+                <div class="pp-cap">finished product</div>
+            </aside>
+
+            <div class="pipeline-editor">
+                <ul class="marker-list">
+                    <% markers.forEach(function (m) { %>
+                        <li class="marker-row">
+                            <div class="marker-thumb"><img src="<%= m.image_path %>" alt=""></div>
+                            <form method="post" action="/admin/pipeline/<%= m.id %>" enctype="multipart/form-data" class="marker-form">
+                                <label class="field">Name <span class="muted">(optional)</span>
+                                    <input type="text" name="label" value="<%= m.label %>" placeholder="e.g. Blender">
+                                </label>
+                                <label class="field pos">Position
+                                    <span><input type="range" min="0" max="100" name="position" value="<%= m.position %>" data-pos="<%= m.id %>"><output data-out="<%= m.id %>"><%= m.position %></output></span>
+                                </label>
+                                <label class="field">Replace icon
+                                    <input type="file" name="image" accept="image/*,.svg">
+                                </label>
+                                <div class="marker-actions"><button class="btn-link btn-sm" type="submit">Save</button></div>
+                            </form>
+                            <form method="post" action="/admin/pipeline/<%= m.id %>/delete" class="inline" onsubmit="return confirm('Remove this software marker?');">
+                                <button class="btn-link btn-sm danger" type="submit">Delete</button>
+                            </form>
+                        </li>
+                    <% }); %>
+                    <% if (!markers.length) { %><li class="muted">No software added yet — add your first below.</li><% } %>
+                </ul>
+
+                <div class="card-inset">
+                    <h3>Add software</h3>
+                    <form method="post" action="/admin/pipeline" enctype="multipart/form-data">
+                        <label>Icon <span class="muted">(SVG or PNG/JPG/WebP)</span> <input type="file" name="image" accept="image/*,.svg" required></label>
+                        <label>Name <span class="muted">(optional — leave blank if the logo already shows the name)</span> <input type="text" name="label" placeholder="e.g. Substance Painter"></label>
+                        <label>Position <span class="muted">(0 concept … 100 finished)</span> <span><input type="range" min="0" max="100" name="position" value="50" id="addPos"><output id="addPosOut">50</output></span></label>
+                        <button class="btn" type="submit">Add software</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script>
+      (function () {
+        // Each position slider live-moves its preview marker and updates the number.
+        function bind(slider) {
+          var id = slider.getAttribute('data-pos');
+          var out = document.querySelector('[data-out="' + id + '"]');
+          var mark = document.querySelector('.pp-marker[data-marker="' + id + '"]');
+          function sync() { if (out) out.textContent = slider.value; if (mark) mark.style.top = slider.value + '%'; }
+          slider.addEventListener('input', sync);
+          sync();
+        }
+        document.querySelectorAll('input[type=range][data-pos]').forEach(bind);
+        var addPos = document.getElementById('addPos'), addOut = document.getElementById('addPosOut');
+        if (addPos && addOut) addPos.addEventListener('input', function () { addOut.textContent = addPos.value; });
+      })();
+    </script>
+</body>
+</html>

@@ -60,8 +60,9 @@
   position: relative;
   /* Reserve a column on the right for the pipeline rail, pushing the skills
      content to the left so the bar sits in its own space with the page
-     background showing behind it (rather than overlapping the images). */
-  --rail-w: clamp(150px, 13vw, 220px);
+     background showing behind it (rather than overlapping the images). The
+     column also holds the software-logo markers to the right of the bar. */
+  --rail-w: clamp(190px, 14vw, 260px);
   padding-right: var(--rail-w);
 }
 
@@ -137,6 +138,39 @@
   background: var(--basecolor);
   padding: 12px 0;
   white-space: nowrap;
+}
+
+/* Owner-placed software logos along the bar. Absolute children of .pipeline-line
+   so they ride the same 0..100% axis as the scroll dot (their `top` is set inline)
+   without changing the bar's size — see public/js/pipeline.js. They sit just to
+   the right of the bar; the optional label is vertical to match the "production
+   pipeline" text. Hidden with the rail on mobile (.skills-software takes over). */
+.pipeline-marker {
+  position: absolute;
+  left: 100%;
+  margin-left: 12px;
+  transform: translateY(-50%);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.pipeline-marker img {
+  width: clamp(26px, 2.2vw, 38px);
+  height: auto;
+  display: block;
+  flex: none;
+}
+.pm-label {
+  writing-mode: vertical-rl;
+  font-family: 'uni_bold', 'uni_regular', sans-serif;
+  font-weight: 700;
+  font-size: 1.1cap;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--lightcolor);
 }
 
 /* The rail would crowd the stacked mobile layout — hide it there, and drop the
