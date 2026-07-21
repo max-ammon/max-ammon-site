@@ -156,11 +156,23 @@
   gap: 6px;
   white-space: nowrap;
 }
-.pipeline-marker img {
-  width: clamp(26px, 2.2vw, 38px);
-  height: auto;
-  display: block;
-  flex: none;
+.pm-icon { flex: none; display: flex; align-items: center; justify-content: center; }
+/* flex:none so a vertical logo isn't shrunk to the slim box — it overflows it. */
+.pm-icon img { display: block; flex: none; width: clamp(26px, 2.2vw, 38px); height: auto; }
+/* Vertical (wordmark) logos: rotate 90deg to read along the bar, kept to a slim
+   horizontal footprint (the .pm-icon box) so they still sit in the strip beside
+   the bar; the rotated image overflows the box vertically, centred on the point. */
+.pipeline-marker.vertical .pm-icon {
+  width: clamp(30px, 2.4vw, 42px);
+  height: clamp(30px, 2.4vw, 42px);
+  overflow: visible;
+}
+.pipeline-marker.vertical .pm-icon img {
+  width: auto;
+  height: clamp(30px, 2.4vw, 42px);      /* explicit thickness; length derives from the logo's ratio */
+  max-width: 170px;                       /* caps the length along the bar */
+  object-fit: contain;                    /* a capped very-wide logo letterboxes, never distorts */
+  transform: rotate(90deg);
 }
 .pm-label {
   writing-mode: vertical-rl;

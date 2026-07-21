@@ -11,10 +11,10 @@ const mediaSvc = require('./media');
 const qMarkers = db.prepare('SELECT * FROM pipeline_markers ORDER BY position, id');
 const qMarker = db.prepare('SELECT * FROM pipeline_markers WHERE id = ?');
 const insMarker = db.prepare(
-  'INSERT INTO pipeline_markers (image_path, label, position) VALUES (@image_path, @label, @position)'
+  'INSERT INTO pipeline_markers (image_path, label, position, vertical) VALUES (@image_path, @label, @position, @vertical)'
 );
 const updMarker = db.prepare(
-  'UPDATE pipeline_markers SET image_path=@image_path, label=@label, position=@position WHERE id=@id'
+  'UPDATE pipeline_markers SET image_path=@image_path, label=@label, position=@position, vertical=@vertical WHERE id=@id'
 );
 const delMarker = db.prepare('DELETE FROM pipeline_markers WHERE id = ?');
 const qUsers = db.prepare('SELECT COUNT(*) AS c FROM pipeline_markers WHERE image_path = ?');
@@ -49,6 +49,8 @@ function addMarker(data) {
     image_path: data.image_path || '',
     label: (data.label || '').trim(),
     position: clampPos(data.position),
+    // Default on: most logos are wordmarks that should read vertically.
+    vertical: data.vertical == null ? 1 : data.vertical ? 1 : 0,
   });
   return info.lastInsertRowid;
 }
@@ -63,6 +65,7 @@ function updateMarker(id, data) {
     image_path: nextImage,
     label: data.label != null ? String(data.label).trim() : cur.label,
     position: data.position != null ? clampPos(data.position) : cur.position,
+    vertical: data.vertical != null ? (data.vertical ? 1 : 0) : cur.vertical,
   });
   // Only now that the row no longer references it can the old file be removed.
   if (nextImage !== cur.image_path) removeIconIfUnused(cur.image_path);

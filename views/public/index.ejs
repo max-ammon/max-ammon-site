@@ -40,8 +40,8 @@
                 <span class="pipeline-dot"></span>
                 <%# Owner-placed software logos, positioned along the bar (0=top .. 100=bottom). %>
                 <% _markers.forEach(function (m) { %>
-                <span class="pipeline-marker" style="top: <%= m.position %>%;">
-                    <img src="<%= imgUrl(m.image_path, 200) %>" alt="<%= m.label %>" loading="lazy" decoding="async">
+                <span class="pipeline-marker<%= m.vertical ? ' vertical' : '' %>" style="top: <%= m.position %>%;">
+                    <span class="pm-icon"><img src="<%= imgUrl(m.image_path, 200) %>" alt="<%= m.label %>" loading="lazy" decoding="async"></span>
                     <% if (m.label) { %><span class="pm-label"><%= m.label %></span><% } %>
                 </span>
                 <% }); %>

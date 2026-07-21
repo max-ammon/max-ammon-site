@@ -25,6 +25,7 @@ function addColumnIfMissing(table, column, definition) {
   if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
 }
 addColumnIfMissing('media_items', 'aspect_ratio', 'REAL');
+addColumnIfMissing('pipeline_markers', 'vertical', 'INTEGER NOT NULL DEFAULT 1');
 
 // Seed with today's exact content/colours on first run only.
 const seed = require('./seed');

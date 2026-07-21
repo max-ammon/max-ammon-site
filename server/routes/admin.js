@@ -173,7 +173,7 @@ router.post('/pipeline', uploadPipeline.single('image'), (req, res) => {
   // multer's filter drops non-images silently — tell the owner rather than
   // redirecting as if it worked.
   if (!req.file) return res.redirect('/admin/pipeline?err=nofile');
-  pipeline.addMarker({ image_path: toPublicPath(req.file.path), label: req.body.label, position: req.body.position });
+  pipeline.addMarker({ image_path: toPublicPath(req.file.path), label: req.body.label, position: req.body.position, vertical: req.body.vertical ? 1 : 0 });
   res.redirect('/admin/pipeline?saved=1');
 });
 
@@ -183,6 +183,7 @@ router.post('/pipeline/:id', uploadPipeline.single('image'), (req, res) => {
     image_path: req.file ? toPublicPath(req.file.path) : undefined,
     label: req.body.label,
     position: req.body.position,
+    vertical: req.body.vertical ? 1 : 0,
   });
   res.redirect('/admin/pipeline?saved=1');
 });

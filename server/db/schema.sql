@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS pipeline_markers (
   image_path TEXT NOT NULL DEFAULT '',
   label      TEXT NOT NULL DEFAULT '',
   position   INTEGER NOT NULL DEFAULT 50,       -- 0..100 down the bar
+  vertical   INTEGER NOT NULL DEFAULT 1,         -- 1 = rotate the logo to read vertically
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
