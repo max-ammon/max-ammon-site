@@ -38,6 +38,8 @@ function isExempt(p) {
   return (
     p === '/gate' ||
     p.startsWith('/gate/') ||
+    p === '/imprint' || // legally-required imprint must stay reachable
+    p.startsWith('/imprint/') ||
     p === '/admin' ||
     p.startsWith('/admin/') || // admin has its own login
     p.startsWith('/.well-known/') || // ACME / cert renewal

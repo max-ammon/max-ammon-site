@@ -181,6 +181,10 @@ app.get('/gallery', attachSiteContext, (req, res) => {
   res.render('public/gallery', { title: owner + "'s Gallery", rows: getPublicRows() });
 });
 
+app.get('/imprint', attachSiteContext, (req, res) => {
+  res.render('public/imprint', { title: 'Impressum' });
+});
+
 // Public contact form handler.
 app.use('/', contactRoutes);
 

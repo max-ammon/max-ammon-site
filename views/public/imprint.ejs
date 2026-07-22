@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/head', { title: title }) %>
+</head>
+<body>
+<%- include('../partials/nav', { navVariant: 'gallery' }) %>
+
+<section id="imprint">
+    <h2 class="title">Impressum</h2>
+    <div class="imprint-body secondarytitle">
+        <% if (content['imprint.name'] || content['imprint.address']) { %>
+        <p class="imprint-label lighttitle">Angaben gemäß § 5 DDG</p>
+        <address>
+            <% if (content['imprint.name']) { %><strong><%= content['imprint.name'] %></strong><br><% } %>
+            <%- nl2br(content['imprint.address'] || '') %>
+        </address>
+        <% } %>
+
+        <% if (content['imprint.email'] || content['imprint.phone']) { %>
+        <p class="imprint-label lighttitle">Kontakt</p>
+        <p>
+            <% if (content['imprint.email']) { %>E-Mail: <a href="mailto:<%= content['imprint.email'] %>"><%= content['imprint.email'] %></a><% if (content['imprint.phone']) { %><br><% } %><% } %>
+            <% if (content['imprint.phone']) { %>Telefon: <%= content['imprint.phone'] %><% } %>
+        </p>
+        <% } %>
+
+        <% if (content['imprint.vat']) { %>
+        <p class="imprint-label lighttitle">Umsatzsteuer-Identifikationsnummer</p>
+        <p><%= content['imprint.vat'] %></p>
+        <% } %>
+
+        <% if (content['imprint.responsible']) { %>
+        <p class="imprint-label lighttitle">Redaktionell verantwortlich (§ 18 Abs. 2 MStV)</p>
+        <p><%= content['imprint.responsible'] %></p>
+        <% } %>
+
+        <% if (content['imprint.additional']) { %>
+        <div class="imprint-additional"><%- nl2br(content['imprint.additional']) %></div>
+        <% } %>
+
+        <% if (!content['imprint.name'] && !content['imprint.address'] && !content['imprint.email']) { %>
+        <p>This imprint has not been filled in yet.</p>
+        <% } %>
+    </div>
+</section>
+
+<%- include('../partials/footer-bar') %>
+</body>
+</html>

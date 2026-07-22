@@ -89,6 +89,17 @@ const CONTENT = [
   ['gallery.colorinfo', 'gallery', 'Colour-management note',
     'Depending on your browser, operating-system and hardware, the web-player may display the P3-D65 colorspace and 10bit color-depth incorrectly.<br><br>By clicking on the marked versions:<br>you can download the content\n                    <b><u>uncompressed</u></b> in <b><u>rec2020</u></b> colors with <b><u>10bit</u></b> depth(.mxf/DNxHQX), you will also find one <b><u>sRGB</u></b> and one <b><u>P3-D65</u></b> version(.mp4/h.265).<br>By using a local color-managed\n                    player, you will get the most accurate representation of the colors.',
     'html'],
+
+  // Imprint / Impressum (German sites need one — § 5 DDG). Editable in the Text
+  // admin under "Imprint"; shown on /imprint. Fill address/phone in; the rest are
+  // optional. Only non-empty fields are shown on the page.
+  ['imprint.name', 'imprint', 'Name', 'Max Ammon', 'text'],
+  ['imprint.address', 'imprint', 'Address (street, postcode, city, country)', '', 'multiline'],
+  ['imprint.email', 'imprint', 'Email', '3d@max-ammon.com', 'text'],
+  ['imprint.phone', 'imprint', 'Phone', '', 'text'],
+  ['imprint.vat', 'imprint', 'VAT ID / USt-IdNr. (leave blank if none)', '', 'text'],
+  ['imprint.responsible', 'imprint', 'Responsible for content, § 18 Abs. 2 MStV (usually same as above)', '', 'text'],
+  ['imprint.additional', 'imprint', 'Additional information (optional)', '', 'multiline'],
 ];
 
 function seedIfEmpty(db) {
