@@ -54,11 +54,14 @@ nav { padding-inline: clamp(24px, 2.5vw, 48px); }
 /* Imprint / Impressum page (colours come from the .secondarytitle / .lighttitle
    theme classes on the elements, same as the contact section). */
 #imprint {
-  max-width: 760px;
+  max-width: 980px;
   margin: 0 auto;
   padding: 60px 6vw 90px;
   line-height: 1.6;
 }
+/* German column then English column, side by side; stack on small screens. */
+.imprint-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: start; }
+@media (max-width: 720px) { .imprint-cols { grid-template-columns: 1fr; gap: 6px; } }
 #imprint h2 { margin: 0 0 22px; }
 .imprint-label {
   font-weight: 700;

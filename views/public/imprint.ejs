@@ -7,47 +7,67 @@
 <%- include('../partials/nav', { navVariant: 'gallery' }) %>
 
 <section id="imprint">
-    <h2 class="title">Impressum</h2>
-    <div class="imprint-body secondarytitle">
-        <% if (content['imprint.name'] || content['imprint.address']) { %>
-        <p class="imprint-label lighttitle">Angaben gemäß § 5 DDG</p>
-        <address>
-            <% if (content['imprint.name']) { %><strong><%= content['imprint.name'] %></strong><br><% } %>
-            <%- nl2br(content['imprint.address'] || '') %>
-        </address>
-        <% } %>
+    <%
+      var hasName = content['imprint.name'] || content['imprint.address'];
+      var hasKontakt = content['imprint.email'] || content['imprint.phone'];
+      var showPrivacy = (typeof gateOn !== 'undefined' && gateOn);
+      // Same data, two label sets — German column then English column.
+      var cols = [
+        { heading: 'Impressum', angaben: 'Angaben gemäß § 5 DDG', kontakt: 'Kontakt', email: 'E-Mail', phone: 'Telefon',
+          vat: 'Umsatzsteuer-Identifikationsnummer', responsible: 'Redaktionell verantwortlich (§ 18 Abs. 2 MStV)',
+          privacy: 'Datenschutz', privacyVal: content['imprint.privacy'] },
+        { heading: 'Imprint', angaben: 'Information pursuant to § 5 DDG', kontakt: 'Contact', email: 'Email', phone: 'Phone',
+          vat: 'VAT ID (USt-IdNr.)', responsible: 'Responsible for content (§ 18 (2) MStV)',
+          privacy: 'Privacy', privacyVal: content['imprint.privacy_en'] }
+      ];
+    %>
+    <div class="imprint-cols">
+        <% cols.forEach(function (t) { %>
+        <div class="imprint-col">
+            <h2 class="title"><%= t.heading %></h2>
+            <div class="imprint-body secondarytitle">
+                <% if (hasName) { %>
+                <p class="imprint-label lighttitle"><%= t.angaben %></p>
+                <address>
+                    <% if (content['imprint.name']) { %><strong><%= content['imprint.name'] %></strong><br><% } %>
+                    <%- nl2br(content['imprint.address'] || '') %>
+                </address>
+                <% } %>
 
-        <% if (content['imprint.email'] || content['imprint.phone']) { %>
-        <p class="imprint-label lighttitle">Kontakt</p>
-        <p>
-            <% if (content['imprint.email']) { %>E-Mail: <a href="mailto:<%= content['imprint.email'] %>"><%= content['imprint.email'] %></a><% if (content['imprint.phone']) { %><br><% } %><% } %>
-            <% if (content['imprint.phone']) { %>Telefon: <%= content['imprint.phone'] %><% } %>
-        </p>
-        <% } %>
+                <% if (hasKontakt) { %>
+                <p class="imprint-label lighttitle"><%= t.kontakt %></p>
+                <p>
+                    <% if (content['imprint.email']) { %><%= t.email %>: <a href="mailto:<%= content['imprint.email'] %>"><%= content['imprint.email'] %></a><% if (content['imprint.phone']) { %><br><% } %><% } %>
+                    <% if (content['imprint.phone']) { %><%= t.phone %>: <%= content['imprint.phone'] %><% } %>
+                </p>
+                <% } %>
 
-        <% if (content['imprint.vat']) { %>
-        <p class="imprint-label lighttitle">Umsatzsteuer-Identifikationsnummer</p>
-        <p><%= content['imprint.vat'] %></p>
-        <% } %>
+                <% if (content['imprint.vat']) { %>
+                <p class="imprint-label lighttitle"><%= t.vat %></p>
+                <p><%= content['imprint.vat'] %></p>
+                <% } %>
 
-        <% if (content['imprint.responsible']) { %>
-        <p class="imprint-label lighttitle">Redaktionell verantwortlich (§ 18 Abs. 2 MStV)</p>
-        <p><%= content['imprint.responsible'] %></p>
-        <% } %>
+                <% if (content['imprint.responsible']) { %>
+                <p class="imprint-label lighttitle"><%= t.responsible %></p>
+                <p><%= content['imprint.responsible'] %></p>
+                <% } %>
 
-        <% if (content['imprint.additional']) { %>
-        <div class="imprint-additional"><%- nl2br(content['imprint.additional']) %></div>
-        <% } %>
-
-        <% if ((typeof gateOn !== 'undefined' && gateOn) && content['imprint.privacy']) { %>
-        <p class="imprint-label lighttitle">Datenschutz</p>
-        <div class="imprint-privacy"><%- content['imprint.privacy'] %></div>
-        <% } %>
-
-        <% if (!content['imprint.name'] && !content['imprint.address'] && !content['imprint.email']) { %>
-        <p>This imprint has not been filled in yet.</p>
-        <% } %>
+                <% if (showPrivacy && t.privacyVal) { %>
+                <p class="imprint-label lighttitle"><%= t.privacy %></p>
+                <div class="imprint-privacy"><%- t.privacyVal %></div>
+                <% } %>
+            </div>
+        </div>
+        <% }); %>
     </div>
+
+    <% if (content['imprint.additional']) { %>
+    <div class="imprint-additional secondarytitle"><%- nl2br(content['imprint.additional']) %></div>
+    <% } %>
+
+    <% if (!content['imprint.name'] && !content['imprint.address'] && !content['imprint.email']) { %>
+    <p class="secondarytitle" style="text-align:center">This imprint has not been filled in yet.</p>
+    <% } %>
 </section>
 
 <%- include('../partials/footer-bar') %>

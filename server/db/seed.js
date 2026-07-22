@@ -103,6 +103,9 @@ const CONTENT = [
   ['imprint.privacy', 'imprint', 'Privacy / bot-protection note (HTML; shown on /imprint while the CAPTCHA gate is on)',
     'Diese Website verwendet Cloudflare Turnstile, einen Dienst der Cloudflare, Inc. (101 Townsend St, San Francisco, CA 94107, USA), zum Schutz vor automatisierten Zugriffen (Bots). Beim Aufruf der Seite prüft Turnstile, ob es sich um einen menschlichen Besucher handelt; dabei können technische Daten wie die IP-Adresse an Cloudflare übertragen und dort verarbeitet werden. Weitere Informationen finden Sie in der <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Datenschutzerklärung von Cloudflare</a>.',
     'html'],
+  ['imprint.privacy_en', 'imprint', 'Privacy note — English (HTML; shown next to the German one while the gate is on)',
+    'This website uses Cloudflare Turnstile, a service provided by Cloudflare, Inc. (101 Townsend St, San Francisco, CA 94107, USA), to protect against automated access (bots). When you access the site, Turnstile checks whether you are a human visitor; technical data such as your IP address may be transmitted to and processed by Cloudflare. For more information, see the <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Cloudflare Privacy Policy</a>.',
+    'html'],
 ];
 
 function seedIfEmpty(db) {
