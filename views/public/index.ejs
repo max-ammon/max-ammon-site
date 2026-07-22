@@ -99,6 +99,7 @@
         </div><%# closes the (originally unclosed) padding-top:0% wrapper %>
         <%# The rail is hidden on small screens, so the software shows here as a plain list instead. %>
         <% if (_markers.length) { %>
+        <% if (content['skills.software.note']) { %><p class="skills-software-note"><%= content['skills.software.note'] %></p><% } %>
         <ul class="skills-software" aria-label="Software I use">
             <% _markers.forEach(function (m) { %>
             <li><img src="<%= imgUrl(m.image_path, 480) %>" alt="<%= m.label %>" loading="lazy" decoding="async"><% if (m.label) { %><span><%= m.label %></span><% } %></li>

@@ -69,6 +69,8 @@ const CONTENT = [
   ['skills.pipeline.title', 'skills', 'Pipeline bar — label along the line', 'production pipeline', 'text'],
   ['skills.pipeline.start', 'skills', 'Pipeline bar — top label', 'concept', 'text'],
   ['skills.pipeline.end', 'skills', 'Pipeline bar — bottom label', 'finished product', 'text'],
+  ['skills.software.note', 'skills', 'Software list note (shown above the software list on phones/tablets)',
+    'Software I work with across the production pipeline', 'text'],
 
   ['about.heading', 'about', 'Section heading', 'About Me', 'text'],
   ['about.body', 'about', 'About text',
