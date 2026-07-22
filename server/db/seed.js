@@ -100,6 +100,9 @@ const CONTENT = [
   ['imprint.vat', 'imprint', 'VAT ID / USt-IdNr. (leave blank if none)', '', 'text'],
   ['imprint.responsible', 'imprint', 'Responsible for content, § 18 Abs. 2 MStV (usually same as above)', '', 'text'],
   ['imprint.additional', 'imprint', 'Additional information (optional)', '', 'multiline'],
+  ['imprint.privacy', 'imprint', 'Privacy / bot-protection note (HTML; shown on /imprint while the CAPTCHA gate is on)',
+    'Diese Website verwendet Cloudflare Turnstile, einen Dienst der Cloudflare, Inc. (101 Townsend St, San Francisco, CA 94107, USA), zum Schutz vor automatisierten Zugriffen (Bots). Beim Aufruf der Seite prüft Turnstile, ob es sich um einen menschlichen Besucher handelt; dabei können technische Daten wie die IP-Adresse an Cloudflare übertragen und dort verarbeitet werden. Weitere Informationen finden Sie in der <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Datenschutzerklärung von Cloudflare</a>.',
+    'html'],
 ];
 
 function seedIfEmpty(db) {

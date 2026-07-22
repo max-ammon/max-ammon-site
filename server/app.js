@@ -182,7 +182,7 @@ app.get('/gallery', attachSiteContext, (req, res) => {
 });
 
 app.get('/imprint', attachSiteContext, (req, res) => {
-  res.render('public/imprint', { title: 'Impressum' });
+  res.render('public/imprint', { title: 'Impressum', gateOn: gate.enabled() });
 });
 
 // Public contact form handler.

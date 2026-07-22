@@ -39,6 +39,11 @@
         <div class="imprint-additional"><%- nl2br(content['imprint.additional']) %></div>
         <% } %>
 
+        <% if ((typeof gateOn !== 'undefined' && gateOn) && content['imprint.privacy']) { %>
+        <p class="imprint-label lighttitle">Datenschutz</p>
+        <div class="imprint-privacy"><%- content['imprint.privacy'] %></div>
+        <% } %>
+
         <% if (!content['imprint.name'] && !content['imprint.address'] && !content['imprint.email']) { %>
         <p>This imprint has not been filled in yet.</p>
         <% } %>
