@@ -37,13 +37,12 @@
   display: none;
 }
 
-/* Uni Sans Bold — the file ships with the site but stylesheet.css only ever
-   declared the light/regular/italic faces, so there was no real bold to ask
-   for. Declaring it here means the pipeline labels use the genuine bold
-   design rather than a browser-faked one. */
+/* Bold face for the pipeline labels etc. Swapped to self-hosted Outfit Bold to
+   match the Outfit swap in site.css (this rule loads after site.css, so the
+   'uni_bold' family is redeclared here). */
 @font-face {
   font-family: 'uni_bold';
-  src: url('/assets/fonts/Uni Sans Bold.otf') format('opentype');
+  src: url('/fonts/outfit-700.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;

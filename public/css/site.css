@@ -1,5 +1,17 @@
 /* Shared site tweaks loaded on every public page, after stylesheet.css. */
 
+/* Swap Uni Sans for the self-hosted Outfit (Google font). These @font-face rules
+   reuse the original family names, so every existing `font-family: 'uni_*'`
+   reference — including the body font declared in stylesheet.css — picks up
+   Outfit without editing the original stylesheet. Self-hosted (not Google's CDN)
+   to satisfy the CSP `font-src 'self'` and to avoid the EU Google-Fonts privacy
+   issue. Outfit has no italic, so the italic faces map to the upright weight.
+   (uni_bold is redeclared in demo.css, which loads later, so it's swapped there.) */
+@font-face { font-family: 'uni_regular';      src: url('/fonts/outfit-400.woff2') format('woff2'); font-weight: normal; font-style: normal; font-display: swap; }
+@font-face { font-family: 'uni_light';        src: url('/fonts/outfit-300.woff2') format('woff2'); font-weight: normal; font-style: normal; font-display: swap; }
+@font-face { font-family: 'uni_italic';       src: url('/fonts/outfit-400.woff2') format('woff2'); font-weight: normal; font-style: normal; font-display: swap; }
+@font-face { font-family: 'uni_light_italic'; src: url('/fonts/outfit-300.woff2') format('woff2'); font-weight: normal; font-style: normal; font-display: swap; }
+
 /* Profile picture always renders as a circle, so any photo uploaded via the
    admin comes out round even if it isn't square (centre-cropped, not squashed).
    The existing image is already a round 1500x1500 PNG with transparent corners,
