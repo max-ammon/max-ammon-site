@@ -264,6 +264,35 @@ systemctl list-timers | grep certbot     # a renewal timer should be listed
 
 ---
 
+## Optional: gate the whole site behind a CAPTCHA
+
+Makes the public site private — every visitor must pass a **Cloudflare Turnstile**
+challenge once before any page or image is served. It is **off** unless both keys
+are set.
+
+> ⚠️ This also **removes you from Google** (search engines can't pass a CAPTCHA),
+> so your portfolio stops appearing in search while it's on. Turnstile is a
+> third-party script, so add a short privacy note to your site if you're in the EU.
+> A CAPTCHA also won't stop a determined scraper (it solves once, then reuses the
+> cookie) — a shared password is stronger if the goal is truly private.
+
+1. At <https://dash.cloudflare.com> → **Turnstile** → **Add widget**: enter your
+   domain (`max-ammon.com`) and pick **Managed** mode. You'll get a **Site Key**
+   (public) and a **Secret Key** (keep private).
+2. On the VPS, add both to `.env`:
+   ```
+   TURNSTILE_SITE_KEY=0x4AAA...
+   TURNSTILE_SECRET_KEY=0x4AAA...
+   ```
+3. Restart: `docker compose up -d` (or `docker compose restart`).
+
+Every visitor now hits a challenge page first; once solved, a session cookie lets
+them browse for 7 days. Your `/admin` login, the site's CSS/fonts/JS, and the
+Certbot renewal path stay reachable without the challenge, and you (while logged
+in) skip it. To turn it **off**, blank both keys and restart.
+
+---
+
 ## Everyday operations
 
 ```bash

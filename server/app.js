@@ -16,11 +16,16 @@ const adminRoutes = require('./routes/admin');
 const contactRoutes = require('./routes/contact');
 const imgRoutes = require('./routes/img');
 const { imgUrl, imgSrcset } = require('./lib/images');
+const gate = require('./middleware/gate');
 
 const app = express();
 
 // Behind a reverse proxy in production so req.ip / rate-limiting are correct.
 if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
+
+// When the CAPTCHA gate is configured, the challenge page loads Cloudflare
+// Turnstile — allow its script/frame/connections in the CSP (only then).
+const TURNSTILE_CSP = gate.enabled() ? ['https://challenges.cloudflare.com'] : [];
 
 // Security headers. CSP is tuned for the site's inline styles/scripts, the
 // YouTube (nocookie) embeds, uploaded media, and YouTube thumbnail images.
@@ -34,14 +39,14 @@ app.use(
         fontSrc: ["'self'"],
         formAction: ["'self'"],
         frameAncestors: ["'self'"],
-        frameSrc: ["'self'", 'https://www.youtube-nocookie.com', 'https://www.youtube.com'],
+        frameSrc: ["'self'", 'https://www.youtube-nocookie.com', 'https://www.youtube.com', ...TURNSTILE_CSP],
         imgSrc: ["'self'", 'data:', 'https://img.youtube.com', 'https://i.ytimg.com'],
         mediaSrc: ["'self'"],
         objectSrc: ["'none'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", ...TURNSTILE_CSP],
         scriptSrcAttr: ["'unsafe-inline'"], // inline onsubmit/onclick confirm() handlers
         styleSrc: ["'self'", "'unsafe-inline'"],
-        connectSrc: ["'self'"],
+        connectSrc: ["'self'", ...TURNSTILE_CSP],
       },
     },
     crossOriginEmbedderPolicy: false,
@@ -85,29 +90,10 @@ const PUBLIC_DIR = path.join(ROOT, 'public'); // new assets (admin css/js, viewe
 app.set('view engine', 'ejs');
 app.set('views', path.join(ROOT, 'views'));
 
-// --- Static assets (served before sessions so assets skip session cost) -----
-// `no-cache` still lets the browser cache, but forces it to revalidate (cheap
-// 304s) — so edited CSS/JS/images are never served stale from a cached copy.
-const revalidate = (res) => res.setHeader('Cache-Control', 'no-cache');
-
-// Resized/WebP image derivatives. Mounted before the static handlers so /img/*
-// is served from the cache rather than looked for on disk.
-app.use('/', imgRoutes);
-
-app.use(express.static(PUBLIC_DIR, { setHeaders: revalidate }));
-/*
- * Uploaded media. This once cached for 7 days on the assumption that every file
- * has a unique UUID name — but derived files (*_opt.mp4 previews, *_preview.jpg)
- * are regenerated in place at the SAME url, so a hard cache served stale clips
- * after re-encoding. `no-cache` still caches; it just revalidates first and gets
- * a cheap 304 when nothing changed.
- */
-app.use('/uploads', express.static(UPLOADS_DIR, { setHeaders: revalidate }));
-// No `extensions:['html']` here, so /gallery falls through to the template
-// route rather than being hijacked by the raw gallery.html file.
-app.use(express.static(SITE_DIR, { index: false, setHeaders: revalidate }));
-
 // --- Sessions --------------------------------------------------------------
+// Moved above the static handlers so the CAPTCHA gate below can read
+// req.session. With saveUninitialized:false, cookieless requests still skip the
+// store, so anonymous asset requests stay cheap.
 app.use(
   session({
     store: new SqliteStore({
@@ -126,11 +112,48 @@ app.use(
   })
 );
 
-// --- Body parsing (admin forms, contact form) ------------------------------
+// --- Body parsing (admin forms, contact form, the gate challenge) ----------
 app.use(express.urlencoded({ extended: false }));
+
+// --- Optional site-wide CAPTCHA gate ---------------------------------------
+// A no-op unless Turnstile keys are configured (see middleware/gate.js). When
+// on, un-verified visitors are sent to /gate before any page or media is served.
+app.use(gate.guard);
+
+// --- Static assets ---------------------------------------------------------
+// `no-cache` still lets the browser cache but forces a cheap revalidate, so
+// edited CSS/JS/images (and regenerated *_opt.mp4 / *_preview.jpg, which reuse
+// their URL) are never served stale.
+const revalidate = (res) => res.setHeader('Cache-Control', 'no-cache');
+app.use('/', imgRoutes); // resized/WebP image derivatives, before the disk lookup
+app.use(express.static(PUBLIC_DIR, { setHeaders: revalidate }));
+app.use('/uploads', express.static(UPLOADS_DIR, { setHeaders: revalidate }));
+// No `extensions:['html']` here, so /gallery falls through to the template route.
+app.use(express.static(SITE_DIR, { index: false, setHeaders: revalidate }));
 
 // Block cross-site state-changing requests.
 app.use(sameOrigin);
+
+// --- CAPTCHA gate challenge (only active when Turnstile is configured) ------
+app.get('/gate', (req, res) => {
+  if (!gate.enabled()) return res.redirect('/');
+  if (req.session && (req.session.gatePassed || req.session.userId)) return res.redirect(gate.safeNext(req.query.next));
+  res.render('public/gate', {
+    title: 'Max Ammon',
+    siteKey: gate.siteKey(),
+    next: gate.safeNext(req.query.next),
+    err: req.query.err === '1',
+  });
+});
+
+app.post('/gate', async (req, res) => {
+  if (!gate.enabled()) return res.redirect('/');
+  const ok = await gate.verify(req.body['cf-turnstile-response'], req.ip);
+  const target = gate.safeNext(req.body.next);
+  if (!ok) return res.redirect('/gate?err=1&next=' + encodeURIComponent(target));
+  req.session.gatePassed = true;
+  res.redirect(target);
+});
 
 // --- Public pages ----------------------------------------------------------
 function attachSiteContext(req, res, next) {

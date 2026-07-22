@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title><%= title %></title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            background: #1b1b1b; color: #e8e8e8; padding: 24px;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        .gate { width: 100%; max-width: 420px; text-align: center; }
+        .gate h1 { font-weight: 600; font-size: 1.35rem; margin: 0 0 10px; }
+        .gate p { color: #9a9a9a; font-size: 0.95rem; line-height: 1.5; margin: 0 0 26px; }
+        .cf-turnstile { display: inline-block; min-height: 65px; }
+        .gate .continue {
+            margin-top: 18px; font: inherit; font-size: 0.95rem; padding: 9px 22px; cursor: pointer;
+            color: #e8e8e8; background: #333; border: 1px solid #4a4a4a; border-radius: 4px;
+        }
+        .gate .continue:hover { background: #3d3d3d; }
+        .gate .err { color: #e07a7a; margin-top: 16px; font-size: 0.9rem; }
+        .gate noscript { color: #e07a7a; display: block; margin-top: 16px; }
+    </style>
+</head>
+<body>
+    <main class="gate">
+        <h1><%= title %></h1>
+        <p>Please confirm you're human to view the portfolio.</p>
+        <form id="gateForm" method="post" action="/gate">
+            <input type="hidden" name="next" value="<%= next %>">
+            <div class="cf-turnstile" data-sitekey="<%= siteKey %>" data-callback="onGatePass" data-theme="dark"></div>
+            <button type="submit" class="continue">Continue</button>
+            <% if (err) { %><p class="err">That didn't verify — please try again.</p><% } %>
+            <noscript>This site needs JavaScript to load the check. Please enable it and reload.</noscript>
+        </form>
+    </main>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <script>
+        // Submit automatically as soon as the challenge is solved; the Continue
+        // button is a fallback if that callback doesn't fire.
+        function onGatePass() { document.getElementById('gateForm').submit(); }
+    </script>
+</body>
+</html>
