@@ -194,9 +194,11 @@ app.get('/gallery', attachSiteContext, (req, res) => {
   res.render('public/gallery', { title: owner + "'s Gallery", rows: getPublicRows() });
 });
 
-app.get('/imprint', attachSiteContext, (req, res) => {
-  res.render('public/imprint', { title: 'Impressum', gateOn: gate.enabled() });
+app.get('/impressum', attachSiteContext, (req, res) => {
+  res.render('public/imprint', { title: 'Impressum/Legal Disclosure', gateOn: gate.enabled() });
 });
+// The page first lived at /imprint; 301 old links and bookmarks to the new path.
+app.get('/imprint', (req, res) => res.redirect(301, '/impressum'));
 
 // Public contact form handler.
 app.use('/', contactRoutes);

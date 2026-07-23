@@ -52,7 +52,9 @@ function isExempt(p) {
   return (
     p === '/gate' ||
     p.startsWith('/gate/') ||
-    p === '/imprint' || // legally-required imprint must stay reachable
+    p === '/impressum' || // legally-required imprint must stay reachable
+    p.startsWith('/impressum/') ||
+    p === '/imprint' || // legacy path; 301-redirects to /impressum
     p.startsWith('/imprint/') ||
     p === '/admin' ||
     p.startsWith('/admin/') || // admin has its own login

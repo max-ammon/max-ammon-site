@@ -100,7 +100,7 @@ const CONTENT = [
     'html'],
 
   // Imprint / Impressum (German sites need one — § 5 DDG). Editable in the Text
-  // admin under "Imprint"; shown on /imprint. Fill address/phone in; the rest are
+  // admin under "Imprint"; shown on /impressum. Fill address/phone in; the rest are
   // optional. Only non-empty fields are shown on the page.
   ['imprint.name', 'imprint', 'Name', 'Max Ammon', 'text'],
   ['imprint.address', 'imprint', 'Address (street, postcode, city, country)', '', 'multiline'],
@@ -109,16 +109,16 @@ const CONTENT = [
   ['imprint.vat', 'imprint', 'VAT ID / USt-IdNr. (leave blank if none)', '', 'text'],
   ['imprint.responsible', 'imprint', 'Responsible for content, § 18 Abs. 2 MStV (usually same as above)', '', 'text'],
   ['imprint.additional', 'imprint', 'Additional information (optional)', '', 'multiline'],
-  ['imprint.privacy', 'imprint', 'Privacy / bot-protection note (HTML; shown on /imprint while the CAPTCHA gate is on)',
+  ['imprint.privacy', 'imprint', 'Privacy / bot-protection note (HTML; shown on /impressum while the CAPTCHA gate is on)',
     'Diese Website verwendet Cloudflare Turnstile, einen Dienst der Cloudflare, Inc. (101 Townsend St, San Francisco, CA 94107, USA), zum Schutz vor automatisierten Zugriffen (Bots). Beim Aufruf der Seite prüft Turnstile, ob es sich um einen menschlichen Besucher handelt; dabei können technische Daten wie die IP-Adresse an Cloudflare übertragen und dort verarbeitet werden. Weitere Informationen finden Sie in der <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Datenschutzerklärung von Cloudflare</a>.',
     'html'],
   ['imprint.privacy_en', 'imprint', 'Privacy note — English (HTML; shown next to the German one while the gate is on)',
     'This website uses Cloudflare Turnstile, a service provided by Cloudflare, Inc. (101 Townsend St, San Francisco, CA 94107, USA), to protect against automated access (bots). When you access the site, Turnstile checks whether you are a human visitor; technical data such as your IP address may be transmitted to and processed by Cloudflare. For more information, see the <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Cloudflare Privacy Policy</a>.',
     'html'],
-  ['imprint.analytics', 'imprint', 'Privacy — analytics note, German (HTML; always shown on /imprint)',
+  ['imprint.analytics', 'imprint', 'Privacy — analytics note, German (HTML; always shown on /impressum)',
     '<strong>Webanalyse:</strong> Diese Website nutzt eine selbst gehostete, datensparsame Reichweitenmessung, um zu erkennen, welche Inhalte aufgerufen werden. Dabei werden keine Cookies gesetzt und keine IP-Adressen gespeichert. Zur Schätzung der Besucherzahl wird pro Tag ein nicht umkehrbarer, anonymer Zählwert aus IP-Adresse und Browserkennung gebildet; der dafür verwendete Zufallswert wechselt täglich und wird niemals gespeichert, sodass kein Personenbezug entsteht und keine Wiedererkennung über mehrere Tage möglich ist. Erfasst werden ausschließlich die aufgerufene Seite, der Gerätetyp (Mobil/Tablet/Desktop) und die Domain der verweisenden Seite, jeweils in aggregierter Form. Die Daten verbleiben ausschließlich auf dem Server dieser Website und werden nicht an Dritte weitergegeben. Anfragen mit aktivierter "Do Not Track"- oder GPC-Einstellung werden nicht gezählt.',
     'html'],
-  ['imprint.analytics_en', 'imprint', 'Privacy — analytics note, English (HTML; always shown on /imprint)',
+  ['imprint.analytics_en', 'imprint', 'Privacy — analytics note, English (HTML; always shown on /impressum)',
     '<strong>Web analytics:</strong> This website uses a self-hosted, privacy-friendly visitor measurement to understand which content is viewed. It sets no cookies and stores no IP addresses. To estimate visitor numbers, a non-reversible, anonymous value is derived each day from the IP address and browser signature; the random value used for this rotates daily and is never stored, so no personal reference is created and no recognition across several days is possible. Only the page viewed, the device type (mobile/tablet/desktop) and the domain of the referring site are recorded, in aggregated form. The data remains solely on the server of this website and is not shared with third parties. Requests sent with "Do Not Track" or GPC enabled are not counted.',
     'html'],
 ];
