@@ -21,13 +21,13 @@
   }
 
   // Keep the repeated label at a roughly constant density however tall the
-  // gallery grows (about one copy per 260px), so it never looks sparse or
+  // gallery grows (about one copy per 520px), so it never looks sparse or
   // crowded. The copies are flex items of a flex:1 / fit-content bar, so adding
   // or removing them changes neither the bar's height nor its width — it can't
   // feed back into the ResizeObserver below.
   function fitLabels() {
     if (!titles || !titles.firstElementChild) return;
-    var want = Math.max(2, Math.min(24, Math.round(lineHeight / 260)));
+    var want = Math.max(1, Math.min(12, Math.round(lineHeight / 520)));
     while (titles.children.length < want) titles.appendChild(titles.firstElementChild.cloneNode(true));
     while (titles.children.length > want) titles.removeChild(titles.lastElementChild);
   }
