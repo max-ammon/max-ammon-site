@@ -12,6 +12,13 @@
 @font-face { font-family: 'uni_italic';       src: url('/fonts/outfit-400.woff2') format('woff2'); font-weight: normal; font-style: normal; font-display: swap; }
 @font-face { font-family: 'uni_light_italic'; src: url('/fonts/outfit-300.woff2') format('woff2'); font-weight: normal; font-style: normal; font-display: swap; }
 
+/* Title font: replace Charlemagne with the self-hosted Cinzel (Google font),
+   reusing the 'pixar_regular' family name declared for it in stylesheet.css so
+   the .sitetitle picks it up. Cinzel is a Roman-capitals face, so mixed-case
+   input ("Max Ammon") renders with large initial caps and small caps for the
+   rest. Self-hosted (not Google's CDN) for the CSP / EU privacy. */
+@font-face { font-family: 'pixar_regular'; src: url('/fonts/cinzel-700.woff2') format('woff2'); font-weight: normal; font-style: normal; font-display: swap; }
+
 /* Profile picture always renders as a circle, so any photo uploaded via the
    admin comes out round even if it isn't square (centre-cropped, not squashed).
    The existing image is already a round 1500x1500 PNG with transparent corners,
