@@ -15,10 +15,10 @@
       var cols = [
         { heading: 'Impressum', angaben: 'Angaben gemäß § 5 DDG', kontakt: 'Kontakt', email: 'E-Mail', phone: 'Telefon',
           vat: 'Umsatzsteuer-Identifikationsnummer', responsible: 'Redaktionell verantwortlich (§ 18 Abs. 2 MStV)',
-          privacy: 'Datenschutz', privacyVal: content['imprint.privacy'] },
+          privacy: 'Datenschutz', privacyVal: content['imprint.privacy'], analyticsVal: content['imprint.analytics'] },
         { heading: 'Legal Disclosure', angaben: 'Information pursuant to § 5 DDG', kontakt: 'Contact', email: 'Email', phone: 'Phone',
           vat: 'VAT ID (USt-IdNr.)', responsible: 'Responsible for content (§ 18 (2) MStV)',
-          privacy: 'Privacy', privacyVal: content['imprint.privacy_en'] }
+          privacy: 'Privacy', privacyVal: content['imprint.privacy_en'], analyticsVal: content['imprint.analytics_en'] }
       ];
     %>
     <div class="imprint-cols">
@@ -52,9 +52,15 @@
                 <p><%= content['imprint.responsible'] %></p>
                 <% } %>
 
-                <% if (showPrivacy && t.privacyVal) { %>
+                <%
+                  // The Turnstile note only while the CAPTCHA gate is on; the
+                  // analytics note always (analytics runs regardless of the gate).
+                  var turnstileNote = (showPrivacy && t.privacyVal) ? t.privacyVal : '';
+                %>
+                <% if (turnstileNote || t.analyticsVal) { %>
                 <p class="imprint-label lighttitle"><%= t.privacy %></p>
-                <div class="imprint-privacy"><%- t.privacyVal %></div>
+                <% if (turnstileNote) { %><div class="imprint-privacy"><%- turnstileNote %></div><% } %>
+                <% if (t.analyticsVal) { %><div class="imprint-privacy"><%- t.analyticsVal %></div><% } %>
                 <% } %>
             </div>
         </div>
