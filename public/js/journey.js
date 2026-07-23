@@ -10,14 +10,17 @@
   if (!line || !dot) return;
 
   var titles = line.querySelector('.journey-titles');
-  var lineTop = 0;
   var lineHeight = 0;
+  var scrollRange = 0;
   var lastP = -1;
 
   function measure() {
-    var r = line.getBoundingClientRect();
-    lineTop = r.top + window.pageYOffset;
-    lineHeight = r.height;
+    lineHeight = line.getBoundingClientRect().height;
+    // Total scrollable distance of the whole page. The dot maps page-scroll
+    // progress onto the bar (0 at the very top of the site, 1 at the very
+    // bottom), so it reaches both ends even though the bar itself stops before
+    // the page does. Measured here — never on scroll — so scrolling stays cheap.
+    scrollRange = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
   }
 
   // Keep the repeated label at a roughly constant density however tall the
@@ -34,8 +37,8 @@
 
   function update() {
     if (!lineHeight) return;
-    // 0 when the top of the rail reaches the middle of the screen, 1 at the end.
-    var p = (window.pageYOffset + window.innerHeight / 2 - lineTop) / lineHeight;
+    // Page-scroll progress: 0 at the very top of the site, 1 at the very bottom.
+    var p = scrollRange > 0 ? window.pageYOffset / scrollRange : 0;
     p = p < 0 ? 0 : p > 1 ? 1 : p;
     if (Math.abs(p - lastP) < 0.0005) return;
     lastP = p;
