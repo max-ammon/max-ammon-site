@@ -98,6 +98,8 @@ const CONTENT = [
   ['gallery.colorinfo', 'gallery', 'Colour-management note',
     'Depending on your browser, operating-system and hardware, the web-player may display the P3-D65 colorspace and 10bit color-depth incorrectly.<br><br>By clicking on the marked versions:<br>you can download the content\n                    <b><u>uncompressed</u></b> in <b><u>rec2020</u></b> colors with <b><u>10bit</u></b> depth(.mxf/DNxHQX), you will also find one <b><u>sRGB</u></b> and one <b><u>P3-D65</u></b> version(.mp4/h.265).<br>By using a local color-managed\n                    player, you will get the most accurate representation of the colors.',
     'html'],
+  ['gallery.journey.title', 'gallery', 'CG-journey bar — the label written down the bar (gallery timeline rail)', 'my cg journey', 'text'],
+  ['gallery.journey.start_year', 'gallery', 'CG-journey bar — the year shown at the bottom of the bar', '2015', 'text'],
 
   // Imprint / Impressum (German sites need one — § 5 DDG). Editable in the Text
   // admin under "Imprint"; shown on /impressum. Fill address/phone in; the rest are

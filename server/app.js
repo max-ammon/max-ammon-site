@@ -191,7 +191,7 @@ app.get('/', attachSiteContext, (req, res) => {
 
 app.get('/gallery', attachSiteContext, (req, res) => {
   const owner = res.locals.settings.site_title || 'Max Ammon';
-  res.render('public/gallery', { title: owner + "'s Gallery", rows: getPublicRows() });
+  res.render('public/gallery', { title: owner + "'s Gallery", rows: getPublicRows(), currentYear: new Date().getFullYear() });
 });
 
 app.get('/impressum', attachSiteContext, (req, res) => {

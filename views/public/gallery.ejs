@@ -20,6 +20,25 @@
     </div>
 
     <div id="projects" class="project-section">
+        <%
+          // "My CG journey" timeline rail down the right of the projects. Spans
+          // #projects (top of first project to bottom of last) via CSS; the dot
+          // is driven by /js/journey.js. Label + start year are editable content;
+          // the top year is always the current one.
+          var _jTitle = content['gallery.journey.title'] || 'my cg journey';
+          var _jStart = content['gallery.journey.start_year'] || '2015';
+          var _jYear = (typeof currentYear !== 'undefined' && currentYear) ? currentYear : new Date().getFullYear();
+        %>
+        <div class="journey-rail" aria-hidden="true">
+            <span class="journey-cap"><%= _jYear %></span>
+            <span class="journey-line">
+                <span class="journey-titles">
+                    <% for (var ji = 0; ji < 2; ji++) { %><span class="journey-title"><%= _jTitle %></span><% } %>
+                </span>
+                <span class="journey-dot"></span>
+            </span>
+            <span class="journey-cap"><%= _jStart %></span>
+        </div>
         <% rows.forEach(function (row) { %>
         <div class="<%= row.layout %>">
             <% row.projects.forEach(function (p) { %>
@@ -109,6 +128,7 @@
     </div>
 </div>
 <script src="/js/viewer.js"></script>
+<script src="/js/journey.js"></script>
 
 <%- include('../partials/scroll-nav') %>
 

@@ -126,3 +126,82 @@
 
   #colorinfo p { max-width: 90vw; }
 }
+
+/* --- "My CG journey" timeline rail ----------------------------------------
+   A vertical bar with a scroll-position dot down the right of the gallery,
+   mirroring the Skills "production pipeline" bar. It's an absolute child of
+   #projects, so it spans from the top of the first project to the bottom of the
+   last one and grows automatically as projects are added. The current year sits
+   at the top, the start year at the bottom, and the label reads down the bar.
+   It lives in its own narrow reserved right-hand column so it never overlaps the
+   cards; hidden on mobile (<=1200px), where the gallery is a single column. */
+#projects { position: relative; }
+.journey-rail { display: none; }
+
+@media (min-width: 1201px) {
+  #projects.project-section {
+    --journey-w: clamp(96px, 8vw, 150px);
+    padding-right: var(--journey-w);
+  }
+  .journey-rail {
+    display: flex;
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--journey-w, 130px);
+    z-index: 0;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+    user-select: none;
+  }
+  .journey-line {
+    position: relative;
+    flex: 1;                        /* fills the height between the two year caps */
+    width: fit-content;             /* bar is exactly as wide as the vertical label */
+    min-width: 4px;
+    margin: 12px 0;
+    background: var(--lightcolor);
+    display: flex;                  /* spread the repeated label down the bar itself */
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+  }
+  .journey-dot {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    z-index: 2;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--titlecolor);
+    box-shadow: 0 0 0 4px var(--basecolor);
+    transform: translate(-50%, -50%);
+    will-change: transform;
+  }
+  .journey-cap {
+    font-family: 'uni_bold', 'uni_regular', sans-serif;
+    font-weight: 700;
+    font-size: 1.4cap;
+    text-transform: uppercase;
+    line-height: 1;
+    color: var(--lightcolor);
+    text-align: center;
+    white-space: nowrap;
+  }
+  .journey-titles { display: contents; }
+  .journey-title {
+    writing-mode: vertical-rl;
+    font-family: 'uni_bold', 'uni_regular', sans-serif;
+    font-weight: 700;
+    font-size: 1.4cap;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--lightcolor);
+    background: var(--basecolor);
+    padding: 12px 0;
+    white-space: nowrap;
+  }
+}
