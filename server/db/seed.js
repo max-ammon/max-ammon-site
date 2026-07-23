@@ -21,6 +21,13 @@ const COLORS = [
 const SETTINGS = {
   site_title:        'Max Ammon',
   job_title:         '3D Artist',
+  // Social-share / Open Graph defaults (the preview card shown when a link is
+  // shared), editable at /admin/social. Empty title falls back to each page's
+  // own <title>; empty image falls back to the About banner.
+  share_title:         '',
+  share_description:   'Portfolio of Max Ammon, 3D artist based in Cologne, Germany.',
+  share_image:         '',
+  social_preview_bots: '1',
   demo_youtube_id:   'CL1Xj0JybFY',
   demo_aspect_w:     '3840',
   demo_aspect_h:     '1646',

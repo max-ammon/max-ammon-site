@@ -176,6 +176,11 @@ function attachSiteContext(req, res, next) {
   res.locals.nl2br = ctx.nl2br;
   res.locals.imgUrl = imgUrl;
   res.locals.imgSrcset = imgSrcset;
+  // Absolute base URL + current path, so the social-share tags in the head can
+  // emit absolute og:url / og:image (behind the proxy, trust proxy makes
+  // req.protocol reflect the real https scheme).
+  res.locals.baseUrl = req.protocol + '://' + req.get('host');
+  res.locals.currentPath = req.path;
   next();
 }
 

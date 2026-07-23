@@ -8,6 +8,7 @@ const qContentFull = db.prepare(
   'SELECT block_key, grp, label, value, format, sort FROM content_blocks ORDER BY sort, id'
 );
 const qSettings = db.prepare('SELECT key, value FROM site_settings');
+const qSetting = db.prepare('SELECT value FROM site_settings WHERE key = ?');
 const qColors = db.prepare(
   'SELECT token, value, default_value, category, label, sort FROM color_tokens ORDER BY sort, token'
 );
@@ -52,6 +53,13 @@ function getSettingsMap() {
   const map = {};
   for (const row of qSettings.all()) map[row.key] = row.value;
   return map;
+}
+
+// Read a single setting (cheap; used on the gate hot path). Returns `def` when
+// the key has never been set.
+function getSetting(key, def) {
+  const row = qSetting.get(key);
+  return row ? row.value : def == null ? '' : def;
 }
 
 function getColorTokens() {
@@ -131,6 +139,7 @@ module.exports = {
   getContentMap,
   getContentFull,
   getSettingsMap,
+  getSetting,
   getColorTokens,
   buildThemeCss,
   loadPublicContext,

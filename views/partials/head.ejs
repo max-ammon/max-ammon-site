@@ -4,3 +4,30 @@
     <link rel="stylesheet" href="/css/site.css">
     <style id="theme-vars"><%- (typeof themeCss !== 'undefined' && themeCss) ? themeCss : '' %></style>
     <title><%= typeof title !== 'undefined' ? title : 'Document' %></title>
+    <%
+      // Social-share (Open Graph / Twitter) tags. Values come from the settings
+      // editable at /admin/social, with sensible fallbacks; og:url and og:image
+      // are made absolute from the request base URL. Values are auto-escaped on
+      // output. The preview-bot allow-list lives in middleware/gate.js.
+      var _og = (typeof settings !== 'undefined' && settings) ? settings : {};
+      var _ogBase = (typeof baseUrl !== 'undefined' && baseUrl) ? baseUrl : '';
+      var _ogTitle = (_og.share_title && String(_og.share_title).trim())
+        ? _og.share_title
+        : ((typeof title !== 'undefined' && title) ? title : (_og.site_title || 'Max Ammon'));
+      var _ogDesc = _og.share_description || '';
+      var _ogImgRaw = _og.share_image || _og.about_banner || '';
+      var _ogImg = _ogImgRaw ? (/^https?:\/\//i.test(_ogImgRaw) ? _ogImgRaw : _ogBase + _ogImgRaw) : '';
+      var _ogUrl = _ogBase + ((typeof currentPath !== 'undefined' && currentPath) ? currentPath : '/');
+      var _ogSite = _og.site_title || 'Max Ammon';
+    %>
+    <% if (_ogDesc) { %><meta name="description" content="<%= _ogDesc %>"><% } %>
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="<%= _ogSite %>">
+    <meta property="og:title" content="<%= _ogTitle %>">
+    <% if (_ogDesc) { %><meta property="og:description" content="<%= _ogDesc %>"><% } %>
+    <meta property="og:url" content="<%= _ogUrl %>">
+    <% if (_ogImg) { %><meta property="og:image" content="<%= _ogImg %>"><% } %>
+    <meta name="twitter:card" content="<%= _ogImg ? 'summary_large_image' : 'summary' %>">
+    <meta name="twitter:title" content="<%= _ogTitle %>">
+    <% if (_ogDesc) { %><meta name="twitter:description" content="<%= _ogDesc %>"><% } %>
+    <% if (_ogImg) { %><meta name="twitter:image" content="<%= _ogImg %>"><% } %>

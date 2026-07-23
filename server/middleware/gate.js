@@ -14,12 +14,26 @@
  * whole-site gate.
  */
 
+const { getSetting } = require('../services/content');
+
 const SITE_KEY = (process.env.TURNSTILE_SITE_KEY || '').trim();
 const SECRET = (process.env.TURNSTILE_SECRET_KEY || '').trim();
 
 // Styling / fonts / scripts / icons are not content, so they load ungated (the
 // admin login and its assets need to work without passing the public gate).
 const EXEMPT_EXT = /\.(css|js|mjs|map|woff2?|ttf|otf|eot|ico|webmanifest)$/i;
+
+// Link-preview ("unfurl") bots for the major platforms. When the owner leaves
+// the toggle on (default), these are let through the gate so a shared link
+// still renders its Open Graph preview card. It's a narrow bypass — only these
+// user-agents, only GET, and only to read the same public pages — but a scraper
+// could spoof one of these UAs, which is the accepted trade-off for previews.
+const SOCIAL_BOT = /facebookexternalhit|facebot|twitterbot|linkedinbot|slackbot|slack-imgproxy|discordbot|telegrambot|whatsapp|pinterest|redditbot|applebot|skypeuripreview|embedly|iframely|vkshare|mastodon|discourse|flipboard|tumblr|bitlybot|nuzzel|qwantify|google-inspectiontool/i;
+
+// Owner toggle (settings key). Anything other than an explicit '0' means "on".
+function socialBotsAllowed() {
+  return getSetting('social_preview_bots', '1') !== '0';
+}
 
 function enabled() {
   return !!(SITE_KEY && SECRET);
@@ -75,6 +89,8 @@ function guard(req, res, next) {
   if (isExempt(req.path)) return next();
   // A bot POSTing straight past the pages gets refused rather than redirected.
   if (req.method !== 'GET' && req.method !== 'HEAD') return res.status(403).send('Access blocked.');
+  // Let recognised link-preview bots read the page so shared links unfurl.
+  if (SOCIAL_BOT.test(req.headers['user-agent'] || '') && socialBotsAllowed()) return next();
   return res.redirect('/gate?next=' + encodeURIComponent(safeNext(req.originalUrl)));
 }
 

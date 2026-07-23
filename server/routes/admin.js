@@ -40,6 +40,7 @@ const SECTIONS = [
   { href: '/admin/images/skills', title: 'Skills images', desc: 'Swap the images shown with your four skill categories.' },
   { href: '/admin/pipeline', title: 'Pipeline software', desc: 'Place software logos along the production-pipeline bar in Skills.' },
   { href: '/admin/demo', title: 'Demo video', desc: 'Set the YouTube video and shape of the Demo embed.' },
+  { href: '/admin/social', title: 'Social preview', desc: 'The image, title and text shown when your link is shared (LinkedIn, Discord, …).' },
   { href: '/admin/gallery', title: 'Gallery', desc: 'Add projects, upload media, embed videos, arrange the gallery.' },
   { href: '/admin/messages', title: 'Messages', desc: 'Read messages sent through your contact form.' },
   { href: '/admin/analytics', title: 'Analytics', desc: 'Private, cookie-free visitor stats — views, top pages, and referrers.' },
@@ -226,6 +227,24 @@ router.post('/demo', uploadSiteImage.single('poster'), (req, res) => {
   else if (req.body.demo_poster) updates.demo_poster = req.body.demo_poster;
   updateSettings(updates);
   res.redirect('/admin/demo?saved=1');
+});
+
+// --- Social preview (Open Graph) -------------------------------------------
+router.get('/social', (req, res) => {
+  res.render('admin/social', { title: 'Social preview', settings: getSettingsMap(), saved: req.query.saved === '1' });
+});
+
+router.post('/social', uploadSiteImage.single('image'), (req, res) => {
+  const updates = {
+    share_title: (req.body.share_title || '').trim(),
+    share_description: (req.body.share_description || '').trim(),
+    // An unchecked checkbox isn't submitted, so its absence means "off".
+    social_preview_bots: req.body.social_preview_bots ? '1' : '0',
+  };
+  if (req.file) updates.share_image = toPublicPath(req.file.path);
+  else if (typeof req.body.share_image === 'string') updates.share_image = req.body.share_image.trim();
+  updateSettings(updates);
+  res.redirect('/admin/social?saved=1');
 });
 
 // --- Gallery: project list -------------------------------------------------

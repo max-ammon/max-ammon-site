@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+<style>
+  .social-admin { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+  .social-form { flex: 1; min-width: 300px; }
+  .social-form textarea { min-height: 82px; resize: vertical; width: 100%; }
+  .social-side { flex: none; width: 340px; position: sticky; top: 20px; }
+  .share-card { border: 1px solid var(--a-border); border-radius: 10px; overflow: hidden; background: var(--a-surface); }
+  .share-card .img { width: 100%; aspect-ratio: 1.91 / 1; background: var(--a-bg) center / cover no-repeat; display: block; }
+  .share-card .img.empty { display: flex; align-items: center; justify-content: center; color: var(--a-muted); font-size: 0.8rem; }
+  .share-card .meta { padding: 10px 13px; }
+  .share-card .dom { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--a-muted); }
+  .share-card .t { font-weight: 700; margin: 3px 0 3px; line-height: 1.25; color: var(--a-text); }
+  .share-card .d { font-size: 0.85rem; color: var(--a-muted); line-height: 1.35; }
+  .field-note { font-size: 0.82rem; color: var(--a-muted); margin: -6px 0 16px; }
+  .checkbox-row { display: flex; gap: 11px; align-items: flex-start; background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 8px; padding: 12px 14px; margin: 6px 0 22px; }
+  .checkbox-row input { margin: 3px 0 0; width: auto; }
+  @media (max-width: 780px) { .social-side { position: static; width: 100%; } }
+</style>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin">← Dashboard</a></p>
+        <h1>Social preview</h1>
+        <p class="muted">This is the card people see when your link is shared on LinkedIn, Discord, Slack, WhatsApp, X, and so on. A strong image here is the single biggest thing that makes a shared link get clicked.</p>
+        <% if (saved) { %><div class="alert ok">Saved. To see it, share your link in a chat (Discord, Slack, LinkedIn) — those previews update within a few minutes.</div><% } %>
+
+        <div class="social-admin">
+            <form class="social-form" method="post" action="/admin/social" enctype="multipart/form-data">
+                <label>Share image
+                    <input type="file" name="image" accept="image/*" id="shareFile">
+                </label>
+                <p class="field-note">Shown at the top of the card. Landscape works best — around <strong>1200 × 630</strong> px (1.91:1). Leave everything blank to fall back to your About banner.</p>
+                <label>Current image path <span class="muted">(or paste one)</span>
+                    <input type="text" name="share_image" id="shareImgPath" value="<%= settings.share_image || '' %>" placeholder="<%= settings.about_banner || '' %>">
+                </label>
+
+                <label>Title
+                    <input type="text" name="share_title" id="shareTitle" value="<%= settings.share_title || '' %>" placeholder="<%= settings.site_title || 'Max Ammon' %>">
+                </label>
+                <p class="field-note">Leave blank to use each page's own title (e.g. “Max Ammon”, “Max Ammon's Gallery”).</p>
+
+                <label>Description
+                    <textarea name="share_description" id="shareDesc" placeholder="A short line about you and your work."><%= settings.share_description || '' %></textarea>
+                </label>
+                <p class="field-note">One or two sentences. Also used as the page's meta description.</p>
+
+                <div class="checkbox-row">
+                    <input type="checkbox" name="social_preview_bots" value="1" id="shareBots" <%= settings.social_preview_bots !== '0' ? 'checked' : '' %>>
+                    <label for="shareBots" style="margin:0;color:var(--a-text);">
+                        Let link-preview bots through the CAPTCHA gate
+                        <span class="muted" style="display:block;font-size:0.82rem;margin-top:3px;">Needed for previews to appear while the gate is on. It only lets recognised preview bots (LinkedIn, Discord, Slack, X, …) read your public pages; every human visitor still gets the CAPTCHA.</span>
+                    </label>
+                </div>
+
+                <div class="form-actions"><button class="btn">Save</button></div>
+            </form>
+
+            <aside class="social-side">
+                <p class="muted" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 8px;">Live preview</p>
+                <% var imgSrc = settings.share_image || settings.about_banner || ''; %>
+                <div class="share-card">
+                    <span class="img<%= imgSrc ? '' : ' empty' %>" id="cardImg" style="<%= imgSrc ? 'background-image:url(' + imgSrc + ')' : '' %>"><%= imgSrc ? '' : 'no image' %></span>
+                    <div class="meta">
+                        <div class="dom">max-ammon.com</div>
+                        <div class="t" id="cardTitle"><%= settings.share_title || settings.site_title || 'Max Ammon' %></div>
+                        <div class="d" id="cardDesc"><%= settings.share_description || '' %></div>
+                    </div>
+                </div>
+                <p class="field-note" style="margin-top:10px;">Exact styling varies by platform — this is a rough idea.</p>
+            </aside>
+        </div>
+    </main>
+    <script>
+      (function () {
+        var titleEl = document.getElementById('shareTitle');
+        var descEl = document.getElementById('shareDesc');
+        var pathEl = document.getElementById('shareImgPath');
+        var fileEl = document.getElementById('shareFile');
+        var cardTitle = document.getElementById('cardTitle');
+        var cardDesc = document.getElementById('cardDesc');
+        var cardImg = document.getElementById('cardImg');
+        var fallbackTitle = <%- JSON.stringify(settings.site_title || 'Max Ammon').replace(/</g, '\\u003c') %>;
+        var fallbackImg = <%- JSON.stringify(settings.about_banner || '').replace(/</g, '\\u003c') %>;
+        function setImg(src) {
+          if (src) { cardImg.style.backgroundImage = 'url("' + src + '")'; cardImg.classList.remove('empty'); cardImg.textContent = ''; }
+          else { cardImg.style.backgroundImage = ''; cardImg.classList.add('empty'); cardImg.textContent = 'no image'; }
+        }
+        titleEl.addEventListener('input', function () { cardTitle.textContent = titleEl.value.trim() || fallbackTitle; });
+        descEl.addEventListener('input', function () { cardDesc.textContent = descEl.value; });
+        pathEl.addEventListener('input', function () { setImg(pathEl.value.trim() || fallbackImg); });
+        fileEl.addEventListener('change', function () {
+          if (fileEl.files && fileEl.files[0]) setImg(URL.createObjectURL(fileEl.files[0]));
+        });
+      })();
+    </script>
+</body>
+</html>
