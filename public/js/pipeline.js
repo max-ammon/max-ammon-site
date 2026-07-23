@@ -113,11 +113,24 @@
     });
   }
 
-  function onResize() {
+  // Re-space the markers, re-measure the bar geometry, and repaint the dot.
+  // Cheap, and only runs on resize / observed size changes — never on scroll.
+  function refresh() {
     relayoutMarkers();
     measure();
     lastP = -1;
     update();
+  }
+
+  function onResize() {
+    refresh();
+    // Jumping straight to a maximised window (rather than dragging smoothly) can
+    // settle its final layout a frame later — scrollbars toggling, the sticky
+    // header, content reflow — without emitting a second resize event. The
+    // synchronous measure above would then cache the pre-settle bar height,
+    // leaving the dot's travel stuck short of the bar's end. Re-measure once
+    // more after that settle.
+    requestAnimationFrame(refresh);
   }
 
   relayoutMarkers();
@@ -135,6 +148,17 @@
       onResize();
     }
   });
+  // The window `resize` event can miss the bar's final size: a jump straight to
+  // a maximised window may land its settled height a frame after the event has
+  // measured, and some reflows (a scrollbar toggling) resize the bar with no
+  // resize event at all — both leave the cached height stale and the dot parked
+  // short of the end. Observing the bar itself refreshes the geometry whenever
+  // its size actually settles, whatever the cause. No feedback loop: the dot and
+  // markers are absolutely positioned, so refresh() never resizes the bar.
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(function () { refresh(); });
+    ro.observe(line);
+  }
   // Marker logos load lazily; their height only settles then, so re-place each
   // once its image finishes loading.
   markers.forEach(function (m) {
