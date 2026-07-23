@@ -19,15 +19,32 @@
    rest. Self-hosted (not Google's CDN) for the CSP / EU privacy. */
 @font-face { font-family: 'pixar_regular'; src: url('/fonts/cinzel-700.woff2') format('woff2'); font-weight: normal; font-style: normal; font-display: swap; }
 
-/* Align the title with the job title beside it. The two use different fonts and
-   sizes (Cinzel 5cap vs Outfit 3em) that shrink by different ratios at the
-   responsive breakpoints, so any fixed nudge only lines them up at one size and
-   drifts at the others. Aligning by the shared text baseline instead holds at
-   every header size — desktop and both mobile breakpoints — with no per-size
-   tweak. (align-items:center comes from .headerbox; #name's id overrides it.
-   The stylesheet's -15px title margin only trims the header height, not the
-   baseline, so it stays and the header keeps its current height.) */
-#name { align-items: baseline; }
+/* Header title: enlarge "Max Ammon" and centre it vertically in the bar.
+
+   The title (Cinzel) and job title (Outfit) sit side by side in #name. Two things
+   made the title sit high with a large gap beneath it: Cinzel's default line box
+   is tall and bottom-heavy, and at narrower desktop widths the title AND the nav
+   links wrapped to a second line, ballooning the bar (to ~142px) and pinning the
+   title to the top.
+
+   - white-space:nowrap on both lines: neither ever wraps, so #name stays a single
+     line at every width (the title no longer breaks into "Max / Ammon").
+   - 6cap (was 5cap) + line-height:1: a bigger title in a compact box.
+   - nav is centred (align-items:center): the one-line #name is centred in the bar
+     at every width. Even when the links wrap they still fit within the title's
+     height, so the bar holds a steady ~74px instead of jumping to ~142px.
+   - #name keeps the title/job-title baseline alignment, plus a 2px downward nudge:
+     align-items:center centres the title's *box*, but Cinzel's caps sit high in
+     that box, so the pair is shifted down 2px to centre the actual glyphs (equal
+     space above the caps and below the baseline). The nudge moves both together,
+     so their baseline alignment is preserved. 2px is exact for the fixed 6cap
+     desktop size.
+   The mobile (<=1200px) rules below switch nav back to a left-aligned column, so
+   this centring is desktop-only (there the title correctly sits atop the stack). */
+.sitetitle, .jobtitle { white-space: nowrap; }
+.sitetitle { font-size: 6cap; line-height: 1; margin-bottom: 0; }
+nav { align-items: center; }
+#name { align-items: baseline; transform: translateY(2px); }
 
 /* Profile picture always renders as a circle, so any photo uploaded via the
    admin comes out round even if it isn't square (centre-cropped, not squashed).
