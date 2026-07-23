@@ -19,6 +19,13 @@
    rest. Self-hosted (not Google's CDN) for the CSP / EU privacy. */
 @font-face { font-family: 'pixar_regular'; src: url('/fonts/cinzel-700.woff2') format('woff2'); font-weight: normal; font-style: normal; font-display: swap; }
 
+/* Cinzel's caps sit a little higher in the line box than Charlemagne's did, so
+   the title drifted up out of line with the job title / nav. Nudge it down so
+   the caps line up. In em (scales with the title) and a transform (visual only,
+   so the sticky-header height is unchanged). The stylesheet's -15px margin
+   handles the layout box; this only shifts the glyphs. */
+.sitetitle { transform: translateY(0.09em); }
+
 /* Profile picture always renders as a circle, so any photo uploaded via the
    admin comes out round even if it isn't square (centre-cropped, not squashed).
    The existing image is already a round 1500x1500 PNG with transparent corners,
