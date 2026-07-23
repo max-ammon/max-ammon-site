@@ -108,3 +108,20 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   status     TEXT NOT NULL DEFAULT 'new',     -- 'new' | 'read' | 'archived'
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Privacy-friendly, first-party visitor analytics: one row per served page view.
+-- No cookies, no stored IP, no raw user-agent. `visitor` is a per-day rotating
+-- salted hash used only to estimate unique visitors; its salt lives in memory,
+-- rotates daily and is never stored, so a hash can't be reversed or linked
+-- across days. `referrer_host` holds the external referrer's hostname only.
+CREATE TABLE IF NOT EXISTS analytics_events (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  day           TEXT NOT NULL,                 -- YYYY-MM-DD (server local time)
+  ts            INTEGER NOT NULL,              -- unix seconds, for ordering
+  path          TEXT NOT NULL DEFAULT '',      -- pathname only, no query string
+  referrer_host TEXT NOT NULL DEFAULT '',      -- external referrer host; '' = direct/internal
+  device        TEXT NOT NULL DEFAULT '',      -- 'mobile' | 'tablet' | 'desktop'
+  visitor       TEXT NOT NULL DEFAULT ''       -- daily-rotating salted hash (unique estimate)
+);
+CREATE INDEX IF NOT EXISTS idx_analytics_day ON analytics_events(day);
+CREATE INDEX IF NOT EXISTS idx_analytics_path ON analytics_events(path);

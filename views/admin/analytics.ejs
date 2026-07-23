@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+<style>
+  .an-ranges { display: flex; gap: 8px; margin: 4px 0 22px; flex-wrap: wrap; }
+  .an-ranges a { padding: 5px 13px; border: 1px solid var(--a-border); border-radius: 999px; text-decoration: none; color: var(--a-muted); font-size: 0.85rem; }
+  .an-ranges a.on { background: var(--a-accent); color: #fff; border-color: transparent; }
+  .an-cards { display: flex; gap: 14px; flex-wrap: wrap; margin: 0 0 26px; }
+  .an-card { flex: 1; min-width: 140px; background: var(--a-surface); border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 15px 18px; }
+  .an-card .n { font-size: 2rem; font-weight: 800; line-height: 1.1; color: var(--a-text); }
+  .an-card .l { font-size: 0.8rem; color: var(--a-muted); margin-top: 3px; }
+  .an-chart { display: flex; align-items: flex-end; gap: 2px; height: 150px; padding: 6px 0; overflow: hidden; }
+  .an-bar { flex: 1 1 0; min-width: 0; background: var(--a-accent); border-radius: 2px 2px 0 0; opacity: 0.85; }
+  .an-bar:hover { opacity: 1; }
+  .an-axis { display: flex; justify-content: space-between; gap: 12px; font-size: 0.72rem; color: var(--a-muted); border-top: 1px solid var(--a-border); padding-top: 6px; margin: 0 0 28px; }
+  .an-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: start; }
+  @media (max-width: 720px) { .an-grid { grid-template-columns: 1fr; } }
+  .an-table { width: 100%; border-collapse: collapse; }
+  .an-table caption { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--a-muted); padding: 0 0 8px; }
+  .an-table td { padding: 6px 0; border-top: 1px solid var(--a-border); font-size: 0.9rem; color: var(--a-text); }
+  .an-table td.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--a-muted); white-space: nowrap; padding-left: 12px; }
+  .an-table td.name { word-break: break-word; }
+  .an-note { margin-top: 32px; font-size: 0.8rem; color: var(--a-muted); background: var(--a-surface); border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 13px 15px; line-height: 1.55; }
+  .an-empty { padding: 34px 20px; text-align: center; color: var(--a-muted); background: var(--a-surface); border: 1px solid var(--a-border); border-radius: var(--a-radius); }
+</style>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin">← Dashboard</a></p>
+        <h1>Analytics</h1>
+        <p class="muted">Private, cookie-free visitor statistics — the numbers live only in your own database and are never shared.</p>
+
+        <nav class="an-ranges">
+            <% ranges.forEach(function (r) { %>
+                <a href="/admin/analytics?days=<%= r %>" class="<%= r === days ? 'on' : '' %>">Last <%= r %> days</a>
+            <% }); %>
+        </nav>
+
+        <% if (!data.views) { %>
+            <div class="an-empty">No visits recorded yet in this range.<br>Once people browse the site, their anonymous page views will appear here.</div>
+        <% } else { %>
+            <% var perVisitor = Math.round(data.views / Math.max(data.visitors, 1) * 10) / 10; %>
+            <div class="an-cards">
+                <div class="an-card"><div class="n"><%= data.views.toLocaleString('en-US') %></div><div class="l">Page views</div></div>
+                <div class="an-card"><div class="n"><%= data.visitors.toLocaleString('en-US') %></div><div class="l">Unique visitors <span class="muted">(per day)</span></div></div>
+                <div class="an-card"><div class="n"><%= perVisitor %></div><div class="l">Views per visitor</div></div>
+            </div>
+
+            <% var maxV = Math.max.apply(null, data.perDay.map(function (d) { return d.views; }).concat([1])); %>
+            <div class="an-chart">
+                <% data.perDay.forEach(function (d) { %>
+                    <div class="an-bar" style="height: <%= d.views ? Math.max(3, Math.round(d.views / maxV * 100)) : 0 %>%;" title="<%= d.day %> — <%= d.views %> views, <%= d.visitors %> visitors"></div>
+                <% }); %>
+            </div>
+            <div class="an-axis"><span><%= fromDay %></span><span>hover a bar for its day &middot; <%= toDay %></span></div>
+
+            <div class="an-grid">
+                <table class="an-table">
+                    <caption>Top pages</caption>
+                    <tbody>
+                        <% data.topPages.forEach(function (r) { %>
+                            <tr><td class="name"><%= r.path %></td><td class="num"><%= r.c.toLocaleString('en-US') %></td></tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+
+                <div>
+                    <table class="an-table">
+                        <caption>Top referrers</caption>
+                        <tbody>
+                            <% data.topReferrers.forEach(function (r) { %>
+                                <tr><td class="name"><%= r.referrer_host %></td><td class="num"><%= r.c.toLocaleString('en-US') %></td></tr>
+                            <% }); %>
+                            <tr><td class="name muted">Direct / bookmarked / internal</td><td class="num"><%= data.direct.toLocaleString('en-US') %></td></tr>
+                        </tbody>
+                    </table>
+
+                    <table class="an-table" style="margin-top: 24px;">
+                        <caption>Devices</caption>
+                        <tbody>
+                            <% data.devices.forEach(function (r) { %>
+                                <tr><td class="name" style="text-transform: capitalize;"><%= r.device || 'unknown' %></td><td class="num"><%= r.c.toLocaleString('en-US') %></td></tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        <% } %>
+
+        <div class="an-note">
+            <strong>How this stays private:</strong> no cookies and no browser storage; IP addresses are never written to disk; unique visitors are estimated with a salted hash that rotates every day and is never stored, so it can’t be reversed or linked across days (someone returning on another day is counted again — a deliberate trade-off to avoid any long-term tracking). Only the referring site’s domain is kept, never the full link. Bots, the logged-in owner, and anyone sending “Do&nbsp;Not&nbsp;Track” or Global Privacy Control are not counted.
+        </div>
+    </main>
+</body>
+</html>

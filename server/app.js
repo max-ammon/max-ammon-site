@@ -17,6 +17,7 @@ const contactRoutes = require('./routes/contact');
 const imgRoutes = require('./routes/img');
 const { imgUrl, imgSrcset } = require('./lib/images');
 const gate = require('./middleware/gate');
+const analytics = require('./middleware/analytics');
 
 const app = express();
 
@@ -154,6 +155,13 @@ app.post('/gate', async (req, res) => {
   req.session.gatePassed = true;
   res.redirect(target);
 });
+
+// --- Privacy-friendly, first-party page-view analytics ---------------------
+// Cookie-free; counts only real HTML page views and skips the admin area, bots,
+// Do-Not-Track/GPC and the logged-in owner. Server-side, so it doesn't touch
+// the CSP or the responses. (Static assets are served above, so they never
+// reach this and aren't counted.)
+app.use(analytics.track);
 
 // --- Public pages ----------------------------------------------------------
 function attachSiteContext(req, res, next) {

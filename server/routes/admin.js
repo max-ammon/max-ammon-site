@@ -15,6 +15,7 @@ const gallery = require('../services/gallery');
 const messages = require('../services/messages');
 const mediaSvc = require('../services/media');
 const pipeline = require('../services/pipeline');
+const analytics = require('../services/analytics');
 const { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, toPublicPath } = require('../middleware/upload');
 const { parseYouTubeId } = require('../lib/format');
 
@@ -41,6 +42,7 @@ const SECTIONS = [
   { href: '/admin/demo', title: 'Demo video', desc: 'Set the YouTube video and shape of the Demo embed.' },
   { href: '/admin/gallery', title: 'Gallery', desc: 'Add projects, upload media, embed videos, arrange the gallery.' },
   { href: '/admin/messages', title: 'Messages', desc: 'Read messages sent through your contact form.' },
+  { href: '/admin/analytics', title: 'Analytics', desc: 'Private, cookie-free visitor stats — views, top pages, and referrers.' },
 ];
 
 router.get('/', (req, res) => {
@@ -64,6 +66,22 @@ router.post('/messages/:id/status', (req, res) => {
 router.post('/messages/:id/delete', (req, res) => {
   messages.deleteMessage(Number(req.params.id));
   res.redirect('/admin/messages');
+});
+
+// --- Analytics -------------------------------------------------------------
+const ANALYTICS_RANGES = [7, 30, 90, 365];
+router.get('/analytics', (req, res) => {
+  let days = parseInt(req.query.days, 10);
+  if (!ANALYTICS_RANGES.includes(days)) days = 30;
+  const { fromDay, toDay } = analytics.rangeFor(days);
+  res.render('admin/analytics', {
+    title: 'Analytics',
+    days,
+    ranges: ANALYTICS_RANGES,
+    fromDay,
+    toDay,
+    data: analytics.summary(fromDay, toDay),
+  });
 });
 
 // --- Text editor -----------------------------------------------------------
