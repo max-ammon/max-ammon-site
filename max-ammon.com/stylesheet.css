@@ -1,30 +1,10 @@
-<style>
-        @font-face {
-            font-family: 'uni_regular';
-            src: url('assets/fonts/Uni Sans Regular.otf') format('opentype'); 
-        }
+/* The original Uni Sans / Charlemagne @font-face rules (and the stray inline-
+   style wrapper tags) were removed, and their .otf/.ttf files deleted, to stop
+   hosting those licensed fonts. The site is served Outfit (body) and Cinzel
+   (title) via the @font-face overrides in /css/site.css and /css/demo.css,
+   which reuse the same family names. */
 
-        @font-face {
-            font-family: 'pixar_regular';
-            src: url('assets/fonts/Charlemagne-Bold.ttf') format('opentype'); 
-        }
-
-        @font-face {
-            font-family: 'uni_italic';
-            src: url('assets/fonts/Uni Sans Italic.otf') format('opentype'); 
-        }
-
-        @font-face {
-            font-family: 'uni_light';
-            src: url('assets/fonts/Uni Sans Light.otf') format('opentype'); 
-        }
-
-        @font-face {
-            font-family: 'uni_light_italic';
-            src: url('assets/fonts/Uni Sans Light Italic.otf') format('opentype');
-        }
-
-        .sitetitle {
+.sitetitle {
             padding:0%;
             margin: 0%;
             font-family:pixar_regular;
@@ -820,4 +800,3 @@
             --lightcolor: #8b8b8b;
         }
 
-    </style>
