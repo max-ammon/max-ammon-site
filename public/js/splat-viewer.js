@@ -528,6 +528,7 @@
     if (labelEl) labelEl.textContent = 'Preparing…';
     if (barEl) barEl.style.width = '100%';
     if (FORMAT === 'ply') worker.postMessage({ ply: ab }, [ab]);
+    else if (FORMAT === 'spz') worker.postMessage({ spz: ab }, [ab]);
     else worker.postMessage({ splat: ab }, [ab]);
   }
 

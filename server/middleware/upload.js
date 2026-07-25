@@ -97,8 +97,9 @@ const uploadPipeline = multer({
 // form posts together: a normal image `thumb`, and the `splat` point-cloud file
 // itself (stored untouched). Splat formats have no dependable mime type, so the
 // splat field is allow-listed by extension. Limited to the formats the in-browser
-// viewer can render (.ply and .splat). Big limit — a .ply can be hundreds of MB.
-const SPLAT_EXTS = ['.ply', '.splat'];
+// viewer can render (.ply, .splat and the compact .spz). Big limit — a raw .ply
+// can be hundreds of MB (though .spz is ~10x smaller and far friendlier to upload).
+const SPLAT_EXTS = ['.ply', '.splat', '.spz'];
 function isSplatFile(file) {
   return SPLAT_EXTS.includes(safeExt(file.originalname));
 }

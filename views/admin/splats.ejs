@@ -32,9 +32,9 @@
     <main class="admin-main">
         <p class="muted"><a href="/admin">← Dashboard</a></p>
         <h1>Gaussian Splats</h1>
-        <p class="muted">The splats shown on your <a href="/splats" target="_blank" rel="noopener">Gaussian Splats page ↗</a>. Each needs a <strong>splat file</strong> (.ply or .splat) and a <strong>thumbnail</strong> image for its card. Visitors open a splat in an interactive viewer from that page. The newest is added to the top; use the arrows to reorder. <strong>Tip:</strong> a <code>.splat</code> file loads much faster on the web than a raw <code>.ply</code> — convert big .ply exports (e.g. in SuperSplat) before uploading.</p>
+        <p class="muted">The splats shown on your <a href="/splats" target="_blank" rel="noopener">Gaussian Splats page ↗</a>. Each needs a <strong>splat file</strong> (.ply, .splat or .spz) and a <strong>thumbnail</strong> image for its card. Visitors open a splat in an interactive viewer from that page. The newest is added to the top; use the arrows to reorder. <strong>Tip:</strong> prefer <code>.spz</code> — it is roughly 10&times; smaller than a raw <code>.ply</code>, so it uploads quickly and loads fast for visitors. Very large files can be rejected by the server before they finish uploading, so keep well under ~100&nbsp;MB.</p>
         <% if (saved) { %><div class="alert ok">Saved. <a href="/splats" target="_blank" rel="noopener">View page ↗</a></div><% } %>
-        <% if (err === 'nosplat') { %><div class="alert error">No splat file was added. Choose a .ply or .splat file.</div><% } %>
+        <% if (err === 'nosplat') { %><div class="alert error">No splat file was added. Choose a .ply, .splat or .spz file.</div><% } %>
 
         <ul class="splat-list">
             <% splats.forEach(function (s) { %>
@@ -57,7 +57,7 @@
                         <input type="file" name="thumb" accept="image/*">
                     </label>
                     <label class="field grow">Replace splat file <span class="muted">(optional)</span>
-                        <input type="file" name="splat" accept=".ply,.splat">
+                        <input type="file" name="splat" accept=".ply,.splat,.spz">
                         <span class="splat-meta<%= s.splat_exists ? '' : ' warn' %>">
                             <% if (s.splat_exists) { %>Current: <%= (s.splat_format || 'file').toUpperCase() %><% if (s.splat_size) { %> · <%= s.splat_size %><% } %><% } else { %>⚠ splat file missing<% } %>
                         </span>
@@ -85,7 +85,7 @@
                 <label>Year <span class="muted">(optional)</span> <input type="text" name="year" placeholder="2025"></label>
                 <label>Description <span class="muted">(optional)</span> <textarea name="description" rows="3" placeholder="A short description of this capture."></textarea></label>
                 <label>Thumbnail image <span class="muted">(shown on the card)</span> <input type="file" name="thumb" accept="image/*" required></label>
-                <label>Splat file <span class="muted">(.ply or .splat)</span> <input type="file" name="splat" accept=".ply,.splat" required></label>
+                <label>Splat file <span class="muted">(.ply, .splat or .spz)</span> <input type="file" name="splat" accept=".ply,.splat,.spz" required></label>
                 <label class="checkbox"><input type="checkbox" name="published" checked> Visible on the site</label>
                 <button class="btn" type="submit">Add splat</button>
             </form>

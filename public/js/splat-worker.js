@@ -286,6 +286,138 @@ function processPlyBuffer(inputBuffer) {
   return out;
 }
 
+// ---- .spz (Niantic compressed format) -> packed .splat records ------------
+// .spz is a gzip-compressed, heavily quantised format ~10x smaller than .ply.
+// Decoding math + byte layout follow the reference loaders (nianticlabs/spz C++
+// and arrival-space/spz-js, both MIT): a 16-byte header then, in order,
+// positions / alphas / colours / scales / rotations / sh. We keep only what the
+// .splat record holds (position, scale, colour, opacity, rotation — SH beyond
+// the DC term is dropped, exactly as .splat already does).
+const SH_C0 = 0.28209479177387814; // DC spherical-harmonic coefficient
+const SPZ_COLOR_SCALE = 0.15; // how .spz spreads the DC colour across a byte
+const SQRT1_2 = 1 / Math.sqrt(2);
+
+function halfToFloat(h) {
+  const sgn = (h >> 15) & 0x1;
+  const exp = (h >> 10) & 0x1f;
+  const man = h & 0x3ff;
+  const s = sgn ? -1 : 1;
+  if (exp === 0) return s * Math.pow(2, -14) * (man / 1024);
+  if (exp === 31) return man ? NaN : s * Infinity;
+  return s * Math.pow(2, exp - 15) * (1 + man / 1024);
+}
+
+async function gunzip(u8) {
+  const ds = new DecompressionStream('gzip');
+  const stream = new ReadableStream({
+    start(c) {
+      c.enqueue(u8);
+      c.close();
+    },
+  }).pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function processSpzBuffer(inputBuffer) {
+  const raw = await gunzip(new Uint8Array(inputBuffer));
+  if (raw.length < 16) throw new Error('The .spz file is too small to be valid.');
+  const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+  if (view.getUint32(0, true) !== 0x5053474e) throw new Error('Not a valid .spz file (bad magic number).');
+  const version = view.getUint32(4, true);
+  if (version < 1 || version > 3) throw new Error('Unsupported .spz version ' + version + '.');
+  const numPoints = view.getUint32(8, true);
+  const fractionalBits = view.getUint8(13);
+  if (!numPoints) throw new Error('The .spz file contains no points.');
+
+  const usesFloat16 = version === 1;
+  const usesSmallestThree = version >= 3;
+  const posStride = usesFloat16 ? 2 : 3; // bytes per position component
+  const rotStride = usesSmallestThree ? 4 : 3; // bytes per rotation
+
+  let o = 16;
+  const positions = raw.subarray(o, (o += numPoints * 3 * posStride));
+  const alphas = raw.subarray(o, (o += numPoints));
+  const colors = raw.subarray(o, (o += numPoints * 3));
+  const scales = raw.subarray(o, (o += numPoints * 3));
+  const rotations = raw.subarray(o, (o += numPoints * rotStride));
+  if (o > raw.length) throw new Error('The .spz file is truncated or malformed.');
+
+  const posScale = 1 / (1 << fractionalBits);
+  const out = new ArrayBuffer(ROW_LENGTH * numPoints);
+  for (let i = 0; i < numPoints; i++) {
+    const b = i * ROW_LENGTH;
+    const position = new Float32Array(out, b, 3);
+    const scaleArr = new Float32Array(out, b + 12, 3);
+    const rgba = new Uint8ClampedArray(out, b + 24, 4);
+    const rot = new Uint8ClampedArray(out, b + 28, 4);
+
+    for (let c = 0; c < 3; c++) {
+      if (usesFloat16) {
+        const idx = (i * 3 + c) * 2;
+        position[c] = halfToFloat(positions[idx] | (positions[idx + 1] << 8));
+      } else {
+        const idx = (i * 3 + c) * 3;
+        let f = positions[idx] | (positions[idx + 1] << 8) | (positions[idx + 2] << 16);
+        if (f & 0x800000) f |= 0xff000000; // sign-extend the 24-bit fixed point
+        position[c] = f * posScale;
+      }
+    }
+
+    // scales are stored as log-scale, same as .ply — exp() to real scale
+    scaleArr[0] = Math.exp(scales[i * 3 + 0] / 16 - 10);
+    scaleArr[1] = Math.exp(scales[i * 3 + 1] / 16 - 10);
+    scaleArr[2] = Math.exp(scales[i * 3 + 2] / 16 - 10);
+
+    // colour: undo .spz's DC packing, then re-encode the way the texture expects
+    for (let c = 0; c < 3; c++) {
+      const fdc = (colors[i * 3 + c] / 255 - 0.5) / SPZ_COLOR_SCALE;
+      rgba[c] = (0.5 + SH_C0 * fdc) * 255;
+    }
+    rgba[3] = alphas[i]; // already sigmoid(opacity)*255, exactly what .splat stores
+
+    // rotation -> quaternion (x, y, z, w)
+    let qx;
+    let qy;
+    let qz;
+    let qw;
+    if (usesSmallestThree) {
+      const io = i * 4;
+      let comp = (rotations[io] | (rotations[io + 1] << 8) | (rotations[io + 2] << 16) | (rotations[io + 3] << 24)) >>> 0;
+      const iLargest = comp >>> 30;
+      const q = [0, 0, 0, 0];
+      let sum = 0;
+      for (let k = 3; k >= 0; k--) {
+        if (k === iLargest) continue;
+        const mag = comp & 511;
+        const neg = (comp >>> 9) & 1;
+        comp = comp >>> 10;
+        let v = SQRT1_2 * (mag / 511);
+        if (neg) v = -v;
+        q[k] = v;
+        sum += v * v;
+      }
+      q[iLargest] = Math.sqrt(Math.max(0, 1 - sum));
+      qx = q[0];
+      qy = q[1];
+      qz = q[2];
+      qw = q[3];
+    } else {
+      const io = i * 3;
+      qx = rotations[io] / 127.5 - 1;
+      qy = rotations[io + 1] / 127.5 - 1;
+      qz = rotations[io + 2] / 127.5 - 1;
+      qw = Math.sqrt(Math.max(0, 1 - (qx * qx + qy * qy + qz * qz)));
+    }
+    // .splat rotation bytes are the quaternion as (w, x, y, z), normalised to 0..255
+    const L = Math.hypot(qx, qy, qz, qw) || 1;
+    rot[0] = (qw / L) * 128 + 128;
+    rot[1] = (qx / L) * 128 + 128;
+    rot[2] = (qy / L) * 128 + 128;
+    rot[3] = (qz / L) * 128 + 128;
+  }
+  return out;
+}
+
 // ---- message plumbing (throttled so a burst of camera moves coalesces) -----
 let sortRunning = false;
 let pendingView = null;
@@ -313,7 +445,7 @@ function ingest() {
   generateTexture();
 }
 
-self.onmessage = (e) => {
+self.onmessage = async (e) => {
   const d = e.data;
   try {
     if (d.ply) {
@@ -321,6 +453,9 @@ self.onmessage = (e) => {
       ingest();
     } else if (d.splat) {
       buffer = d.splat;
+      ingest();
+    } else if (d.spz) {
+      buffer = await processSpzBuffer(d.spz);
       ingest();
     } else if (d.view) {
       pendingView = d.view;
