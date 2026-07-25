@@ -50,6 +50,7 @@
                         <input type="text" name="year" value="<%= s.year %>" placeholder="2025">
                     </label>
                     <label class="field pub"><input type="checkbox" name="published" <%= s.published ? 'checked' : '' %>> Visible</label>
+                    <label class="field pub" title="Turn on if the splat appears upside down in the viewer"><input type="checkbox" name="flip_up" <%= s.flip_up ? 'checked' : '' %>> Flip&nbsp;vertical</label>
                     <label class="field full">Description
                         <textarea name="description" placeholder="A short description of this capture."><%= s.description %></textarea>
                     </label>
@@ -87,6 +88,7 @@
                 <label>Thumbnail image <span class="muted">(shown on the card)</span> <input type="file" name="thumb" accept="image/*" required></label>
                 <label>Splat file <span class="muted">(.ply, .splat or .spz)</span> <input type="file" name="splat" accept=".ply,.splat,.spz" required></label>
                 <label class="checkbox"><input type="checkbox" name="published" checked> Visible on the site</label>
+                <label class="checkbox"><input type="checkbox" name="flip_up"> Flip vertical <span class="muted">(turn on if the splat loads upside down — you can also change this later)</span></label>
                 <button class="btn" type="submit">Add splat</button>
             </form>
         </div>

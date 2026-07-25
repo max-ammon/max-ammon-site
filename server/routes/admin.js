@@ -454,6 +454,7 @@ router.post('/splats', splatFields, async (req, res) => {
     splat_path: toPublicPath(splat.path),
     splat_format: splatExt(splat),
     published: req.body.published === 'on',
+    flip_up: req.body.flip_up === 'on',
   };
   if (thumb) Object.assign(data, await thumbInfo(thumb));
   splatsSvc.createSplat(data);
@@ -468,6 +469,7 @@ router.post('/splats/:id', splatFields, async (req, res) => {
     year: req.body.year,
     description: req.body.description,
     published: req.body.published === 'on',
+    flip_up: req.body.flip_up === 'on',
   };
   // A new upload replaces that file; omitting it keeps the current one.
   if (thumb) Object.assign(data, await thumbInfo(thumb));

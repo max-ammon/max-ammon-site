@@ -14,6 +14,7 @@
   var SELF = document.currentScript;
   var SRC = SELF.getAttribute('data-src');
   var FORMAT = (SELF.getAttribute('data-format') || '').toLowerCase();
+  var FLIP_UP = SELF.getAttribute('data-flip') === '1';
 
   var canvas = document.getElementById('splatCanvas');
   var stage = document.getElementById('splatStage');
@@ -207,19 +208,35 @@
   gl.vertexAttribDivisor(a_index, 1);
 
   // ---- camera state ---------------------------------------------------------
-  // Gaussian .ply from the usual tools (Postshot / INRIA) is Y-down, so the
-  // world "up" is -Y; that makes such captures load right-side up.
-  var UP = [0, -1, 0];
+  // Gaussian data from the usual tools (Postshot / INRIA) is Y-down, so the
+  // world "up" is -Y and such captures load right-side up. Some come out the
+  // other way; the per-splat "flip vertical" flag swaps to +Y, which rolls the
+  // view 180deg (same side, now upright — a rotation, not a mirror).
+  var UP = FLIP_UP ? [0, 1, 0] : [0, -1, 0];
   var FOV_Y = (50 * Math.PI) / 180;
   var MIN_PITCH = -1.5533; // ~ +/-89deg, so lookAt never degenerates
   var MAX_PITCH = 1.5533;
+  var START_PITCH = FLIP_UP ? 0.2 : -0.2; // a gentle look from "above" either way
 
   var target = [0, 0, 0];
   var dist = 5;
   var yaw = 0;
-  var pitch = -0.2;
+  var pitch = START_PITCH;
   var initial = null;
   var haveData = false;
+
+  // Mobile GPUs are fill-rate bound on the heavy blended overdraw splats produce,
+  // so render at a lower internal resolution: capped harder on mobile, and dropped
+  // further while the user is actively orbiting/zooming (restored to full shortly
+  // after they stop). This is the main performance lever for phones.
+  var IS_MOBILE = false;
+  try {
+    IS_MOBILE = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  } catch (e) {}
+  var MAX_DPR = IS_MOBILE ? 1.25 : 1.75;
+  var MOVE_SCALE = IS_MOBILE ? 0.55 : 0.85;
+  var activeScale = 1;
+  var idleTimer = null;
 
   var focalX = 1000;
   var focalY = 1000;
@@ -232,7 +249,7 @@
     var s = stageSize();
     var W = s[0];
     var H = s[1];
-    var dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+    var dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR) * activeScale;
     canvas.width = Math.max(1, Math.round(W * dpr));
     canvas.height = Math.max(1, Math.round(H * dpr));
     gl.viewport(0, 0, canvas.width, canvas.height);
@@ -245,6 +262,20 @@
   }
   window.addEventListener('resize', resize);
   resize();
+
+  // Drop to a lower render resolution while the camera is moving, then restore
+  // full resolution ~0.2s after the last input — smooth while dragging, crisp at rest.
+  function markInteracting() {
+    if (activeScale === 1) {
+      activeScale = MOVE_SCALE;
+      resize();
+    }
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () {
+      activeScale = 1;
+      resize();
+    }, 220);
+  }
 
   function eyePosition() {
     var cp = Math.cos(pitch);
@@ -286,7 +317,7 @@
     target = b.center.slice();
     dist = Math.max(b.radius * 2.6, 0.5);
     yaw = 0;
-    pitch = -0.2;
+    pitch = START_PITCH;
     initial = { target: target.slice(), dist: dist, yaw: yaw, pitch: pitch };
     haveData = true;
   }
@@ -368,6 +399,7 @@
     lastY = ev.clientY;
     if (dragMode === 'pan') panBy(dx, dy);
     else orbitBy(dx, dy);
+    markInteracting();
   });
   function endDrag() {
     dragging = false;
@@ -384,6 +416,7 @@
       ev.preventDefault();
       dismissHint();
       dollyBy(Math.exp(ev.deltaY * 0.001));
+      markInteracting();
     },
     { passive: false }
   );
@@ -436,6 +469,7 @@
         touchMidX = m[0];
         touchMidY = m[1];
       }
+      markInteracting();
     },
     { passive: false }
   );

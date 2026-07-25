@@ -140,5 +140,6 @@ CREATE TABLE IF NOT EXISTS splats (
   splat_format TEXT NOT NULL DEFAULT '',     -- lowercase extension, for the viewer
   sort         INTEGER NOT NULL DEFAULT 0,
   published    INTEGER NOT NULL DEFAULT 1,
+  flip_up      INTEGER NOT NULL DEFAULT 0,    -- 1 = flip the up axis (fixes upside-down captures)
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );

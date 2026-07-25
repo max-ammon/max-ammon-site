@@ -17,12 +17,12 @@ const qNextSort = db.prepare('SELECT COALESCE(MIN(sort), 1) - 1 AS s FROM splats
 const qPathUse = db.prepare('SELECT COUNT(*) AS c FROM splats WHERE thumb_path = ? OR splat_path = ?');
 
 const insSplat = db.prepare(`INSERT INTO splats
-  (title, year, description, thumb_path, aspect_ratio, splat_path, splat_format, sort, published)
-  VALUES (@title, @year, @description, @thumb_path, @aspect_ratio, @splat_path, @splat_format, @sort, @published)`);
+  (title, year, description, thumb_path, aspect_ratio, splat_path, splat_format, sort, published, flip_up)
+  VALUES (@title, @year, @description, @thumb_path, @aspect_ratio, @splat_path, @splat_format, @sort, @published, @flip_up)`);
 
 const updSplat = db.prepare(`UPDATE splats SET
   title=@title, year=@year, description=@description, thumb_path=@thumb_path,
-  aspect_ratio=@aspect_ratio, splat_path=@splat_path, splat_format=@splat_format, published=@published
+  aspect_ratio=@aspect_ratio, splat_path=@splat_path, splat_format=@splat_format, published=@published, flip_up=@flip_up
   WHERE id=@id`);
 
 const delSplat = db.prepare('DELETE FROM splats WHERE id = ?');
@@ -90,6 +90,7 @@ function createSplat(data) {
     splat_format: data.splat_format || '',
     sort,
     published: data.published ? 1 : 0,
+    flip_up: data.flip_up ? 1 : 0,
   });
   return info.lastInsertRowid;
 }
@@ -114,6 +115,7 @@ function updateSplat(id, data) {
     splat_path: nextSplat,
     splat_format: nextFormat,
     published: data.published ? 1 : 0,
+    flip_up: data.flip_up ? 1 : 0,
   });
   if (nextThumb !== cur.thumb_path) removeFileIfUnused(cur.thumb_path);
   if (nextSplat !== cur.splat_path) removeFileIfUnused(cur.splat_path);

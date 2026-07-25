@@ -26,6 +26,7 @@ function addColumnIfMissing(table, column, definition) {
 }
 addColumnIfMissing('media_items', 'aspect_ratio', 'REAL');
 addColumnIfMissing('pipeline_markers', 'vertical', 'INTEGER NOT NULL DEFAULT 1');
+addColumnIfMissing('splats', 'flip_up', 'INTEGER NOT NULL DEFAULT 0');
 
 // Seed with today's exact content/colours on first run only.
 const seed = require('./seed');
