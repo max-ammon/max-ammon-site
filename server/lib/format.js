@@ -44,4 +44,20 @@ function parseYouTubeId(input) {
   return '';
 }
 
-module.exports = { formatFileSize, formatBytes, parseYouTubeId };
+// URL-friendly slug from a title (cosmetic — the numeric id stays authoritative,
+// so any slug still resolves the right splat).
+function slugify(str) {
+  return (
+    String(str || '')
+      .normalize('NFKD') // split accented letters into base + combining mark
+      .replace(/[^\w\s-]/g, '') // drop the marks and other punctuation
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_]+/g, '-') // spaces / underscores -> single dash
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60) || 'splat'
+  );
+}
+
+module.exports = { formatFileSize, formatBytes, parseYouTubeId, slugify };

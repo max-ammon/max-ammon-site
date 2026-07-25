@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/head', { title: title }) %>
+    <link rel="stylesheet" href="/css/splat-view.css">
+</head>
+<body class="splat-body">
+    <header class="splat-bar">
+        <a class="splat-back" href="/splats">&larr; Splats</a>
+        <div class="splat-titlebox">
+            <span class="splat-title"><%= splat.title %></span>
+            <% if (splat.year) { %><span class="splat-year"><%= splat.year %></span><% } %>
+        </div>
+        <div class="splat-tools">
+            <button id="splatReset" type="button">Reset view</button>
+            <button id="splatFull" type="button" title="Fullscreen" aria-label="Fullscreen">&#9974;</button>
+        </div>
+    </header>
+
+    <main class="splat-stage" id="splatStage">
+        <canvas id="splatCanvas"></canvas>
+
+        <div class="splat-loading" id="splatLoading"<% if (splat.thumb_path) { %> style="background-image: url('<%= imgUrl(splat.thumb_path, 1600) %>');"<% } %>>
+            <div class="splat-loading-inner">
+                <div class="splat-progress"><span class="splat-progress-bar" id="splatBar"></span></div>
+                <div class="splat-progress-label" id="splatLabel">Loading&hellip;</div>
+            </div>
+        </div>
+
+        <div class="splat-hint" id="splatHint">Drag to orbit &middot; scroll to zoom &middot; right-drag to pan</div>
+        <div class="splat-error" id="splatError" hidden></div>
+    </main>
+
+    <script src="/js/splat-viewer.js"
+            data-src="<%= splat.splat_url %>"
+            data-format="<%= splat.splat_format %>"></script>
+</body>
+</html>

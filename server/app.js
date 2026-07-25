@@ -9,7 +9,7 @@ const SqliteStore = require('better-sqlite3-session-store')(session);
 const db = require('./db');
 const { loadPublicContext } = require('./services/content');
 const { getPublicRows } = require('./services/gallery');
-const { getPublicSplats } = require('./services/splats');
+const { getPublicSplats, getPublicSplat } = require('./services/splats');
 const { getMarkers } = require('./services/pipeline');
 const { UPLOADS_DIR } = require('./middleware/upload');
 const authRoutes = require('./routes/auth');
@@ -199,6 +199,16 @@ app.get('/gallery', attachSiteContext, (req, res) => {
 app.get('/splats', attachSiteContext, (req, res) => {
   const owner = res.locals.settings.site_title || 'Max Ammon';
   res.render('public/splats', { title: owner + "'s Gaussian Splats", splats: getPublicSplats() });
+});
+
+// A single splat opened in the interactive WebGL viewer — a dedicated, shareable
+// page. :slug is cosmetic (the numeric :id is authoritative), so any or no slug
+// resolves the right splat; an unknown/hidden id falls back to the listing.
+app.get(['/splats/:id', '/splats/:id/:slug'], attachSiteContext, (req, res) => {
+  const splat = getPublicSplat(req.params.id);
+  if (!splat) return res.redirect('/splats');
+  const owner = res.locals.settings.site_title || 'Max Ammon';
+  res.render('public/splat-view', { title: splat.title + ' — ' + owner, splat });
 });
 
 app.get('/impressum', attachSiteContext, (req, res) => {

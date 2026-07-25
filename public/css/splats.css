@@ -10,6 +10,12 @@
 @media (max-width: 1837px) { #projects { padding: 10px 12px 80px; } }
 @media (max-width: 1200px) { #projects { padding: 10px 8px 70px; } }
 
+/* The whole thumbnail is a link into the viewer; keep it a plain block so the
+   card looks unchanged, and let the existing .thumbnail:hover zoom signal it. */
+#projects .splat-open { display: block; text-decoration: none; color: inherit; cursor: pointer; }
+#projects .splat-title-link { color: inherit; text-decoration: none; }
+#projects .splat-title-link:hover { text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
+
 /* Placeholder shown when a splat has no thumbnail yet. Sized like a real
    thumbnail (uniform height, width from the inline aspect ratio) so the two-up
    row keeps its shape. */

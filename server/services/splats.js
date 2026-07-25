@@ -8,7 +8,7 @@
 const fs = require('fs');
 const db = require('../db');
 const mediaSvc = require('./media');
-const { formatBytes } = require('../lib/format');
+const { formatBytes, slugify } = require('../lib/format');
 
 const qAll = db.prepare('SELECT * FROM splats ORDER BY sort, id');
 const qPublished = db.prepare('SELECT * FROM splats WHERE published = 1 ORDER BY sort, id');
@@ -49,6 +49,7 @@ function decoratePublic(s) {
     ...s,
     ratio: s.aspect_ratio ? Number(s.aspect_ratio) : 1.5,
     splat_url: mediaSvc.versionedUrl(s.splat_path),
+    view_url: '/splats/' + s.id + '/' + slugify(s.title),
   };
 }
 
@@ -60,6 +61,13 @@ function decorateAdmin(s) {
 
 function getPublicSplats() {
   return qPublished.all().map(decoratePublic);
+}
+
+// One published splat, decorated for the viewer page (null if missing/hidden).
+function getPublicSplat(id) {
+  const s = qOne.get(Number(id));
+  if (!s || !s.published) return null;
+  return decoratePublic(s);
 }
 
 function listSplats() {
@@ -135,6 +143,7 @@ function moveSplat(id, dir) {
 
 module.exports = {
   getPublicSplats,
+  getPublicSplat,
   listSplats,
   getSplat,
   createSplat,

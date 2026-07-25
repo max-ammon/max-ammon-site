@@ -1,0 +1,194 @@
+/* Gaussian splat viewer page — a full-viewport dark stage with a slim top bar.
+   Uses its own fixed dark palette (splats read best on dark) and px/rem sizing
+   so it never depends on the cap-height / font quirks the main site relies on. */
+
+html,
+body.splat-body {
+  height: 100%;
+  margin: 0;
+}
+body.splat-body {
+  overflow: hidden;
+  background: #0b0d10;
+  color: #e8e8ea;
+  display: flex;
+  flex-direction: column;
+}
+
+.splat-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 54px;
+  padding: 0 16px;
+  background: rgba(10, 12, 16, 0.92);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 3;
+}
+.splat-back {
+  flex: none;
+  color: #cfd2d6;
+  text-decoration: none;
+  font-family: 'uni_regular', sans-serif;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+.splat-back:hover {
+  color: #fff;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.55);
+}
+.splat-titlebox {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  overflow: hidden;
+}
+.splat-title {
+  font-family: 'pixar_regular', 'uni_regular', serif;
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.splat-year {
+  flex: none;
+  color: #9aa0a6;
+  font-size: 0.85rem;
+}
+.splat-tools {
+  flex: none;
+  display: flex;
+  gap: 8px;
+}
+.splat-tools button {
+  font-family: 'uni_regular', sans-serif;
+  font-size: 0.85rem;
+  color: #e8e8ea;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  padding: 7px 12px;
+  cursor: pointer;
+  line-height: 1;
+}
+.splat-tools button:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.splat-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+#splatCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+#splatCanvas:active {
+  cursor: grabbing;
+}
+
+.splat-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #0b0d10;
+  background-size: cover;
+  background-position: center;
+  transition: opacity 0.5s ease;
+}
+.splat-loading::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 10, 13, 0.74);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+}
+.splat-loading.gone {
+  opacity: 0;
+  pointer-events: none;
+}
+.splat-loading-inner {
+  position: relative;
+  width: min(420px, 74vw);
+  text-align: center;
+}
+.splat-progress {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+.splat-progress-bar {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: #ffffff;
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+.splat-progress-label {
+  margin-top: 12px;
+  font-family: 'uni_regular', sans-serif;
+  font-size: 0.9rem;
+  color: #dfe2e6;
+  letter-spacing: 0.02em;
+}
+
+.splat-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(10, 12, 16, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #dfe2e6;
+  font-family: 'uni_regular', sans-serif;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  transition: opacity 0.6s ease;
+}
+.splat-hint.gone {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splat-error {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 80vw;
+  text-align: center;
+  color: #f1b0b0;
+  font-family: 'uni_regular', sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  .splat-title {
+    font-size: 1rem;
+  }
+  .splat-hint {
+    white-space: normal;
+    max-width: 84vw;
+    text-align: center;
+  }
+}

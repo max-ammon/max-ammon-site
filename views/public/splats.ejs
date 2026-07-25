@@ -30,6 +30,7 @@
             <% for (var j = i; j < Math.min(i + 2, splats.length); j++) { var s = splats[j]; %>
             <div class="project" data-splat-id="<%= s.id %>">
                 <div class="project-media">
+                    <a class="splat-open" href="<%= s.view_url %>" aria-label="Open <%= s.title %> in the viewer">
                     <div class="image-container">
                         <div class="image-preview">
                             <% if (s.thumb_path) { %>
@@ -44,9 +45,10 @@
                             <% } %>
                         </div>
                     </div>
+                    </a>
                 </div>
                 <div class="project-text">
-                    <h3 class="nopadding"><%= s.title %></h3>
+                    <h3 class="nopadding"><a class="splat-title-link" href="<%= s.view_url %>"><%= s.title %></a></h3>
                     <% if (s.year) { %><h4 class="nopadding"><%= s.year %></h4><% } %>
                     <% if (s.description) { %><p style="text-align: left; padding-top: 5%;" class="nopadding"><%- nl2br(s.description) %></p><% } %>
                 </div>

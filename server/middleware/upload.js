@@ -96,9 +96,9 @@ const uploadPipeline = multer({
 // Gaussian splats. One uploader handles the two very different files the admin
 // form posts together: a normal image `thumb`, and the `splat` point-cloud file
 // itself (stored untouched). Splat formats have no dependable mime type, so the
-// splat field is allow-listed by extension. Big limit — a .ply can be hundreds
-// of MB.
-const SPLAT_EXTS = ['.ply', '.splat', '.ksplat', '.spz'];
+// splat field is allow-listed by extension. Limited to the formats the in-browser
+// viewer can render (.ply and .splat). Big limit — a .ply can be hundreds of MB.
+const SPLAT_EXTS = ['.ply', '.splat'];
 function isSplatFile(file) {
   return SPLAT_EXTS.includes(safeExt(file.originalname));
 }
