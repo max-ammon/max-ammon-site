@@ -371,7 +371,9 @@
   var lastY = 0;
 
   function panBy(dx, dy) {
-    dx *= CTRL;
+    // Only the vertical pan needs flip-compensation: horizontal already stays
+    // consistent (the roll flips the world axis and the screen orientation
+    // together), so compensating it too would wrongly invert it.
     dy *= CTRL;
     var view = currentView();
     var right = [view[0], view[4], view[8]];
