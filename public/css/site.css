@@ -63,6 +63,13 @@ nav { align-items: center; }
    gently with the viewport. The mobile rules below override it on small screens. */
 nav { padding-inline: clamp(24px, 2.5vw, 48px); }
 
+/* Scrollspy: glow the header link whose section is currently in view (driven by
+   /js/scrollspy.js), using the same text-shadow the links get on hover, so a
+   visitor can see where they are on the page. The short fade also gives the
+   hover glow a slightly smoother feel. */
+nav li a { transition: text-shadow 0.25s ease; }
+nav a.nav-current { text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
+
 /* The final bottom bar carries the trademark disclaimer. Only this .barrior has
    the .site-disclaimer class; the section-divider bars are untouched. It grows
    to fit the text rather than staying at the fixed 25px. */
