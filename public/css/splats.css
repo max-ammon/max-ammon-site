@@ -1,0 +1,36 @@
+/* Gaussian Splats listing.
+   The cards reuse the gallery's card + uniform-height thumbnail styling
+   (gallery.css) through id="projects". The gallery uses the .project-section
+   class to reserve a right-hand column for the "my cg journey" rail; this
+   listing has no rail, so it drops that class and supplies its own symmetric
+   page padding here instead. */
+#projects {
+  padding: 10px 25px 90px;
+}
+@media (max-width: 1837px) { #projects { padding: 10px 12px 80px; } }
+@media (max-width: 1200px) { #projects { padding: 10px 8px 70px; } }
+
+/* Placeholder shown when a splat has no thumbnail yet. Sized like a real
+   thumbnail (uniform height, width from the inline aspect ratio) so the two-up
+   row keeps its shape. */
+#projects .splat-noimg {
+  height: var(--thumb-h);
+  width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  background: rgba(127, 127, 127, 0.15);
+  color: var(--lightcolor);
+  font-family: 'uni_bold', 'uni_regular', sans-serif;
+  font-size: 2cap;
+  letter-spacing: 0.15em;
+}
+@media (max-width: 1200px) {
+  #projects .splat-noimg {
+    width: 90vw !important;
+    max-width: 90vw !important;
+    height: auto !important;
+    min-height: 180px;
+  }
+}

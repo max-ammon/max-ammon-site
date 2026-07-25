@@ -12,11 +12,12 @@ const {
   updateSettings,
 } = require('../services/content');
 const gallery = require('../services/gallery');
+const splatsSvc = require('../services/splats');
 const messages = require('../services/messages');
 const mediaSvc = require('../services/media');
 const pipeline = require('../services/pipeline');
 const analytics = require('../services/analytics');
-const { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, toPublicPath } = require('../middleware/upload');
+const { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, toPublicPath } = require('../middleware/upload');
 const { parseYouTubeId } = require('../lib/format');
 
 const router = express.Router();
@@ -42,6 +43,7 @@ const SECTIONS = [
   { href: '/admin/demo', title: 'Demo video', desc: 'Set the YouTube video and shape of the Demo embed.' },
   { href: '/admin/social', title: 'Social preview', desc: 'The image, title and text shown when your link is shared (LinkedIn, Discord, …).' },
   { href: '/admin/gallery', title: 'Gallery', desc: 'Add projects, upload media, embed videos, arrange the gallery.' },
+  { href: '/admin/splats', title: 'Gaussian Splats', desc: 'Add and arrange the splats shown on your Gaussian Splats page.' },
   { href: '/admin/messages', title: 'Messages', desc: 'Read messages sent through your contact form.' },
   { href: '/admin/analytics', title: 'Analytics', desc: 'Private, cookie-free visitor stats — views, top pages, and referrers.' },
 ];
@@ -413,6 +415,78 @@ router.post('/downloads/:id/label', (req, res) => {
 router.post('/downloads/:id/delete', (req, res) => {
   gallery.deleteDownload(Number(req.params.id));
   res.redirect(req.get('Referer') || '/admin/gallery');
+});
+
+// --- Gaussian Splats -------------------------------------------------------
+// The add/edit forms post two files at once: a `thumb` image and the `splat`
+// file itself. multer's filters drop anything off the allow-list, so a missing
+// splat on create is reported rather than saved as a broken entry.
+const splatFields = uploadSplat.fields([{ name: 'thumb', maxCount: 1 }, { name: 'splat', maxCount: 1 }]);
+
+async function thumbInfo(file) {
+  const out = { thumb_path: toPublicPath(file.path), aspect_ratio: null };
+  const dim = await mediaSvc.imageSize(file.path);
+  if (dim.width && dim.height) out.aspect_ratio = Number((dim.width / dim.height).toFixed(4));
+  return out;
+}
+function splatExt(file) {
+  const m = (file.originalname || '').match(/\.([a-z0-9]+)$/i);
+  return m ? m[1].toLowerCase() : '';
+}
+
+router.get('/splats', (req, res) => {
+  res.render('admin/splats', {
+    title: 'Gaussian Splats',
+    splats: splatsSvc.listSplats(),
+    saved: req.query.saved === '1',
+    err: req.query.err || '',
+  });
+});
+
+router.post('/splats', splatFields, async (req, res) => {
+  const thumb = req.files && req.files.thumb && req.files.thumb[0];
+  const splat = req.files && req.files.splat && req.files.splat[0];
+  if (!splat) return res.redirect('/admin/splats?err=nosplat');
+  const data = {
+    title: req.body.title,
+    year: req.body.year,
+    description: req.body.description,
+    splat_path: toPublicPath(splat.path),
+    splat_format: splatExt(splat),
+    published: req.body.published === 'on',
+  };
+  if (thumb) Object.assign(data, await thumbInfo(thumb));
+  splatsSvc.createSplat(data);
+  res.redirect('/admin/splats?saved=1');
+});
+
+router.post('/splats/:id', splatFields, async (req, res) => {
+  const thumb = req.files && req.files.thumb && req.files.thumb[0];
+  const splat = req.files && req.files.splat && req.files.splat[0];
+  const data = {
+    title: req.body.title,
+    year: req.body.year,
+    description: req.body.description,
+    published: req.body.published === 'on',
+  };
+  // A new upload replaces that file; omitting it keeps the current one.
+  if (thumb) Object.assign(data, await thumbInfo(thumb));
+  if (splat) {
+    data.splat_path = toPublicPath(splat.path);
+    data.splat_format = splatExt(splat);
+  }
+  splatsSvc.updateSplat(Number(req.params.id), data);
+  res.redirect('/admin/splats?saved=1');
+});
+
+router.post('/splats/:id/delete', (req, res) => {
+  splatsSvc.deleteSplat(Number(req.params.id));
+  res.redirect('/admin/splats?saved=1');
+});
+
+router.post('/splats/:id/move', (req, res) => {
+  splatsSvc.moveSplat(Number(req.params.id), req.body.dir === 'up' ? -1 : 1);
+  res.redirect('/admin/splats');
 });
 
 // Upload / form errors within the admin (e.g. file too large).

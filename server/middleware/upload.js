@@ -93,10 +93,32 @@ const uploadPipeline = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
 });
 
+// Gaussian splats. One uploader handles the two very different files the admin
+// form posts together: a normal image `thumb`, and the `splat` point-cloud file
+// itself (stored untouched). Splat formats have no dependable mime type, so the
+// splat field is allow-listed by extension. Big limit — a .ply can be hundreds
+// of MB.
+const SPLAT_EXTS = ['.ply', '.splat', '.ksplat', '.spz'];
+function isSplatFile(file) {
+  return SPLAT_EXTS.includes(safeExt(file.originalname));
+}
+const uploadSplat = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, ensureDir(path.join(UPLOADS_DIR, 'splats'))),
+    filename: (req, file, cb) => cb(null, crypto.randomUUID() + safeExt(file.originalname)),
+  }),
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === 'thumb') return cb(null, isImage(file));
+    if (file.fieldname === 'splat') return cb(null, isSplatFile(file));
+    cb(null, false);
+  },
+  limits: { fileSize: 1024 * 1024 * 1024 }, // 1 GB
+});
+
 // Disk path -> public URL under /uploads.
 function toPublicPath(diskPath) {
   const rel = path.relative(UPLOADS_DIR, diskPath).split(path.sep).join('/');
   return '/uploads/' + rel;
 }
 
-module.exports = { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, toPublicPath, UPLOADS_DIR, IMAGE_MIMES, VIDEO_MIMES };
+module.exports = { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, toPublicPath, UPLOADS_DIR, IMAGE_MIMES, VIDEO_MIMES };

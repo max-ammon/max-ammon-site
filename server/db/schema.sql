@@ -125,3 +125,20 @@ CREATE TABLE IF NOT EXISTS analytics_events (
 );
 CREATE INDEX IF NOT EXISTS idx_analytics_day ON analytics_events(day);
 CREATE INDEX IF NOT EXISTS idx_analytics_path ON analytics_events(path);
+
+-- Gaussian splats: each row is one splat shown on /splats and (later) opened in a
+-- viewer. Atomic — a static thumbnail + the splat file + a bit of text — so unlike
+-- the gallery there's no per-item media list and no downloads.
+CREATE TABLE IF NOT EXISTS splats (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  title        TEXT NOT NULL DEFAULT '',
+  year         TEXT NOT NULL DEFAULT '',
+  description  TEXT NOT NULL DEFAULT '',
+  thumb_path   TEXT NOT NULL DEFAULT '',     -- static thumbnail image (/uploads/...)
+  aspect_ratio REAL,                          -- thumbnail width/height, for the card
+  splat_path   TEXT NOT NULL DEFAULT '',     -- the splat file (.ply/.splat/.ksplat/.spz)
+  splat_format TEXT NOT NULL DEFAULT '',     -- lowercase extension, for the viewer
+  sort         INTEGER NOT NULL DEFAULT 0,
+  published    INTEGER NOT NULL DEFAULT 1,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);

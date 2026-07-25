@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <%- include('../partials/head', { title: title }) %>
+    <link rel="stylesheet" href="/css/gallery.css">
+    <link rel="stylesheet" href="/css/splats.css">
 </head>
 <body>
 <%- include('../partials/nav', { navVariant: 'splats' }) %>
@@ -12,10 +14,48 @@
         <p class="secondarytitle" style="max-width: 820px; margin: 0 auto; padding: 15px 5vw 0; font-size: 1.4cap; line-height: 1.5;"><%- content['splats.intro'] || '' %></p>
     </div>
 
-    <%# The list of splats to choose from will be rendered here in a later step. %>
-    <div id="splat-list" style="padding: 60px 5vw 100px; text-align: center;">
+    <% if (!splats || !splats.length) { %>
+    <div style="padding: 60px 5vw 100px; text-align: center;">
         <p class="secondarytitle">No splats have been added yet.</p>
     </div>
+    <% } else { %>
+    <%# Reuses the gallery's card + uniform-height thumbnail styling (gallery.css)
+        via id="projects" — but WITHOUT the project-section class, so the compound
+        #projects.project-section rules that reserve the "my cg journey" rail
+        column don't apply here. Cards are static (no moving previews) and have no
+        downloads. Grouped two-up in the gallery's .project-layout0 rows. %>
+    <div id="projects">
+        <% for (var i = 0; i < splats.length; i += 2) { %>
+        <div class="project-layout0">
+            <% for (var j = i; j < Math.min(i + 2, splats.length); j++) { var s = splats[j]; %>
+            <div class="project" data-splat-id="<%= s.id %>">
+                <div class="project-media">
+                    <div class="image-container">
+                        <div class="image-preview">
+                            <% if (s.thumb_path) { %>
+                            <img class="thumbnail current-image" style="aspect-ratio: <%= s.ratio %>;"
+                                 loading="lazy" decoding="async"
+                                 src="<%= imgUrl(s.thumb_path, 800) %>"
+                                 srcset="<%= imgSrcset(s.thumb_path, [480, 800, 1200]) %>"
+                                 sizes="(max-width: 1200px) 90vw, 700px"
+                                 alt="<%= s.title %>">
+                            <% } else { %>
+                            <div class="splat-noimg" style="aspect-ratio: <%= s.ratio %>;" aria-hidden="true">3D</div>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+                <div class="project-text">
+                    <h3 class="nopadding"><%= s.title %></h3>
+                    <% if (s.year) { %><h4 class="nopadding"><%= s.year %></h4><% } %>
+                    <% if (s.description) { %><p style="text-align: left; padding-top: 5%;" class="nopadding"><%- nl2br(s.description) %></p><% } %>
+                </div>
+            </div>
+            <% } %>
+        </div>
+        <% } %>
+    </div>
+    <% } %>
 </section>
 
 <%- include('../partials/footer-bar') %>

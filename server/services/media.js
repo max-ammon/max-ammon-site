@@ -90,6 +90,18 @@ async function processImage(file) {
   return result;
 }
 
+// Just the intrinsic dimensions of an image on disk (no resizing). Used for the
+// aspect ratio of splat thumbnails. Returns nulls if sharp is unavailable.
+async function imageSize(diskPath) {
+  if (!sharp) return { width: null, height: null };
+  try {
+    const meta = await sharp(diskPath).metadata();
+    return { width: meta.width || null, height: meta.height || null };
+  } catch (e) {
+    return { width: null, height: null };
+  }
+}
+
 /*
  * Videos are stored untouched. What we can derive is the small looping clip the
  * gallery card plays: without one, the card would stream the whole file (58 MB

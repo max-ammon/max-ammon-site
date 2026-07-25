@@ -9,6 +9,7 @@ const SqliteStore = require('better-sqlite3-session-store')(session);
 const db = require('./db');
 const { loadPublicContext } = require('./services/content');
 const { getPublicRows } = require('./services/gallery');
+const { getPublicSplats } = require('./services/splats');
 const { getMarkers } = require('./services/pipeline');
 const { UPLOADS_DIR } = require('./middleware/upload');
 const authRoutes = require('./routes/auth');
@@ -197,7 +198,7 @@ app.get('/gallery', attachSiteContext, (req, res) => {
 // Gaussian Splats — a separate listing page (reached from the gallery header).
 app.get('/splats', attachSiteContext, (req, res) => {
   const owner = res.locals.settings.site_title || 'Max Ammon';
-  res.render('public/splats', { title: owner + "'s Gaussian Splats" });
+  res.render('public/splats', { title: owner + "'s Gaussian Splats", splats: getPublicSplats() });
 });
 
 app.get('/impressum', attachSiteContext, (req, res) => {

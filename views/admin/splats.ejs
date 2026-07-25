@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+<style>
+  .splat-list { list-style: none; padding: 0; margin: 0 0 26px; }
+  .splat-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px; background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 8px; margin-bottom: 12px; }
+  .splat-row.hidden-splat { opacity: 0.62; }
+  .splat-thumb { width: 132px; height: 88px; flex: none; background: rgba(255,255,255,0.06); border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--a-muted); font-size: 0.72rem; }
+  .splat-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .splat-form { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-start; margin: 0; }
+  .splat-form .field { display: flex; flex-direction: column; gap: 3px; font-size: 0.8rem; }
+  .splat-form .field.grow { flex: 1 1 240px; }
+  .splat-form .field.small { flex: 0 0 110px; }
+  .splat-form .field.full { flex: 1 1 100%; }
+  .splat-form .field.pub { flex-direction: row; align-items: center; gap: 6px; align-self: center; }
+  .splat-form .field.pub input { margin: 0; }
+  .splat-form input[type="text"], .splat-form textarea { margin: 0; width: 100%; }
+  .splat-form textarea { min-height: 60px; resize: vertical; }
+  .splat-form input[type="file"] { font-size: 0.76rem; }
+  .splat-meta { font-size: 0.72rem; color: var(--a-muted); margin-top: 2px; }
+  .splat-meta.warn { color: #d9534f; }
+  .splat-save { flex: 1 1 100%; margin-top: 2px; }
+  .splat-actions { flex: none; display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+  .splat-move { display: flex; gap: 4px; justify-content: center; }
+  .splat-move button { min-width: 30px; }
+  @media (max-width: 720px) { .splat-row { flex-direction: column; } .splat-actions { flex-direction: row; justify-content: space-between; } }
+</style>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin">← Dashboard</a></p>
+        <h1>Gaussian Splats</h1>
+        <p class="muted">The splats shown on your <a href="/splats" target="_blank" rel="noopener">Gaussian Splats page ↗</a>. Each needs a <strong>splat file</strong> (.ply, .splat, .ksplat or .spz) and a <strong>thumbnail</strong> image for its card. The newest is added to the top; use the arrows to reorder. Opening a splat in a viewer comes next — for now this manages the listing.</p>
+        <% if (saved) { %><div class="alert ok">Saved. <a href="/splats" target="_blank" rel="noopener">View page ↗</a></div><% } %>
+        <% if (err === 'nosplat') { %><div class="alert error">No splat file was added. Choose a .ply, .splat, .ksplat or .spz file.</div><% } %>
+
+        <ul class="splat-list">
+            <% splats.forEach(function (s) { %>
+            <li class="splat-row<%= s.published ? '' : ' hidden-splat' %>">
+                <div class="splat-thumb">
+                    <% if (s.thumb_path) { %><img src="<%= s.thumb_path %>" alt=""><% } else { %>no thumb<% } %>
+                </div>
+                <form method="post" action="/admin/splats/<%= s.id %>" enctype="multipart/form-data" class="splat-form">
+                    <label class="field grow">Title
+                        <input type="text" name="title" value="<%= s.title %>" placeholder="Splat title">
+                    </label>
+                    <label class="field small">Year
+                        <input type="text" name="year" value="<%= s.year %>" placeholder="2025">
+                    </label>
+                    <label class="field pub"><input type="checkbox" name="published" <%= s.published ? 'checked' : '' %>> Visible</label>
+                    <label class="field full">Description
+                        <textarea name="description" placeholder="A short description of this capture."><%= s.description %></textarea>
+                    </label>
+                    <label class="field grow">Replace thumbnail <span class="muted">(optional)</span>
+                        <input type="file" name="thumb" accept="image/*">
+                    </label>
+                    <label class="field grow">Replace splat file <span class="muted">(optional)</span>
+                        <input type="file" name="splat" accept=".ply,.splat,.ksplat,.spz">
+                        <span class="splat-meta<%= s.splat_exists ? '' : ' warn' %>">
+                            <% if (s.splat_exists) { %>Current: <%= (s.splat_format || 'file').toUpperCase() %><% if (s.splat_size) { %> · <%= s.splat_size %><% } %><% } else { %>⚠ splat file missing<% } %>
+                        </span>
+                    </label>
+                    <div class="splat-save"><button class="btn-link btn-sm" type="submit">Save changes</button></div>
+                </form>
+                <div class="splat-actions">
+                    <div class="splat-move">
+                        <form method="post" action="/admin/splats/<%= s.id %>/move" class="inline"><input type="hidden" name="dir" value="up"><button class="btn-link btn-sm" type="submit" title="Move up">↑</button></form>
+                        <form method="post" action="/admin/splats/<%= s.id %>/move" class="inline"><input type="hidden" name="dir" value="down"><button class="btn-link btn-sm" type="submit" title="Move down">↓</button></form>
+                    </div>
+                    <form method="post" action="/admin/splats/<%= s.id %>/delete" class="inline" onsubmit="return confirm('Delete this splat and its files?');">
+                        <button class="btn-link btn-sm danger" type="submit">Delete</button>
+                    </form>
+                </div>
+            </li>
+            <% }); %>
+            <% if (!splats.length) { %><li class="muted">No splats added yet — add your first below.</li><% } %>
+        </ul>
+
+        <div class="card-inset">
+            <h3>Add a splat</h3>
+            <form method="post" action="/admin/splats" enctype="multipart/form-data">
+                <label>Title <input type="text" name="title" placeholder="e.g. Forest floor scan" required></label>
+                <label>Year <span class="muted">(optional)</span> <input type="text" name="year" placeholder="2025"></label>
+                <label>Description <span class="muted">(optional)</span> <textarea name="description" rows="3" placeholder="A short description of this capture."></textarea></label>
+                <label>Thumbnail image <span class="muted">(shown on the card)</span> <input type="file" name="thumb" accept="image/*" required></label>
+                <label>Splat file <span class="muted">(.ply, .splat, .ksplat or .spz)</span> <input type="file" name="splat" accept=".ply,.splat,.ksplat,.spz" required></label>
+                <label class="checkbox"><input type="checkbox" name="published" checked> Visible on the site</label>
+                <button class="btn" type="submit">Add splat</button>
+            </form>
+        </div>
+    </main>
+</body>
+</html>
