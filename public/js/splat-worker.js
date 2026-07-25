@@ -141,40 +141,80 @@ function computeBounds() {
   return { center: [cx, cy, cz], radius };
 }
 
+// ---- importance ordering --------------------------------------------------
+// Lists gaussians most-visually-significant first (scale volume x opacity), via
+// a fast O(n) counting sort. The depth sort can then render only the top
+// `renderBudget` of them — the lever that keeps big splats smooth on mobile.
+let importanceIndex = new Uint32Array(0);
+let renderBudget = 0; // 0 = render every splat
+
+function computeImportanceIndex() {
+  const f = new Float32Array(buffer);
+  const u = new Uint8Array(buffer);
+  const n = vertexCount;
+  const imp = new Float32Array(n);
+  let maxImp = 0;
+  for (let i = 0; i < n; i++) {
+    const v = f[8 * i + 3] * f[8 * i + 4] * f[8 * i + 5] * u[32 * i + 27]; // volume * opacity
+    imp[i] = v;
+    if (v > maxImp) maxImp = v;
+  }
+  const BUCKETS = 65536;
+  const scale = maxImp > 0 ? (BUCKETS - 1) / maxImp : 0;
+  const counts = new Uint32Array(BUCKETS);
+  const q = new Uint16Array(n);
+  for (let i = 0; i < n; i++) {
+    const b = (imp[i] * scale) | 0;
+    q[i] = b;
+    counts[b]++;
+  }
+  // Accumulate from the highest bucket down so the most important land first.
+  const starts = new Uint32Array(BUCKETS);
+  let acc = 0;
+  for (let b = BUCKETS - 1; b >= 0; b--) {
+    starts[b] = acc;
+    acc += counts[b];
+  }
+  importanceIndex = new Uint32Array(n);
+  for (let i = 0; i < n; i++) importanceIndex[starts[q[i]]++] = i;
+}
+
 // ---- depth sort (single-pass 16-bit counting sort) ------------------------
 let lastProj = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 let sortedForCount = -1;
 function runSort(viewProj) {
   if (!buffer || !vertexCount) return;
-  // Skip re-sorting when the view direction is essentially unchanged.
+  const k = renderBudget > 0 ? Math.min(renderBudget, vertexCount) : vertexCount;
+  // Skip re-sorting when neither the view direction nor the budget changed.
   const dot = lastProj[2] * viewProj[2] + lastProj[6] * viewProj[6] + lastProj[10] * viewProj[10];
-  if (sortedForCount === vertexCount && Math.abs(dot - 1) < 0.01) return;
+  if (sortedForCount === k && Math.abs(dot - 1) < 0.01) return;
 
   const f = new Float32Array(buffer);
   let maxDepth = -Infinity;
   let minDepth = Infinity;
-  const sizeList = new Int32Array(vertexCount);
-  for (let i = 0; i < vertexCount; i++) {
+  const sizeList = new Int32Array(k);
+  for (let j = 0; j < k; j++) {
+    const i = importanceIndex[j];
     const depth =
       ((viewProj[2] * f[8 * i + 0] + viewProj[6] * f[8 * i + 1] + viewProj[10] * f[8 * i + 2]) * 4096) | 0;
-    sizeList[i] = depth;
+    sizeList[j] = depth;
     if (depth > maxDepth) maxDepth = depth;
     if (depth < minDepth) minDepth = depth;
   }
   const depthInv = (256 * 256 - 1) / (maxDepth - minDepth || 1);
   const counts0 = new Uint32Array(256 * 256);
-  for (let i = 0; i < vertexCount; i++) {
-    sizeList[i] = ((sizeList[i] - minDepth) * depthInv) | 0;
-    counts0[sizeList[i]]++;
+  for (let j = 0; j < k; j++) {
+    sizeList[j] = ((sizeList[j] - minDepth) * depthInv) | 0;
+    counts0[sizeList[j]]++;
   }
   const starts0 = new Uint32Array(256 * 256);
-  for (let i = 1; i < 256 * 256; i++) starts0[i] = starts0[i - 1] + counts0[i - 1];
-  const idx = new Uint32Array(vertexCount);
-  for (let i = 0; i < vertexCount; i++) idx[starts0[sizeList[i]]++] = i;
+  for (let b = 1; b < 256 * 256; b++) starts0[b] = starts0[b - 1] + counts0[b - 1];
+  const idx = new Uint32Array(k);
+  for (let j = 0; j < k; j++) idx[starts0[sizeList[j]]++] = importanceIndex[j];
 
   lastProj = viewProj;
-  sortedForCount = vertexCount;
-  self.postMessage({ depthIndex: idx, vertexCount }, [idx.buffer]);
+  sortedForCount = k;
+  self.postMessage({ depthIndex: idx, vertexCount: k }, [idx.buffer]);
 }
 
 // ---- .ply -> packed .splat records ----------------------------------------
@@ -441,6 +481,7 @@ function ingest() {
   vertexCount = Math.floor(buffer.byteLength / ROW_LENGTH);
   sortedForCount = -1;
   if (!vertexCount) throw new Error('The splat file appears to be empty.');
+  computeImportanceIndex();
   self.postMessage({ bounds: computeBounds(), vertexCount });
   generateTexture();
 }
@@ -459,6 +500,7 @@ self.onmessage = async (e) => {
       ingest();
     } else if (d.view) {
       pendingView = d.view;
+      if (typeof d.count === 'number') renderBudget = d.count;
       throttledSort();
     }
   } catch (err) {

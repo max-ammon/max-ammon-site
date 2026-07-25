@@ -217,6 +217,10 @@
   var MIN_PITCH = -1.5533; // ~ +/-89deg, so lookAt never degenerates
   var MAX_PITCH = 1.5533;
   var START_PITCH = FLIP_UP ? 0.2 : -0.2; // a gentle look from "above" either way
+  // Flipping the up axis rolls the camera 180deg, which would otherwise invert
+  // the drag directions; this compensation keeps orbit/pan feeling the same
+  // whether a splat is flipped or not.
+  var CTRL = FLIP_UP ? -1 : 1;
 
   var target = [0, 0, 0];
   var dist = 5;
@@ -235,6 +239,11 @@
   } catch (e) {}
   var MAX_DPR = IS_MOBILE ? 1.25 : 1.75;
   var MOVE_SCALE = IS_MOBILE ? 0.55 : 0.85;
+  // On phones, also cap how many splats are drawn — only the most visually
+  // significant ones — which is the heaviest lever for large captures. Desktop
+  // renders everything (renderCount is set to the full count once it's known).
+  var MOBILE_MAX_SPLATS = 700000;
+  var renderCount = 0;
   var activeScale = 1;
   var idleTimer = null;
 
@@ -300,7 +309,10 @@
       fail('Could not load this splat: ' + d.error);
       return;
     }
-    if (d.bounds) initCamera(d.bounds);
+    if (d.bounds) {
+      renderCount = IS_MOBILE ? Math.min(d.vertexCount, MOBILE_MAX_SPLATS) : d.vertexCount;
+      initCamera(d.bounds);
+    }
     if (d.texdata) uploadTexture(d);
     if (d.depthIndex) {
       gl.bindBuffer(gl.ARRAY_BUFFER, indexBuffer);
@@ -339,7 +351,7 @@
       var view = currentView();
       var key = view.join(',');
       if (key !== lastPosted) {
-        worker.postMessage({ view: multiply4(projectionMatrix, view) });
+        worker.postMessage({ view: multiply4(projectionMatrix, view), count: renderCount });
         lastPosted = key;
       }
       gl.uniformMatrix4fv(u_view, false, new Float32Array(view));
@@ -359,6 +371,8 @@
   var lastY = 0;
 
   function panBy(dx, dy) {
+    dx *= CTRL;
+    dy *= CTRL;
     var view = currentView();
     var right = [view[0], view[4], view[8]];
     var camUp = [view[1], view[5], view[9]];
@@ -368,8 +382,8 @@
     }
   }
   function orbitBy(dx, dy) {
-    yaw -= dx * 0.005;
-    pitch += dy * 0.005;
+    yaw -= CTRL * dx * 0.005;
+    pitch += CTRL * dy * 0.005;
     if (pitch < MIN_PITCH) pitch = MIN_PITCH;
     if (pitch > MAX_PITCH) pitch = MAX_PITCH;
   }
