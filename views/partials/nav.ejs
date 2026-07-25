@@ -6,6 +6,16 @@
         </div>
 <% if (variant === 'gallery') { %>
         <ul style="font-size:2cap;max-width: max-content;" class="headerbox nopadding">
+            <li><a href="/splats">Gaussian Splats</a></li>
+            <li><a href="/" rel="noopener noreferrer">go back to main site</a></li>
+        </ul>
+<% } else if (variant === 'splats') { %>
+        <ul style="font-size:2cap;max-width: max-content;" class="headerbox nopadding">
+            <li><a href="/gallery">Gallery</a></li>
+            <li><a href="/" rel="noopener noreferrer">go back to main site</a></li>
+        </ul>
+<% } else if (variant === 'back') { %>
+        <ul style="font-size:2cap;max-width: max-content;" class="headerbox nopadding">
             <li><a href="/" rel="noopener noreferrer">go back to main site</a></li>
         </ul>
 <% } else { %>

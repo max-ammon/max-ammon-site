@@ -194,6 +194,12 @@ app.get('/gallery', attachSiteContext, (req, res) => {
   res.render('public/gallery', { title: owner + "'s Gallery", rows: getPublicRows(), currentYear: new Date().getFullYear() });
 });
 
+// Gaussian Splats — a separate listing page (reached from the gallery header).
+app.get('/splats', attachSiteContext, (req, res) => {
+  const owner = res.locals.settings.site_title || 'Max Ammon';
+  res.render('public/splats', { title: owner + "'s Gaussian Splats" });
+});
+
 app.get('/impressum', attachSiteContext, (req, res) => {
   res.render('public/imprint', { title: 'Impressum/Legal Disclosure', gateOn: gate.enabled() });
 });

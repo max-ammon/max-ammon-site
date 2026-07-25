@@ -101,6 +101,11 @@ const CONTENT = [
   ['gallery.journey.title', 'gallery', 'CG-journey bar — the label written down the bar (gallery timeline rail)', 'my cg journey', 'text'],
   ['gallery.journey.start_year', 'gallery', 'CG-journey bar — the year shown at the bottom of the bar', '2015', 'text'],
 
+  // Gaussian Splats page (a separate /splats page, reached from the gallery header).
+  ['splats.heading', 'splats', 'Gaussian Splats page — heading', 'Gaussian Splats', 'text'],
+  ['splats.intro', 'splats', 'Gaussian Splats page — intro text (HTML)',
+    'Interactive 3D captures you can explore right in your browser — drag to orbit, scroll to zoom.', 'html'],
+
   // Imprint / Impressum (German sites need one — § 5 DDG). Editable in the Text
   // admin under "Imprint"; shown on /impressum. Fill address/phone in; the rest are
   // optional. Only non-empty fields are shown on the page.
