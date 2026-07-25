@@ -165,4 +165,4 @@ async function processPreviewClip(file) {
   return { preview_path: raw, ...dims };
 }
 
-module.exports = { processImage, processVideo, processPreviewClip, fileInfo, resolvePublicPath, versionedUrl, hasSharp: !!sharp };
+module.exports = { processImage, imageSize, processVideo, processPreviewClip, fileInfo, resolvePublicPath, versionedUrl, hasSharp: !!sharp };
