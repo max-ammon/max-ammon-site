@@ -185,6 +185,15 @@ function attachSiteContext(req, res, next) {
   next();
 }
 
+// Plain-text, length-limited text for a social-preview description card.
+function ogText(s) {
+  const t = String(s || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return t.length > 200 ? t.slice(0, 197).replace(/\s+\S*$/, '') + '…' : t;
+}
+
 app.get('/', attachSiteContext, (req, res) => {
   const owner = res.locals.settings.site_title || 'Max Ammon';
   res.render('public/index', { title: owner, contactStatus: req.query.contact || '', markers: getMarkers() });
@@ -203,11 +212,19 @@ app.get('/splats', attachSiteContext, (req, res) => {
 
 // A single splat opened in the interactive WebGL viewer — a dedicated, shareable
 // page. :slug is cosmetic (the numeric :id is authoritative), so any or no slug
-// resolves the right splat; an unknown/hidden id falls back to the listing.
+// resolves the right splat; an unknown/hidden id falls back to the listing. Each
+// splat sets its own social-preview (its thumbnail + title/description) via
+// res.locals.og, so a shared link previews that specific splat.
 app.get(['/splats/:id', '/splats/:id/:slug'], attachSiteContext, (req, res) => {
   const splat = getPublicSplat(req.params.id);
   if (!splat) return res.redirect('/splats');
   const owner = res.locals.settings.site_title || 'Max Ammon';
+  res.locals.og = {
+    title: splat.title || owner + ' — Gaussian Splat',
+    description: ogText(splat.description),
+    image: splat.thumb_path || '',
+    url: splat.view_url,
+  };
   res.render('public/splat-view', { title: splat.title + ' — ' + owner, splat });
 });
 
