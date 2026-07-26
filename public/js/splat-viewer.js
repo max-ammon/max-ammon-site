@@ -15,6 +15,8 @@
   var SRC = SELF.getAttribute('data-src');
   var FORMAT = (SELF.getAttribute('data-format') || '').toLowerCase();
   var FLIP_UP = SELF.getAttribute('data-flip') === '1';
+  var EXPOSURE = parseFloat(SELF.getAttribute('data-exposure')) || 1;
+  var SPLAT_ID = SELF.getAttribute('data-id') || '';
 
   var canvas = document.getElementById('splatCanvas');
   var stage = document.getElementById('splatStage');
@@ -142,12 +144,13 @@
     'precision highp float;\n' +
     'in vec4 vColor;\n' +
     'in vec2 vPosition;\n' +
+    'uniform float exposure;\n' +
     'out vec4 fragColor;\n' +
     'void main () {\n' +
     '    float A = -dot(vPosition, vPosition);\n' +
     '    if (A < -4.0) discard;\n' +
     '    float B = exp(A) * vColor.a;\n' +
-    '    fragColor = vec4(B * vColor.rgb, B);\n' +
+    '    fragColor = vec4(exposure * B * vColor.rgb, B);\n' +
     '}\n';
 
   function compile(type, src) {
@@ -186,6 +189,8 @@
   var u_viewport = gl.getUniformLocation(program, 'viewport');
   var u_focal = gl.getUniformLocation(program, 'focal');
   var u_view = gl.getUniformLocation(program, 'view');
+  var u_exposure = gl.getUniformLocation(program, 'exposure');
+  gl.uniform1f(u_exposure, EXPOSURE);
 
   // Quad corners (per-vertex, one instance per splat).
   var vertexBuffer = gl.createBuffer();
@@ -519,6 +524,26 @@
   document.addEventListener('fullscreenchange', function () {
     setTimeout(resize, 60);
   });
+
+  // Owner-only live exposure slider: adjusts brightness in real time and saves
+  // the value per-splat (debounced) so it becomes the default everyone sees.
+  var expEl = document.getElementById('splatExposure');
+  if (expEl) {
+    var saveTimer = null;
+    expEl.addEventListener('input', function () {
+      EXPOSURE = parseFloat(expEl.value) || 1;
+      gl.uniform1f(u_exposure, EXPOSURE);
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(function () {
+        fetch('/admin/splats/' + encodeURIComponent(SPLAT_ID) + '/exposure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'exposure=' + encodeURIComponent(EXPOSURE),
+          credentials: 'same-origin',
+        }).catch(function () {});
+      }, 500);
+    });
+  }
 
   // ---- loading UI -----------------------------------------------------------
   var hintTimer = null;

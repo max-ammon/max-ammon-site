@@ -12,6 +12,12 @@
             <% if (splat.year) { %><span class="splat-year"><%= splat.year %></span><% } %>
         </div>
         <div class="splat-tools">
+            <% if (isOwner) { %>
+            <label class="splat-exposure" title="Exposure (brightness) — only you see this while logged in, and it saves automatically as you drag">
+                <span class="splat-exposure-ic" aria-hidden="true">&#9728;</span>
+                <input type="range" id="splatExposure" min="0.2" max="3" step="0.05" value="<%= splat.exposure || 1 %>" aria-label="Exposure">
+            </label>
+            <% } %>
             <button id="splatReset" type="button">Reset view</button>
             <button id="splatFull" type="button" title="Fullscreen" aria-label="Fullscreen">&#9974;</button>
         </div>
@@ -28,12 +34,17 @@
         </div>
 
         <div class="splat-hint" id="splatHint">Drag to orbit &middot; scroll to zoom &middot; right-drag to pan</div>
+        <% if (splat.description) { %>
+        <div class="splat-caption"><%- nl2br(splat.description) %></div>
+        <% } %>
         <div class="splat-error" id="splatError" hidden></div>
     </main>
 
     <script src="/js/splat-viewer.js"
             data-src="<%= splat.splat_url %>"
             data-format="<%= splat.splat_format %>"
-            data-flip="<%= splat.flip_up ? '1' : '0' %>"></script>
+            data-flip="<%= splat.flip_up ? '1' : '0' %>"
+            data-exposure="<%= splat.exposure || 1 %>"
+            data-id="<%= splat.id %>"></script>
 </body>
 </html>

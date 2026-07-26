@@ -516,6 +516,13 @@ router.post('/splats/:id/move', (req, res) => {
   res.redirect('/admin/splats');
 });
 
+// Owner-only, called by the viewer's live exposure slider (auto-saves as you
+// drag). Returns JSON; requireAuth + sameOrigin above already gate it.
+router.post('/splats/:id/exposure', (req, res) => {
+  const exposure = splatsSvc.setExposure(Number(req.params.id), req.body.exposure);
+  res.json({ ok: true, exposure });
+});
+
 // Upload / form errors within the admin (e.g. file too large).
 // eslint-disable-next-line no-unused-vars
 router.use((err, req, res, next) => {

@@ -141,5 +141,6 @@ CREATE TABLE IF NOT EXISTS splats (
   sort         INTEGER NOT NULL DEFAULT 0,
   published    INTEGER NOT NULL DEFAULT 1,
   flip_up      INTEGER NOT NULL DEFAULT 0,    -- 1 = flip the up axis (fixes upside-down captures)
+  exposure     REAL NOT NULL DEFAULT 1,        -- viewer brightness multiplier (owner-set)
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );

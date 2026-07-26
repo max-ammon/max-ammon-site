@@ -228,7 +228,9 @@ app.get(['/splats/:id', '/splats/:id/:slug'], attachSiteContext, (req, res) => {
     image: splat.thumb_path || '',
     url: splat.view_url,
   };
-  res.render('public/splat-view', { title: splat.title + ' — ' + owner, splat });
+  // The live exposure slider is shown only to the logged-in owner.
+  const isOwner = !!(req.session && req.session.userId);
+  res.render('public/splat-view', { title: splat.title + ' — ' + owner, splat, isOwner });
 });
 
 app.get('/impressum', attachSiteContext, (req, res) => {

@@ -27,6 +27,17 @@ const updSplat = db.prepare(`UPDATE splats SET
 
 const delSplat = db.prepare('DELETE FROM splats WHERE id = ?');
 const setSort = db.prepare('UPDATE splats SET sort = ? WHERE id = ?');
+const setExp = db.prepare('UPDATE splats SET exposure = ? WHERE id = ?');
+
+// Owner-set viewer brightness for one splat (clamped to a sane range). Returns
+// the value actually stored so the caller can echo it back.
+function setExposure(id, value) {
+  let n = parseFloat(value);
+  if (!isFinite(n)) n = 1;
+  n = Math.min(3, Math.max(0.2, n));
+  setExp.run(n, Number(id));
+  return n;
+}
 
 // Delete an uploaded file once no splat row still references it. Scoped to
 // /uploads/ (never the bundled site assets), mirroring gallery.removeUploadIfUnused.
@@ -152,4 +163,5 @@ module.exports = {
   updateSplat,
   deleteSplat,
   moveSplat,
+  setExposure,
 };
