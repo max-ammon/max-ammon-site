@@ -19,6 +19,7 @@ const pipeline = require('../services/pipeline');
 const analytics = require('../services/analytics');
 const { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, toPublicPath } = require('../middleware/upload');
 const { parseYouTubeId } = require('../lib/format');
+const { SHARE_PAGES } = require('../lib/share-pages');
 
 const router = express.Router();
 
@@ -233,18 +234,42 @@ router.post('/demo', uploadSiteImage.single('poster'), (req, res) => {
 
 // --- Social preview (Open Graph) -------------------------------------------
 router.get('/social', (req, res) => {
-  res.render('admin/social', { title: 'Social preview', settings: getSettingsMap(), saved: req.query.saved === '1' });
+  res.render('admin/social', {
+    title: 'Social preview',
+    settings: getSettingsMap(),
+    sharePages: SHARE_PAGES,
+    saved: req.query.saved === '1',
+  });
 });
 
-router.post('/social', uploadSiteImage.single('image'), (req, res) => {
+// The site-wide default plus an optional per-page override for each SHARE_PAGES
+// entry. Each override has its own file field (<key>_image) and pasted-path
+// field (share_<key>_image); a blank override falls back to the default in the
+// head partial. `.any()` collects every image field in one go.
+router.post('/social', uploadSiteImage.any(), (req, res) => {
+  const files = {};
+  (req.files || []).forEach((f) => {
+    files[f.fieldname] = f;
+  });
+
   const updates = {
     share_title: (req.body.share_title || '').trim(),
     share_description: (req.body.share_description || '').trim(),
     // An unchecked checkbox isn't submitted, so its absence means "off".
     social_preview_bots: req.body.social_preview_bots ? '1' : '0',
   };
-  if (req.file) updates.share_image = toPublicPath(req.file.path);
+  if (files.image) updates.share_image = toPublicPath(files.image.path);
   else if (typeof req.body.share_image === 'string') updates.share_image = req.body.share_image.trim();
+
+  for (const pg of SHARE_PAGES) {
+    updates['share_' + pg.key + '_title'] = (req.body['share_' + pg.key + '_title'] || '').trim();
+    updates['share_' + pg.key + '_description'] = (req.body['share_' + pg.key + '_description'] || '').trim();
+    const uploaded = files[pg.key + '_image'];
+    if (uploaded) updates['share_' + pg.key + '_image'] = toPublicPath(uploaded.path);
+    else if (typeof req.body['share_' + pg.key + '_image'] === 'string')
+      updates['share_' + pg.key + '_image'] = req.body['share_' + pg.key + '_image'].trim();
+  }
+
   updateSettings(updates);
   res.redirect('/admin/social?saved=1');
 });

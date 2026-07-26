@@ -17,6 +17,7 @@ const adminRoutes = require('./routes/admin');
 const contactRoutes = require('./routes/contact');
 const imgRoutes = require('./routes/img');
 const { imgUrl, imgSrcset } = require('./lib/images');
+const { pageOg } = require('./lib/share-pages');
 const gate = require('./middleware/gate');
 const analytics = require('./middleware/analytics');
 
@@ -201,12 +202,14 @@ app.get('/', attachSiteContext, (req, res) => {
 
 app.get('/gallery', attachSiteContext, (req, res) => {
   const owner = res.locals.settings.site_title || 'Max Ammon';
+  res.locals.og = pageOg(res.locals.settings, 'gallery');
   res.render('public/gallery', { title: owner + "'s Gallery", rows: getPublicRows(), currentYear: new Date().getFullYear() });
 });
 
 // Gaussian Splats — a separate listing page (reached from the gallery header).
 app.get('/splats', attachSiteContext, (req, res) => {
   const owner = res.locals.settings.site_title || 'Max Ammon';
+  res.locals.og = pageOg(res.locals.settings, 'splats');
   res.render('public/splats', { title: owner + "'s Gaussian Splats", splats: getPublicSplats() });
 });
 

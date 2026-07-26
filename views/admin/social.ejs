@@ -3,21 +3,25 @@
 <head>
 <%- include('../partials/admin-head', { title: title }) %>
 <style>
-  .social-admin { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
-  .social-form { flex: 1; min-width: 300px; }
-  .social-form textarea { min-height: 82px; resize: vertical; width: 100%; }
-  .social-side { flex: none; width: 340px; position: sticky; top: 20px; }
-  .share-card { border: 1px solid var(--a-border); border-radius: 10px; overflow: hidden; background: var(--a-surface); }
-  .share-card .img { width: 100%; aspect-ratio: 1.91 / 1; background: var(--a-bg) center / cover no-repeat; display: block; }
-  .share-card .img.empty { display: flex; align-items: center; justify-content: center; color: var(--a-muted); font-size: 0.8rem; }
+  .share-block { border: 1px solid var(--a-border); border-radius: 10px; padding: 18px 20px; margin: 0 0 20px; background: var(--a-surface); }
+  .share-block > h2 { margin: 0 0 3px; font-size: 1.08rem; }
+  .share-block > h2 .sub { font-weight: 400; font-size: 0.85rem; color: var(--a-muted); }
+  .share-block > .blurb { margin: 0 0 15px; color: var(--a-muted); font-size: 0.85rem; }
+  .share-grid { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; }
+  .share-fields { flex: 1; min-width: 280px; }
+  .share-fields textarea { min-height: 72px; resize: vertical; width: 100%; }
+  .share-preview { flex: none; width: 300px; }
+  .prev-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--a-muted); margin: 0 0 8px; }
+  .share-card { border: 1px solid var(--a-border); border-radius: 10px; overflow: hidden; background: var(--a-bg); }
+  .share-card .img { width: 100%; aspect-ratio: 1.91 / 1; background: center / cover no-repeat; display: flex; align-items: center; justify-content: center; color: var(--a-muted); font-size: 0.8rem; }
   .share-card .meta { padding: 10px 13px; }
   .share-card .dom { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--a-muted); }
-  .share-card .t { font-weight: 700; margin: 3px 0 3px; line-height: 1.25; color: var(--a-text); }
-  .share-card .d { font-size: 0.85rem; color: var(--a-muted); line-height: 1.35; }
-  .field-note { font-size: 0.82rem; color: var(--a-muted); margin: -6px 0 16px; }
-  .checkbox-row { display: flex; gap: 11px; align-items: flex-start; background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 8px; padding: 12px 14px; margin: 6px 0 22px; }
+  .share-card .t { font-weight: 700; margin: 3px 0; line-height: 1.25; color: var(--a-text); word-break: break-word; }
+  .share-card .d { font-size: 0.85rem; color: var(--a-muted); line-height: 1.35; word-break: break-word; }
+  .field-note { font-size: 0.82rem; color: var(--a-muted); margin: -6px 0 15px; }
+  .checkbox-row { display: flex; gap: 11px; align-items: flex-start; background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 8px; padding: 12px 14px; margin: 4px 0 0; }
   .checkbox-row input { margin: 3px 0 0; width: auto; }
-  @media (max-width: 780px) { .social-side { position: static; width: 100%; } }
+  @media (max-width: 820px) { .share-preview { width: 100%; } }
 </style>
 </head>
 <body class="admin">
@@ -25,75 +29,118 @@
     <main class="admin-main">
         <p class="muted"><a href="/admin">← Dashboard</a></p>
         <h1>Social preview</h1>
-        <p class="muted">This is the card people see when your link is shared on LinkedIn, Discord, Slack, WhatsApp, X, and so on. A strong image here is the single biggest thing that makes a shared link get clicked.</p>
-        <% if (saved) { %><div class="alert ok">Saved. To see it, share your link in a chat (Discord, Slack, LinkedIn) — those previews update within a few minutes.</div><% } %>
+        <p class="muted">The card people see when your link is shared (LinkedIn, Discord, Slack, WhatsApp, X, …). <strong>Default</strong> covers your whole site; the sections beneath it let specific pages show their own card instead. Leave a page's fields blank and it just uses the Default. Individual Gaussian splats already preview themselves automatically.</p>
+        <% if (saved) { %><div class="alert ok">Saved. To see it, share the link in a chat (Discord, Slack, LinkedIn) — those previews update within a few minutes.</div><% } %>
 
-        <div class="social-admin">
-            <form class="social-form" method="post" action="/admin/social" enctype="multipart/form-data">
-                <label>Share image
-                    <input type="file" name="image" accept="image/*" id="shareFile">
-                </label>
-                <p class="field-note">Shown at the top of the card. Landscape works best — around <strong>1200 × 630</strong> px (1.91:1). Leave everything blank to fall back to your About banner.</p>
-                <label>Current image path <span class="muted">(or paste one)</span>
-                    <input type="text" name="share_image" id="shareImgPath" value="<%= settings.share_image || '' %>" placeholder="<%= settings.about_banner || '' %>">
-                </label>
+        <%
+          var siteTitle = settings.site_title || 'Max Ammon';
+          var defImg = settings.share_image || settings.about_banner || '';
+          var defTitle = settings.share_title || siteTitle;
+          var defDesc = settings.share_description || '';
+        %>
 
-                <label>Title
-                    <input type="text" name="share_title" id="shareTitle" value="<%= settings.share_title || '' %>" placeholder="<%= settings.site_title || 'Max Ammon' %>">
-                </label>
-                <p class="field-note">Leave blank to use each page's own title (e.g. “Max Ammon”, “Max Ammon's Gallery”).</p>
-
-                <label>Description
-                    <textarea name="share_description" id="shareDesc" placeholder="A short line about you and your work."><%= settings.share_description || '' %></textarea>
-                </label>
-                <p class="field-note">One or two sentences. Also used as the page's meta description.</p>
-
-                <div class="checkbox-row">
-                    <input type="checkbox" name="social_preview_bots" value="1" id="shareBots" <%= settings.social_preview_bots !== '0' ? 'checked' : '' %>>
-                    <label for="shareBots" style="margin:0;color:var(--a-text);">
-                        Let link-preview bots through the CAPTCHA gate
-                        <span class="muted" style="display:block;font-size:0.82rem;margin-top:3px;">Needed for previews to appear while the gate is on. It only lets recognised preview bots (LinkedIn, Discord, Slack, X, …) read your public pages; every human visitor still gets the CAPTCHA.</span>
-                    </label>
-                </div>
-
-                <div class="form-actions"><button class="btn">Save</button></div>
-            </form>
-
-            <aside class="social-side">
-                <p class="muted" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 8px;">Live preview</p>
-                <% var imgSrc = settings.share_image || settings.about_banner || ''; %>
-                <div class="share-card">
-                    <span class="img<%= imgSrc ? '' : ' empty' %>" id="cardImg" style="<%= imgSrc ? 'background-image:url(' + imgSrc + ')' : '' %>"><%= imgSrc ? '' : 'no image' %></span>
-                    <div class="meta">
-                        <div class="dom">max-ammon.com</div>
-                        <div class="t" id="cardTitle"><%= settings.share_title || settings.site_title || 'Max Ammon' %></div>
-                        <div class="d" id="cardDesc"><%= settings.share_description || '' %></div>
+        <form method="post" action="/admin/social" enctype="multipart/form-data">
+            <section class="share-block" data-block data-fallback-title="<%= siteTitle %>" data-fallback-img="<%= defImg %>" data-fallback-desc="">
+                <h2>Default <span class="sub">— whole site</span></h2>
+                <p class="blurb">Used for every page without its own card below (home, contact, and anything new by default).</p>
+                <div class="share-grid">
+                    <div class="share-fields">
+                        <label>Share image <input type="file" name="image" accept="image/*" data-role="file"></label>
+                        <p class="field-note">Landscape, around <strong>1200 × 630</strong> px (1.91:1). Blank falls back to your About banner.</p>
+                        <label>Current image path <span class="muted">(or paste one)</span> <input type="text" name="share_image" value="<%= settings.share_image || '' %>" placeholder="<%= settings.about_banner || '' %>" data-role="path"></label>
+                        <label>Title <input type="text" name="share_title" value="<%= settings.share_title || '' %>" placeholder="<%= siteTitle %>" data-role="title"></label>
+                        <p class="field-note">Blank uses each page's own title.</p>
+                        <label>Description <textarea name="share_description" placeholder="A short line about you and your work." data-role="desc"><%= settings.share_description || '' %></textarea></label>
+                        <p class="field-note">One or two sentences. Also used as the page's meta description.</p>
                     </div>
+                    <aside class="share-preview">
+                        <p class="prev-label">Live preview</p>
+                        <div class="share-card">
+                            <span class="img" data-role="cardimg" style="<%= defImg ? 'background-image:url(' + defImg + ')' : '' %>"><%= defImg ? '' : 'no image' %></span>
+                            <div class="meta">
+                                <div class="dom">max-ammon.com</div>
+                                <div class="t" data-role="cardtitle"><%= defTitle %></div>
+                                <div class="d" data-role="carddesc"><%= defDesc %></div>
+                            </div>
+                        </div>
+                    </aside>
                 </div>
-                <p class="field-note" style="margin-top:10px;">Exact styling varies by platform — this is a rough idea.</p>
-            </aside>
-        </div>
+            </section>
+
+            <% sharePages.forEach(function (pg) {
+                 var pTitle = settings['share_' + pg.key + '_title'] || '';
+                 var pDesc = settings['share_' + pg.key + '_description'] || '';
+                 var pImg = settings['share_' + pg.key + '_image'] || '';
+                 var shownImg = pImg || defImg;
+                 var shownTitle = pTitle || defTitle;
+                 var shownDesc = pDesc || defDesc;
+            %>
+            <section class="share-block" data-block data-fallback-title="<%= defTitle %>" data-fallback-img="<%= defImg %>" data-fallback-desc="<%= defDesc %>">
+                <h2><%= pg.label %> <span class="sub">— max-ammon.com<%= pg.path %></span></h2>
+                <p class="blurb"><%= pg.blurb %> Leave a field blank to use the Default above.</p>
+                <div class="share-grid">
+                    <div class="share-fields">
+                        <label>Share image <input type="file" name="<%= pg.key %>_image" accept="image/*" data-role="file"></label>
+                        <p class="field-note">Blank falls back to the Default image.</p>
+                        <label>Current image path <span class="muted">(or paste one)</span> <input type="text" name="share_<%= pg.key %>_image" value="<%= pImg %>" placeholder="<%= defImg %>" data-role="path"></label>
+                        <label>Title <input type="text" name="share_<%= pg.key %>_title" value="<%= pTitle %>" placeholder="<%= defTitle %>" data-role="title"></label>
+                        <label>Description <textarea name="share_<%= pg.key %>_description" placeholder="<%= defDesc || 'Uses the Default description.' %>" data-role="desc"><%= pDesc %></textarea></label>
+                    </div>
+                    <aside class="share-preview">
+                        <p class="prev-label">Live preview</p>
+                        <div class="share-card">
+                            <span class="img" data-role="cardimg" style="<%= shownImg ? 'background-image:url(' + shownImg + ')' : '' %>"><%= shownImg ? '' : 'no image' %></span>
+                            <div class="meta">
+                                <div class="dom">max-ammon.com<%= pg.path %></div>
+                                <div class="t" data-role="cardtitle"><%= shownTitle %></div>
+                                <div class="d" data-role="carddesc"><%= shownDesc %></div>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+            <% }); %>
+
+            <div class="checkbox-row">
+                <input type="checkbox" name="social_preview_bots" value="1" id="shareBots" <%= settings.social_preview_bots !== '0' ? 'checked' : '' %>>
+                <label for="shareBots" style="margin:0;color:var(--a-text);">
+                    Let link-preview bots through the CAPTCHA gate
+                    <span class="muted" style="display:block;font-size:0.82rem;margin-top:3px;">Needed for previews while the gate is on. Only recognised preview bots (LinkedIn, Discord, Slack, X, …) get through; every human still gets the CAPTCHA.</span>
+                </label>
+            </div>
+
+            <div class="form-actions" style="margin-top:20px;"><button class="btn">Save</button></div>
+        </form>
     </main>
     <script>
       (function () {
-        var titleEl = document.getElementById('shareTitle');
-        var descEl = document.getElementById('shareDesc');
-        var pathEl = document.getElementById('shareImgPath');
-        var fileEl = document.getElementById('shareFile');
-        var cardTitle = document.getElementById('cardTitle');
-        var cardDesc = document.getElementById('cardDesc');
-        var cardImg = document.getElementById('cardImg');
-        var fallbackTitle = <%- JSON.stringify(settings.site_title || 'Max Ammon').replace(/</g, '\\u003c') %>;
-        var fallbackImg = <%- JSON.stringify(settings.about_banner || '').replace(/</g, '\\u003c') %>;
-        function setImg(src) {
-          if (src) { cardImg.style.backgroundImage = 'url("' + src + '")'; cardImg.classList.remove('empty'); cardImg.textContent = ''; }
-          else { cardImg.style.backgroundImage = ''; cardImg.classList.add('empty'); cardImg.textContent = 'no image'; }
-        }
-        titleEl.addEventListener('input', function () { cardTitle.textContent = titleEl.value.trim() || fallbackTitle; });
-        descEl.addEventListener('input', function () { cardDesc.textContent = descEl.value; });
-        pathEl.addEventListener('input', function () { setImg(pathEl.value.trim() || fallbackImg); });
-        fileEl.addEventListener('change', function () {
-          if (fileEl.files && fileEl.files[0]) setImg(URL.createObjectURL(fileEl.files[0]));
+        // Wire each block's inputs to its own live-preview card. Blank fields
+        // fall back to the block's data-fallback-* (the Default card's values).
+        document.querySelectorAll('[data-block]').forEach(function (block) {
+          var q = function (r) { return block.querySelector('[data-role="' + r + '"]'); };
+          var titleEl = q('title');
+          var descEl = q('desc');
+          var pathEl = q('path');
+          var fileEl = q('file');
+          var cardTitle = q('cardtitle');
+          var cardDesc = q('carddesc');
+          var cardImg = q('cardimg');
+          var fbTitle = block.getAttribute('data-fallback-title') || '';
+          var fbImg = block.getAttribute('data-fallback-img') || '';
+          var fbDesc = block.getAttribute('data-fallback-desc') || '';
+          function setImg(src) {
+            if (src) {
+              cardImg.style.backgroundImage = 'url("' + src + '")';
+              cardImg.textContent = '';
+            } else {
+              cardImg.style.backgroundImage = '';
+              cardImg.textContent = 'no image';
+            }
+          }
+          if (titleEl) titleEl.addEventListener('input', function () { cardTitle.textContent = titleEl.value.trim() || fbTitle; });
+          if (descEl) descEl.addEventListener('input', function () { cardDesc.textContent = descEl.value.trim() || fbDesc; });
+          if (pathEl) pathEl.addEventListener('input', function () { setImg(pathEl.value.trim() || fbImg); });
+          if (fileEl) fileEl.addEventListener('change', function () { if (fileEl.files && fileEl.files[0]) setImg(URL.createObjectURL(fileEl.files[0])); });
         });
       })();
     </script>
