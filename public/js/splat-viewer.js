@@ -26,6 +26,7 @@
   var errorEl = document.getElementById('splatError');
   var hintEl = document.getElementById('splatHint');
   var mobileNoteEl = document.getElementById('splatMobileNote');
+  var captionEl = document.querySelector('.splat-caption');
   var resetBtn = document.getElementById('splatReset');
   var fullBtn = document.getElementById('splatFull');
 
@@ -561,6 +562,12 @@
       if (hintEl) {
         hintEl.classList.remove('gone');
         hintTimer = setTimeout(dismissHint, 4500);
+        // On mobile the description caption is a full-width band at the bottom;
+        // lift the controls hint to just above it so it isn't covered.
+        if (IS_MOBILE && captionEl) {
+          var fromBottom = stage.getBoundingClientRect().bottom - captionEl.getBoundingClientRect().top;
+          hintEl.style.bottom = Math.round(fromBottom + 12) + 'px';
+        }
       }
       // On mobile (where resolution + splat count are reduced), briefly note it.
       if (IS_MOBILE && mobileNoteEl) {
