@@ -142,5 +142,6 @@ CREATE TABLE IF NOT EXISTS splats (
   published    INTEGER NOT NULL DEFAULT 1,
   flip_up      INTEGER NOT NULL DEFAULT 0,    -- 1 = flip the up axis (fixes upside-down captures)
   exposure     REAL NOT NULL DEFAULT 1,        -- viewer brightness multiplier (owner-set)
+  default_view TEXT NOT NULL DEFAULT '',      -- owner-set starting camera (JSON: target/dist/yaw/pitch)
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );

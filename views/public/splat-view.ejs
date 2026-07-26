@@ -17,6 +17,8 @@
                 <span class="splat-exposure-ic" aria-hidden="true">&#9728;</span>
                 <input type="range" id="splatExposure" min="0.2" max="3" step="0.05" value="<%= splat.exposure || 1 %>" aria-label="Exposure">
             </label>
+            <button id="splatSetView" type="button" title="Save the current camera as the view everyone starts at">Set default view</button>
+            <button id="splatClearView" type="button" title="Go back to automatic framing"<%= splat.view ? '' : ' hidden' %>>Clear</button>
             <% } %>
             <button id="splatReset" type="button">Reset view</button>
             <button id="splatFull" type="button" title="Fullscreen" aria-label="Fullscreen">&#9974;</button>
@@ -46,6 +48,7 @@
             data-format="<%= splat.splat_format %>"
             data-flip="<%= splat.flip_up ? '1' : '0' %>"
             data-exposure="<%= splat.exposure || 1 %>"
+            data-view="<%= splat.view ? JSON.stringify(splat.view) : '' %>"
             data-id="<%= splat.id %>"></script>
 </body>
 </html>

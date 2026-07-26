@@ -28,6 +28,48 @@ const updSplat = db.prepare(`UPDATE splats SET
 const delSplat = db.prepare('DELETE FROM splats WHERE id = ?');
 const setSort = db.prepare('UPDATE splats SET sort = ? WHERE id = ?');
 const setExp = db.prepare('UPDATE splats SET exposure = ? WHERE id = ?');
+const setView = db.prepare('UPDATE splats SET default_view = ? WHERE id = ?');
+
+/*
+ * Owner-set starting camera for one splat: the orbit camera's target point,
+ * distance, yaw and pitch — together these fully describe where the camera sits
+ * and which way it looks. Stored as compact JSON; '' means "auto-frame the splat"
+ * (the original behaviour). Every value is validated, so a malformed post can
+ * never leave a view the viewer chokes on.
+ */
+const MAX_PITCH = 1.5533; // matches the viewer's own clamp
+
+function setDefaultView(id, v) {
+  const nums = [v && v.tx, v && v.ty, v && v.tz, v && v.dist, v && v.yaw, v && v.pitch].map(parseFloat);
+  if (nums.some((n) => !isFinite(n))) return null;
+  let [tx, ty, tz, dist, yaw, pitch] = nums;
+  dist = Math.min(500, Math.max(0.05, dist));
+  pitch = Math.min(MAX_PITCH, Math.max(-MAX_PITCH, pitch));
+  // Keep yaw in [-PI, PI] so stored values stay tidy and comparable.
+  yaw = Math.atan2(Math.sin(yaw), Math.cos(yaw));
+  const round = (n) => Math.round(n * 1e4) / 1e4;
+  const view = { t: [round(tx), round(ty), round(tz)], d: round(dist), y: round(yaw), p: round(pitch) };
+  setView.run(JSON.stringify(view), Number(id));
+  return view;
+}
+
+// Drop the saved view; the viewer goes back to auto-framing the splat.
+function clearDefaultView(id) {
+  setView.run('', Number(id));
+}
+
+function parseView(s) {
+  if (!s) return null;
+  try {
+    const v = JSON.parse(s);
+    if (!v || !Array.isArray(v.t) || v.t.length !== 3) return null;
+    const all = [v.t[0], v.t[1], v.t[2], v.d, v.y, v.p];
+    if (all.some((n) => typeof n !== 'number' || !isFinite(n))) return null;
+    return v;
+  } catch (e) {
+    return null; // stored value was damaged — fall back to auto-framing
+  }
+}
 
 // Owner-set viewer brightness for one splat (clamped to a sane range). Returns
 // the value actually stored so the caller can echo it back.
@@ -61,6 +103,7 @@ function decoratePublic(s) {
     ratio: s.aspect_ratio ? Number(s.aspect_ratio) : 1.5,
     splat_url: mediaSvc.versionedUrl(s.splat_path),
     view_url: '/splats/' + s.id + '/' + slugify(s.title),
+    view: parseView(s.default_view),
   };
 }
 
@@ -164,4 +207,6 @@ module.exports = {
   deleteSplat,
   moveSplat,
   setExposure,
+  setDefaultView,
+  clearDefaultView,
 };

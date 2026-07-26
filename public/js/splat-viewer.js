@@ -17,6 +17,17 @@
   var FLIP_UP = SELF.getAttribute('data-flip') === '1';
   var EXPOSURE = parseFloat(SELF.getAttribute('data-exposure')) || 1;
   var SPLAT_ID = SELF.getAttribute('data-id') || '';
+  // Owner-set starting camera ({t:[x,y,z], d, y, p}); null = auto-frame the splat.
+  var DEFAULT_VIEW = (function () {
+    var raw = SELF.getAttribute('data-view');
+    if (!raw) return null;
+    try {
+      var v = JSON.parse(raw);
+      return v && v.t && v.t.length === 3 ? v : null;
+    } catch (e) {
+      return null;
+    }
+  })();
 
   var canvas = document.getElementById('splatCanvas');
   var stage = document.getElementById('splatStage');
@@ -234,6 +245,7 @@
   var yaw = 0;
   var pitch = START_PITCH;
   var initial = null;
+  var autoFramed = null; // the computed framing, kept for "Clear default view"
   var haveData = false;
 
   // Mobile GPUs are fill-rate bound on the heavy blended overdraw splats produce,
@@ -333,11 +345,20 @@
   };
 
   function initCamera(b) {
-    target = b.center.slice();
-    dist = Math.max(b.radius * 2.6, 0.5);
-    yaw = 0;
-    pitch = START_PITCH;
+    if (DEFAULT_VIEW) {
+      // The owner picked where this splat opens; Reset returns here too.
+      target = DEFAULT_VIEW.t.slice();
+      dist = DEFAULT_VIEW.d;
+      yaw = DEFAULT_VIEW.y;
+      pitch = DEFAULT_VIEW.p;
+    } else {
+      target = b.center.slice();
+      dist = Math.max(b.radius * 2.6, 0.5);
+      yaw = 0;
+      pitch = START_PITCH;
+    }
     initial = { target: target.slice(), dist: dist, yaw: yaw, pitch: pitch };
+    autoFramed = { target: b.center.slice(), dist: Math.max(b.radius * 2.6, 0.5), yaw: 0, pitch: START_PITCH };
     haveData = true;
   }
   function uploadTexture(d) {
@@ -526,6 +547,54 @@
   document.addEventListener('fullscreenchange', function () {
     setTimeout(resize, 60);
   });
+
+  /*
+   * Owner-only "Set default view" / "Clear": save the camera a visitor starts
+   * at. Navigate to the shot you want, then save it — Reset returns here too.
+   */
+  var setViewBtn = document.getElementById('splatSetView');
+  var clearViewBtn = document.getElementById('splatClearView');
+  function flash(btn, text) {
+    var old = btn.textContent;
+    btn.textContent = text;
+    btn.disabled = true;
+    setTimeout(function () {
+      btn.textContent = old;
+      btn.disabled = false;
+    }, 1400);
+  }
+  function postView(body, btn, okText) {
+    fetch('/admin/splats/' + encodeURIComponent(SPLAT_ID) + '/view', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body,
+      credentials: 'same-origin',
+    })
+      .then(function (r) {
+        flash(btn, r.ok ? okText : 'Failed');
+      })
+      .catch(function () {
+        flash(btn, 'Failed');
+      });
+  }
+  if (setViewBtn) {
+    setViewBtn.addEventListener('click', function () {
+      if (!haveData) return;
+      initial = { target: target.slice(), dist: dist, yaw: yaw, pitch: pitch };
+      postView(
+        'tx=' + target[0] + '&ty=' + target[1] + '&tz=' + target[2] + '&dist=' + dist + '&yaw=' + yaw + '&pitch=' + pitch,
+        setViewBtn,
+        'Saved ✓'
+      );
+      if (clearViewBtn) clearViewBtn.hidden = false;
+    });
+  }
+  if (clearViewBtn) {
+    clearViewBtn.addEventListener('click', function () {
+      if (autoFramed) initial = { target: autoFramed.target.slice(), dist: autoFramed.dist, yaw: autoFramed.yaw, pitch: autoFramed.pitch };
+      postView('clear=1', clearViewBtn, 'Cleared ✓');
+    });
+  }
 
   // Owner-only live exposure slider: adjusts brightness in real time and saves
   // the value per-splat (debounced) so it becomes the default everyone sees.

@@ -28,6 +28,7 @@ addColumnIfMissing('media_items', 'aspect_ratio', 'REAL');
 addColumnIfMissing('pipeline_markers', 'vertical', 'INTEGER NOT NULL DEFAULT 1');
 addColumnIfMissing('splats', 'flip_up', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('splats', 'exposure', 'REAL NOT NULL DEFAULT 1');
+addColumnIfMissing('splats', 'default_view', "TEXT NOT NULL DEFAULT ''");
 
 // Seed with today's exact content/colours on first run only.
 const seed = require('./seed');

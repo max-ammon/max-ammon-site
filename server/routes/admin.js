@@ -525,6 +525,18 @@ router.post('/splats/:id/exposure', (req, res) => {
   res.json({ ok: true, exposure });
 });
 
+// Owner-only, called by the viewer's "Set default view" / "Clear" buttons: saves
+// the camera the visitor starts at (and that Reset returns to).
+router.post('/splats/:id/view', (req, res) => {
+  if (req.body.clear) {
+    splatsSvc.clearDefaultView(Number(req.params.id));
+    return res.json({ ok: true, view: null });
+  }
+  const view = splatsSvc.setDefaultView(Number(req.params.id), req.body);
+  if (!view) return res.status(400).json({ ok: false, error: 'invalid view' });
+  res.json({ ok: true, view });
+});
+
 // --- Storage & backup ------------------------------------------------------
 router.get('/storage', (req, res) => {
   res.render('admin/storage', {
