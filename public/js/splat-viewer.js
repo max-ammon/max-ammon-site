@@ -25,6 +25,7 @@
   var labelEl = document.getElementById('splatLabel');
   var errorEl = document.getElementById('splatError');
   var hintEl = document.getElementById('splatHint');
+  var mobileNoteEl = document.getElementById('splatMobileNote');
   var resetBtn = document.getElementById('splatReset');
   var fullBtn = document.getElementById('splatFull');
 
@@ -560,6 +561,13 @@
       if (hintEl) {
         hintEl.classList.remove('gone');
         hintTimer = setTimeout(dismissHint, 4500);
+      }
+      // On mobile (where resolution + splat count are reduced), briefly note it.
+      if (IS_MOBILE && mobileNoteEl) {
+        mobileNoteEl.classList.add('show');
+        setTimeout(function () {
+          mobileNoteEl.classList.add('gone');
+        }, 7000);
       }
     }
   }
