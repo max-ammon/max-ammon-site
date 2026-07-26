@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+<style>
+  .storage-summary { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 22px; }
+  .storage-summary .box { flex: 1 1 220px; background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 8px; padding: 13px 15px; }
+  .storage-summary .box .n { font-size: 1.3rem; font-weight: 700; color: var(--a-text); }
+  .storage-summary .box .lbl { font-size: 0.8rem; color: var(--a-muted); margin-top: 2px; }
+  .storage-summary .box form { margin: 9px 0 0; }
+  .storage-group { margin: 0 0 20px; }
+  .storage-group > h3 { margin: 0 0 8px; font-size: 1.02rem; }
+  .storage-group > h3 .muted { font-weight: 400; font-size: 0.85rem; }
+  .storage-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .storage-table td { padding: 7px 10px; border-top: 1px solid var(--a-border); vertical-align: top; }
+  .storage-table tr.is-unused td { background: rgba(217, 83, 79, 0.07); }
+  .storage-table .fname { word-break: break-all; }
+  .storage-table .fname a { color: var(--a-text); text-decoration: none; }
+  .storage-table .fname a:hover { text-decoration: underline; }
+  .storage-table .fsize { white-space: nowrap; color: var(--a-muted); }
+  .storage-table .fuse { color: var(--a-muted); }
+  .storage-table .fact { text-align: right; white-space: nowrap; }
+  .badge-unused { display: inline-block; padding: 1px 8px; border-radius: 999px; background: rgba(217, 83, 79, 0.18); color: #e78; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .danger { color: #d9534f; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--a-border); border-radius: 8px; }
+</style>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin">← Dashboard</a></p>
+        <h1>Storage &amp; backup</h1>
+        <p class="muted">Every file stored on the server, grouped by folder, with what references it on your site — or flagged <strong>unused</strong> so you can clear out dead weight. Your database and media live only here, so grab a backup regularly.</p>
+
+        <% if (saved === 'deleted') { %><div class="alert ok">File deleted.</div>
+        <% } else if (saved === 'kept') { %><div class="alert error">That file is still in use, so it was kept.</div>
+        <% } else if (saved === 'cache') { %><div class="alert ok">Image cache cleared — it rebuilds automatically as pages are viewed.</div>
+        <% } else if (saved && saved.indexOf('cleaned-') === 0) { %><div class="alert ok">Removed <%= saved.slice(8) %> unused file(s).</div><% } %>
+
+        <div class="card-inset">
+            <h3>Backup</h3>
+            <p class="muted">One archive containing a consistent copy of your database (<code>data/site.db</code>) plus every uploaded file (<code>uploads/</code>). Keep it somewhere safe — it's your restore point if the server is ever lost. A large gallery takes a moment to package.</p>
+            <a class="btn" href="/admin/backup">Download full backup (.tar)</a>
+        </div>
+
+        <div class="storage-summary">
+            <div class="box">
+                <div class="n"><%= data.totalCount %></div>
+                <div class="lbl">files in uploads/ &middot; <%= fmt(data.totalBytes) %></div>
+            </div>
+            <div class="box">
+                <div class="n<%= data.unusedCount ? ' danger' : '' %>"><%= data.unusedCount %></div>
+                <div class="lbl">unused &middot; <%= fmt(data.unusedBytes) %></div>
+                <% if (data.unusedCount) { %>
+                <form method="post" action="/admin/storage/delete-all" onsubmit="return confirm('Delete all <%= data.unusedCount %> unused file(s)? This cannot be undone.');">
+                    <button class="btn-link btn-sm danger" type="submit">Remove all unused</button>
+                </form>
+                <% } %>
+            </div>
+            <div class="box">
+                <div class="n"><%= data.cache.count %></div>
+                <div class="lbl">cached resized images &middot; <%= fmt(data.cache.bytes) %> &middot; rebuilds itself</div>
+                <% if (data.cache.count) { %>
+                <form method="post" action="/admin/storage/clear-cache" onsubmit="return confirm('Clear the image cache? It regenerates automatically.');">
+                    <button class="btn-link btn-sm" type="submit">Clear cache</button>
+                </form>
+                <% } %>
+            </div>
+        </div>
+
+        <% if (!data.groups.length) { %>
+        <p class="muted">No uploaded files yet.</p>
+        <% } %>
+
+        <% data.groups.forEach(function (g) { %>
+        <section class="storage-group">
+            <h3><%= g.label %> <span class="muted">— <%= g.count %> file<%= g.count === 1 ? '' : 's' %>, <%= fmt(g.bytes) %><% if (g.unusedCount) { %> &middot; <span class="danger"><%= g.unusedCount %> unused</span><% } %></span></h3>
+            <div class="table-wrap">
+                <table class="storage-table">
+                    <% g.files.forEach(function (f) { %>
+                    <tr class="<%= f.used ? '' : 'is-unused' %>">
+                        <td class="fname"><a href="<%= f.public %>" target="_blank" rel="noopener"><%= f.name %></a></td>
+                        <td class="fsize"><%= fmt(f.bytes) %></td>
+                        <td class="fuse"><% if (f.used) { %><%= f.usedBy.join(', ') %><% } else { %><span class="badge-unused">unused</span><% } %></td>
+                        <td class="fact">
+                            <% if (!f.used) { %>
+                            <form method="post" action="/admin/storage/delete" class="inline" onsubmit="return confirm('Delete this unused file? This cannot be undone.');">
+                                <input type="hidden" name="path" value="<%= f.public %>">
+                                <button class="btn-link btn-sm danger" type="submit">Delete</button>
+                            </form>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </table>
+            </div>
+        </section>
+        <% }); %>
+    </main>
+</body>
+</html>

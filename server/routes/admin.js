@@ -18,8 +18,9 @@ const mediaSvc = require('../services/media');
 const pipeline = require('../services/pipeline');
 const analytics = require('../services/analytics');
 const { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, toPublicPath } = require('../middleware/upload');
-const { parseYouTubeId } = require('../lib/format');
+const { parseYouTubeId, formatBytes } = require('../lib/format');
 const { SHARE_PAGES } = require('../lib/share-pages');
+const storage = require('../services/storage');
 
 const router = express.Router();
 
@@ -47,6 +48,7 @@ const SECTIONS = [
   { href: '/admin/splats', title: 'Gaussian Splats', desc: 'Add and arrange the splats shown on your Gaussian Splats page.' },
   { href: '/admin/messages', title: 'Messages', desc: 'Read messages sent through your contact form.' },
   { href: '/admin/analytics', title: 'Analytics', desc: 'Private, cookie-free visitor stats — views, top pages, and referrers.' },
+  { href: '/admin/storage', title: 'Storage & backup', desc: 'See every stored file and what uses it, remove unused ones, and download a full backup.' },
 ];
 
 router.get('/', (req, res) => {
@@ -521,6 +523,50 @@ router.post('/splats/:id/move', (req, res) => {
 router.post('/splats/:id/exposure', (req, res) => {
   const exposure = splatsSvc.setExposure(Number(req.params.id), req.body.exposure);
   res.json({ ok: true, exposure });
+});
+
+// --- Storage & backup ------------------------------------------------------
+router.get('/storage', (req, res) => {
+  res.render('admin/storage', {
+    title: 'Storage & backup',
+    data: storage.scan(),
+    fmt: formatBytes,
+    saved: req.query.saved || '',
+  });
+});
+
+router.post('/storage/delete', (req, res) => {
+  const r = storage.deleteUnused(req.body.path);
+  res.redirect('/admin/storage?saved=' + (r.ok ? 'deleted' : 'kept'));
+});
+
+router.post('/storage/delete-all', (req, res) => {
+  const r = storage.deleteAllUnused();
+  res.redirect('/admin/storage?saved=cleaned-' + r.removed);
+});
+
+router.post('/storage/clear-cache', (req, res) => {
+  storage.clearImageCache();
+  res.redirect('/admin/storage?saved=cache');
+});
+
+// Full backup: a consistent DB snapshot + every uploaded file, as one .tar.
+router.get('/backup', async (req, res) => {
+  const stamp = new Date().toISOString().slice(0, 16).replace('T', '_').replace(/:/g, '');
+  res.setHeader('Content-Type', 'application/x-tar');
+  res.setHeader('Content-Disposition', 'attachment; filename="max-ammon-backup-' + stamp + '.tar"');
+  try {
+    await storage.backupToStream(res);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('backup error:', e.message);
+    if (!res.headersSent) {
+      res.removeHeader('Content-Disposition');
+      res.status(500).type('text/plain').send('Backup failed: ' + e.message);
+    } else {
+      res.destroy();
+    }
+  }
 });
 
 // Upload / form errors within the admin (e.g. file too large).
