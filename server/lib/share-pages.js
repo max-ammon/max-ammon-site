@@ -15,6 +15,12 @@
  */
 const SHARE_PAGES = [
   {
+    key: 'demoarchive',
+    label: 'Demo Archive',
+    path: '/demo-archive',
+    blurb: 'The card shown when your Demo Archive link is shared.',
+  },
+  {
     key: 'gallery',
     label: 'Gallery',
     path: '/gallery',

@@ -96,6 +96,21 @@ CREATE TABLE IF NOT EXISTS pipeline_markers (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Demo archive: past demo reels, listed on /demo-archive. Each is the same
+-- click-to-play YouTube embed as the main page's demo (poster + play button,
+-- full page width), with its own title above it.
+CREATE TABLE IF NOT EXISTS demo_archive (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  title       TEXT NOT NULL DEFAULT '',
+  youtube_id  TEXT NOT NULL DEFAULT '',
+  aspect_w    INTEGER NOT NULL DEFAULT 3840,
+  aspect_h    INTEGER NOT NULL DEFAULT 1646,
+  poster_path TEXT NOT NULL DEFAULT '',
+  sort        INTEGER NOT NULL DEFAULT 0,
+  published   INTEGER NOT NULL DEFAULT 1,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Contact form submissions (also emailed).
 CREATE TABLE IF NOT EXISTS contact_messages (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,

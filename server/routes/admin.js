@@ -13,6 +13,7 @@ const {
 } = require('../services/content');
 const gallery = require('../services/gallery');
 const splatsSvc = require('../services/splats');
+const demoArchive = require('../services/demoarchive');
 const messages = require('../services/messages');
 const mediaSvc = require('../services/media');
 const pipeline = require('../services/pipeline');
@@ -43,6 +44,7 @@ const SECTIONS = [
   { href: '/admin/images/skills', title: 'Skills images', desc: 'Swap the images shown with your four skill categories.' },
   { href: '/admin/pipeline', title: 'Pipeline software', desc: 'Place software logos along the production-pipeline bar in Skills.' },
   { href: '/admin/demo', title: 'Demo video', desc: 'Set the YouTube video and shape of the Demo embed.' },
+  { href: '/admin/demo-archive', title: 'Demo archive', desc: 'Collect your older demo reels on their own page, linked from the Demo section.' },
   { href: '/admin/social', title: 'Social preview', desc: 'The image, title and text shown when your link is shared (LinkedIn, Discord, …).' },
   { href: '/admin/gallery', title: 'Gallery', desc: 'Add projects, upload media, embed videos, arrange the gallery.' },
   { href: '/admin/splats', title: 'Gaussian Splats', desc: 'Add and arrange the splats shown on your Gaussian Splats page.' },
@@ -232,6 +234,53 @@ router.post('/demo', uploadSiteImage.single('poster'), (req, res) => {
   else if (req.body.demo_poster) updates.demo_poster = req.body.demo_poster;
   updateSettings(updates);
   res.redirect('/admin/demo?saved=1');
+});
+
+// --- Demo archive ----------------------------------------------------------
+router.get('/demo-archive', (req, res) => {
+  res.render('admin/demo-archive', {
+    title: 'Demo archive',
+    items: demoArchive.listItems(),
+    saved: req.query.saved === '1',
+    err: req.query.err || '',
+  });
+});
+
+router.post('/demo-archive', uploadSiteImage.single('poster'), (req, res) => {
+  const youtubeId = parseYouTubeId(req.body.youtube_id || '');
+  if (!youtubeId) return res.redirect('/admin/demo-archive?err=embed');
+  demoArchive.addItem({
+    title: req.body.title,
+    youtube_id: youtubeId,
+    aspect_w: req.body.aspect_w,
+    aspect_h: req.body.aspect_h,
+    poster_path: req.file ? toPublicPath(req.file.path) : (req.body.poster_path || '').trim(),
+    published: req.body.published === 'on',
+  });
+  res.redirect('/admin/demo-archive?saved=1');
+});
+
+router.post('/demo-archive/:id', uploadSiteImage.single('poster'), (req, res) => {
+  demoArchive.updateItem(Number(req.params.id), {
+    title: req.body.title,
+    // Blank/unparseable leaves the current video in place.
+    youtube_id: parseYouTubeId(req.body.youtube_id || ''),
+    aspect_w: req.body.aspect_w,
+    aspect_h: req.body.aspect_h,
+    poster_path: req.file ? toPublicPath(req.file.path) : (req.body.poster_path || '').trim(),
+    published: req.body.published === 'on',
+  });
+  res.redirect('/admin/demo-archive?saved=1');
+});
+
+router.post('/demo-archive/:id/delete', (req, res) => {
+  demoArchive.deleteItem(Number(req.params.id));
+  res.redirect('/admin/demo-archive?saved=1');
+});
+
+router.post('/demo-archive/:id/move', (req, res) => {
+  demoArchive.moveItem(Number(req.params.id), req.body.dir === 'up' ? -1 : 1);
+  res.redirect('/admin/demo-archive');
 });
 
 // --- Social preview (Open Graph) -------------------------------------------

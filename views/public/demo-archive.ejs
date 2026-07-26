@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/head', { title: title }) %>
+    <link rel="stylesheet" href="/css/demo.css">
+    <link rel="stylesheet" href="/css/demo-archive.css">
+</head>
+<body>
+<%- include('../partials/nav', { navVariant: 'back' }) %>
+
+<section id="demo-archive">
+    <div style="padding-top: 50px;">
+        <h2><%= content['demoarchive.heading'] || 'Demo Archive' %></h2>
+    </div>
+
+    <% if (!items || !items.length) { %>
+    <div style="padding: 60px 5vw 100px; text-align: center;">
+        <p class="secondarytitle">No demos have been archived yet.</p>
+    </div>
+    <% } else { %>
+    <%# Each entry repeats the main page's demo setup exactly: a full-width
+        click-to-play embed (poster image + play button) sized by its own aspect
+        ratio, with its title above it. /js/demo.js wires them all up. %>
+    <% items.forEach(function (it) { %>
+    <article class="da-entry">
+        <h3 class="da-title"><%= it.title %></h3>
+        <div class="demobox">
+            <div class="demo-embed" data-youtube="<%= it.youtube_id %>" style="aspect-ratio: <%= it.aspect_w %> / <%= it.aspect_h %>;">
+                <% if (it.poster_path) { %>
+                <img class="demo-poster" src="<%= imgUrl(it.poster_path, 1600) %>"
+                     srcset="<%= imgSrcset(it.poster_path, [800, 1200, 1600, 2400, 3200]) %>"
+                     sizes="100vw" loading="lazy" decoding="async" alt="<%= it.title %>">
+                <% } else { %>
+                <img class="demo-poster" src="https://img.youtube.com/vi/<%= it.youtube_id %>/maxresdefault.jpg"
+                     loading="lazy" decoding="async" alt="<%= it.title %>">
+                <% } %>
+                <img src="/assets/paths/demo_thumbnail_button.svg" alt="playbuttonsvg" class="playbutton-svg demo-play" style="width: 3.5%;">
+            </div>
+        </div>
+    </article>
+    <% }); %>
+    <% } %>
+</section>
+
+<script src="/js/demo.js"></script>
+<%- include('../partials/footer-bar') %>
+</body>
+</html>

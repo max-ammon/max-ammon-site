@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+<style>
+  .da-list { list-style: none; padding: 0; margin: 0 0 26px; }
+  .da-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px; background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 8px; margin-bottom: 12px; }
+  .da-row.hidden-item { opacity: 0.62; }
+  .da-thumb { width: 150px; flex: none; aspect-ratio: 16 / 9; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: var(--a-muted); font-size: 0.72rem; }
+  .da-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .da-form { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-start; margin: 0; }
+  .da-form .field { display: flex; flex-direction: column; gap: 3px; font-size: 0.8rem; }
+  .da-form .field.grow { flex: 1 1 260px; }
+  .da-form .field.small { flex: 0 0 96px; }
+  .da-form .field.full { flex: 1 1 100%; }
+  .da-form .field.pub { flex-direction: row; align-items: center; gap: 6px; align-self: center; }
+  .da-form .field.pub input { margin: 0; }
+  .da-form input[type="text"] { margin: 0; width: 100%; }
+  .da-form input[type="file"] { font-size: 0.76rem; }
+  .da-save { flex: 1 1 100%; margin-top: 2px; }
+  .da-actions { flex: none; display: flex; flex-direction: column; gap: 8px; }
+  .da-move { display: flex; gap: 4px; justify-content: center; }
+  .da-move button { min-width: 30px; }
+  @media (max-width: 720px) { .da-row { flex-direction: column; } .da-actions { flex-direction: row; justify-content: space-between; } }
+</style>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin">← Dashboard</a></p>
+        <h1>Demo archive</h1>
+        <p class="muted">Your older demo reels, listed on the <a href="/demo-archive" target="_blank" rel="noopener">Demo Archive page ↗</a> — reached from the “Demo Archive” button beside the Demo heading. Each one is the same full-width click-to-play embed as your main demo, with its title above it. The newest is added to the top; use the arrows to reorder. Your current demo stays on the main page and is set under <a href="/admin/demo">Demo video</a>.</p>
+        <% if (saved) { %><div class="alert ok">Saved. <a href="/demo-archive" target="_blank" rel="noopener">View page ↗</a></div><% } %>
+        <% if (err === 'embed') { %><div class="alert error">That YouTube link could not be read. Paste the full video URL (or its 11-character ID).</div><% } %>
+
+        <ul class="da-list">
+            <% items.forEach(function (it) { %>
+            <li class="da-row<%= it.published ? '' : ' hidden-item' %>">
+                <div class="da-thumb">
+                    <% if (it.poster_path) { %><img src="<%= it.poster_path %>" alt=""><% } else { %>no poster<% } %>
+                </div>
+                <form method="post" action="/admin/demo-archive/<%= it.id %>" enctype="multipart/form-data" class="da-form">
+                    <label class="field grow">Title <span class="muted">(shown above the video)</span>
+                        <input type="text" name="title" value="<%= it.title %>" placeholder="e.g. Demo Reel 2023">
+                    </label>
+                    <label class="field pub"><input type="checkbox" name="published" <%= it.published ? 'checked' : '' %>> Visible</label>
+                    <label class="field full">YouTube URL or ID
+                        <input type="text" name="youtube_id" value="<%= it.youtube_id %>" placeholder="https://www.youtube.com/watch?v=...">
+                    </label>
+                    <label class="field small">Width <input type="text" name="aspect_w" value="<%= it.aspect_w %>"></label>
+                    <label class="field small">Height <input type="text" name="aspect_h" value="<%= it.aspect_h %>"></label>
+                    <label class="field grow">Poster image path
+                        <input type="text" name="poster_path" value="<%= it.poster_path %>">
+                    </label>
+                    <label class="field grow">…or upload a new poster
+                        <input type="file" name="poster" accept="image/*">
+                    </label>
+                    <div class="da-save"><button class="btn-link btn-sm" type="submit">Save changes</button></div>
+                </form>
+                <div class="da-actions">
+                    <div class="da-move">
+                        <form method="post" action="/admin/demo-archive/<%= it.id %>/move" class="inline"><input type="hidden" name="dir" value="up"><button class="btn-link btn-sm" type="submit" title="Move up">↑</button></form>
+                        <form method="post" action="/admin/demo-archive/<%= it.id %>/move" class="inline"><input type="hidden" name="dir" value="down"><button class="btn-link btn-sm" type="submit" title="Move down">↓</button></form>
+                    </div>
+                    <form method="post" action="/admin/demo-archive/<%= it.id %>/delete" class="inline" onsubmit="return confirm('Remove this demo from the archive?');">
+                        <button class="btn-link btn-sm danger" type="submit">Delete</button>
+                    </form>
+                </div>
+            </li>
+            <% }); %>
+            <% if (!items.length) { %><li class="muted">No archived demos yet — add your first below.</li><% } %>
+        </ul>
+
+        <div class="card-inset">
+            <h3>Add a demo</h3>
+            <form method="post" action="/admin/demo-archive" enctype="multipart/form-data">
+                <label>Title <input type="text" name="title" placeholder="e.g. Demo Reel 2023" required></label>
+                <label>YouTube URL or ID <input type="text" name="youtube_id" placeholder="https://www.youtube.com/watch?v=..." required></label>
+                <div style="display:flex;gap:16px;">
+                    <label style="flex:1">Video width <input type="text" name="aspect_w" value="3840"></label>
+                    <label style="flex:1">Video height <input type="text" name="aspect_h" value="1646"></label>
+                </div>
+                <p class="muted" style="font-size:0.85rem;margin-top:-6px;">These set the player's shape so it fills the width with no black bars — e.g. <strong>3840 × 1646</strong> for an ultrawide reel, or <strong>1920 × 1080</strong> for a normal one.</p>
+                <label>Poster image <span class="muted">(shown before it plays)</span> <input type="file" name="poster" accept="image/*"></label>
+                <label class="checkbox"><input type="checkbox" name="published" checked> Visible on the site</label>
+                <button class="btn" type="submit">Add demo</button>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

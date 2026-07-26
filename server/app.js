@@ -11,6 +11,7 @@ const { loadPublicContext } = require('./services/content');
 const { getPublicRows } = require('./services/gallery');
 const { getPublicSplats, getPublicSplat } = require('./services/splats');
 const { getMarkers } = require('./services/pipeline');
+const { getPublicItems: getDemoArchive } = require('./services/demoarchive');
 const { UPLOADS_DIR } = require('./middleware/upload');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
@@ -198,6 +199,13 @@ function ogText(s) {
 app.get('/', attachSiteContext, (req, res) => {
   const owner = res.locals.settings.site_title || 'Max Ammon';
   res.render('public/index', { title: owner, contactStatus: req.query.contact || '', markers: getMarkers() });
+});
+
+// Demo Archive — past demo reels on their own page (linked from the Demo section).
+app.get('/demo-archive', attachSiteContext, (req, res) => {
+  const owner = res.locals.settings.site_title || 'Max Ammon';
+  res.locals.og = pageOg(res.locals.settings, 'demoarchive');
+  res.render('public/demo-archive', { title: owner + ' — Demo Archive', items: getDemoArchive() });
 });
 
 app.get('/gallery', attachSiteContext, (req, res) => {

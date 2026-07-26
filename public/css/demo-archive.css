@@ -1,0 +1,48 @@
+/* Demo Archive page — a vertical stack of past demo reels, each the same
+   full-width click-to-play embed as the main page's Demo section (that styling
+   comes from demo.css + the site stylesheet; this file only adds the page's
+   own rhythm and the per-entry titles). */
+
+#demo-archive {
+  padding-bottom: 40px;
+}
+
+/* Generous breathing room between entries so each reel reads on its own. */
+.da-entry {
+  padding-top: 70px;
+}
+.da-entry:first-of-type {
+  padding-top: 40px;
+}
+
+/* The title sits above its embed, centred, in the same face as the section
+   headings but a step down so the page heading still leads. */
+.da-title {
+  font-family: 'uni_light', sans-serif;
+  font-size: 2.6cap;
+  font-weight: normal;
+  text-align: center;
+  /* No explicit width: a block heading already fills the line, so the side
+     padding insets the text instead of adding to a 100% width (which would
+     push the page wider than the viewport). */
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 5vw 14px;
+  color: var(--secondarycolor);
+}
+
+@media (max-width: 2048px) {
+  .da-title {
+    font-size: 2.2cap;
+  }
+}
+
+@media (max-width: 1200px) {
+  .da-entry {
+    padding-top: 50px;
+  }
+  .da-title {
+    font-size: 2cap;
+    padding-bottom: 10px;
+  }
+}

@@ -9,7 +9,13 @@
 
     <section id="demo">
         <div style="padding-top:50px" class="nopadding">
-            <h2><%= content['demo.title'] %></h2>
+            <%# The archive link is an absolutely-positioned child of this
+                wrapper, so it rides beside the heading without taking part in
+                the layout — the embed below is completely unaffected. %>
+            <div class="demo-head">
+                <h2><%= content['demo.title'] %></h2>
+                <a class="demo-archive-link" href="/demo-archive"><%= content['demoarchive.button'] || 'Demo Archive' %></a>
+            </div>
             <p><%= content['demo.year'] %></p>
                 <div class="demobox">
                     <div class="demo-embed" data-youtube="<%= settings.demo_youtube_id %>" style="aspect-ratio: <%= settings.demo_aspect_w %> / <%= settings.demo_aspect_h %>;">

@@ -2,6 +2,53 @@
    The container's aspect-ratio matches the source video (e.g. 3840/1646), so
    the YouTube player fills it edge-to-edge with no letterbox / black bars. */
 
+/* "Demo Archive" link beside the Demo heading.
+   The wrapper only establishes a positioning context — it adds no size of its
+   own, and the link itself is absolutely positioned (out of flow), so the
+   heading, the year line and the embed below all keep their exact layout. */
+.demo-head {
+  position: relative;
+}
+
+.demo-archive-link {
+  position: absolute;
+  top: 50%;
+  right: clamp(16px, 3vw, 48px);
+  transform: translateY(-50%);
+  z-index: 1;
+  font-family: 'uni_regular', sans-serif;
+  font-size: 1.6cap;
+  line-height: 1;
+  color: var(--lightcolor);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 9px 18px;
+  border: 2px solid var(--lightcolor);
+  border-radius: 2px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, text-shadow 0.2s ease;
+}
+
+.demo-archive-link:hover {
+  transform: translateY(-50%) scale(1.05);
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.25);
+}
+
+@media (max-width: 1200px) {
+  .demo-archive-link {
+    font-size: 1.3cap;
+    padding: 7px 13px;
+  }
+}
+
+@media (max-width: 700px) {
+  .demo-archive-link {
+    font-size: 1.1cap;
+    padding: 6px 10px;
+    right: 10px;
+  }
+}
+
 .demobox .demo-embed {
   position: relative;
   width: 100%;

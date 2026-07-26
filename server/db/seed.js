@@ -101,6 +101,10 @@ const CONTENT = [
   ['gallery.journey.title', 'gallery', 'CG-journey bar — the label written down the bar (gallery timeline rail)', 'my cg journey', 'text'],
   ['gallery.journey.start_year', 'gallery', 'CG-journey bar — the year shown at the bottom of the bar', '2015', 'text'],
 
+  // Demo archive page (/demo-archive, reached from the button beside the Demo heading).
+  ['demoarchive.heading', 'demoarchive', 'Demo Archive page — heading', 'Demo Archive', 'text'],
+  ['demoarchive.button', 'demoarchive', 'Demo Archive — button label (Demo section)', 'Demo Archive', 'text'],
+
   // Gaussian Splats page (a separate /splats page, reached from the gallery header).
   ['splats.heading', 'splats', 'Gaussian Splats page — heading', 'Gaussian Splats', 'text'],
   ['splats.intro', 'splats', 'Gaussian Splats page — intro text (HTML)',
