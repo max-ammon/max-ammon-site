@@ -15,11 +15,12 @@ const gallery = require('../services/gallery');
 const splatsSvc = require('../services/splats');
 const demoArchive = require('../services/demoarchive');
 const photography = require('../services/photography');
+const geometry = require('../services/geometry');
 const messages = require('../services/messages');
 const mediaSvc = require('../services/media');
 const pipeline = require('../services/pipeline');
 const analytics = require('../services/analytics');
-const { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, uploadPhoto, toPublicPath } = require('../middleware/upload');
+const { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, uploadPhoto, uploadModel, toPublicPath } = require('../middleware/upload');
 const { parseYouTubeId, formatBytes } = require('../lib/format');
 const { SHARE_PAGES } = require('../lib/share-pages');
 const storage = require('../services/storage');
@@ -50,6 +51,7 @@ const SECTIONS = [
   { href: '/admin/gallery', title: 'Gallery', desc: 'Add projects, upload media, embed videos, arrange the gallery.' },
   { href: '/admin/photography', title: 'Photography', desc: 'Upload and arrange the photos on your Photography page, and set how many sit in a row.' },
   { href: '/admin/splats', title: 'Gaussian Splats', desc: 'Add and arrange the splats shown on your Gaussian Splats page.' },
+  { href: '/admin/geometry', title: '3D Geometry', desc: 'Upload glTF/GLB models people can rotate in the browser.' },
   { href: '/admin/messages', title: 'Messages', desc: 'Read messages sent through your contact form.' },
   { href: '/admin/analytics', title: 'Analytics', desc: 'Private, cookie-free visitor stats — views, top pages, and referrers.' },
   { href: '/admin/storage', title: 'Storage & backup', desc: 'See every stored file and what uses it, remove unused ones, and download a full backup.' },
@@ -641,6 +643,86 @@ router.post('/splats/:id/view', (req, res) => {
     return res.json({ ok: true, view: null });
   }
   const view = splatsSvc.setDefaultView(Number(req.params.id), req.body);
+  if (!view) return res.status(400).json({ ok: false, error: 'invalid view' });
+  res.json({ ok: true, view });
+});
+
+// --- 3D geometry -----------------------------------------------------------
+const modelFields = uploadModel.fields([{ name: 'thumb', maxCount: 1 }, { name: 'model', maxCount: 1 }]);
+
+function modelExt(file) {
+  const m = (file.originalname || '').match(/\.([a-z0-9]+)$/i);
+  return m ? m[1].toLowerCase() : '';
+}
+
+router.get('/geometry', (req, res) => {
+  res.render('admin/geometry', {
+    title: '3D Geometry',
+    models: geometry.listModels(),
+    saved: req.query.saved === '1',
+    err: req.query.err || '',
+  });
+});
+
+router.post('/geometry', modelFields, async (req, res) => {
+  const thumb = req.files && req.files.thumb && req.files.thumb[0];
+  const model = req.files && req.files.model && req.files.model[0];
+  if (!model) return res.redirect('/admin/geometry?err=nomodel');
+  const data = {
+    title: req.body.title,
+    year: req.body.year,
+    description: req.body.description,
+    model_path: toPublicPath(model.path),
+    model_format: modelExt(model),
+    published: req.body.published === 'on',
+  };
+  if (thumb) Object.assign(data, await thumbInfo(thumb));
+  geometry.createModel(data);
+  res.redirect('/admin/geometry?saved=1');
+});
+
+router.post('/geometry/:id', modelFields, async (req, res) => {
+  const thumb = req.files && req.files.thumb && req.files.thumb[0];
+  const model = req.files && req.files.model && req.files.model[0];
+  const data = {
+    title: req.body.title,
+    year: req.body.year,
+    description: req.body.description,
+    published: req.body.published === 'on',
+    auto_rotate: req.body.auto_rotate === 'on',
+    wireframe_ok: req.body.wireframe_ok === 'on',
+    background: req.body.background,
+  };
+  if (thumb) Object.assign(data, await thumbInfo(thumb));
+  if (model) {
+    data.model_path = toPublicPath(model.path);
+    data.model_format = modelExt(model);
+  }
+  geometry.updateModel(Number(req.params.id), data);
+  res.redirect('/admin/geometry?saved=1');
+});
+
+router.post('/geometry/:id/delete', (req, res) => {
+  geometry.deleteModel(Number(req.params.id));
+  res.redirect('/admin/geometry?saved=1');
+});
+
+router.post('/geometry/:id/move', (req, res) => {
+  geometry.moveModel(Number(req.params.id), req.body.dir === 'up' ? -1 : 1);
+  res.redirect('/admin/geometry');
+});
+
+// Called live by the viewer's owner-only lighting sliders and camera buttons.
+router.post('/geometry/:id/look', (req, res) => {
+  res.json({ ok: true, ...geometry.setLook(Number(req.params.id), req.body.exposure, req.body.env_intensity) });
+});
+
+router.post('/geometry/:id/view', (req, res) => {
+  if (req.body.clear) {
+    geometry.clearDefaultView(Number(req.params.id));
+    return res.json({ ok: true, view: null });
+  }
+  const view = geometry.setDefaultView(Number(req.params.id), req.body);
   if (!view) return res.status(400).json({ ok: false, error: 'invalid view' });
   res.json({ ok: true, view });
 });

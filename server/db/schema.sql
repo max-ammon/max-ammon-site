@@ -96,6 +96,29 @@ CREATE TABLE IF NOT EXISTS pipeline_markers (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- 3D geometry: glTF/GLB models listed on /geometry and opened in a three.js
+-- viewer. Mirrors the splats table — a thumbnail + the model file + text, plus
+-- the owner-set look (exposure, starting camera, environment brightness).
+CREATE TABLE IF NOT EXISTS models (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  title         TEXT NOT NULL DEFAULT '',
+  year          TEXT NOT NULL DEFAULT '',
+  description   TEXT NOT NULL DEFAULT '',
+  thumb_path    TEXT NOT NULL DEFAULT '',     -- static thumbnail for the card
+  aspect_ratio  REAL,                          -- thumbnail width/height
+  model_path    TEXT NOT NULL DEFAULT '',     -- the .glb / .gltf file
+  model_format  TEXT NOT NULL DEFAULT '',     -- lowercase extension
+  exposure      REAL NOT NULL DEFAULT 1,      -- tone-mapping exposure
+  env_intensity REAL NOT NULL DEFAULT 1,      -- environment lighting strength
+  background    TEXT NOT NULL DEFAULT '',     -- '' = viewer default, or a #hex
+  default_view  TEXT NOT NULL DEFAULT '',     -- owner-set starting camera (JSON)
+  auto_rotate   INTEGER NOT NULL DEFAULT 0,   -- 1 = gentle turntable on load
+  wireframe_ok  INTEGER NOT NULL DEFAULT 1,   -- 1 = offer the wireframe toggle
+  sort          INTEGER NOT NULL DEFAULT 0,
+  published     INTEGER NOT NULL DEFAULT 1,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Photography: a flat list of images shown on /photography, laid out in
 -- justified rows (the images-per-row count is the photography_columns setting).
 -- No viewer and no grouping — each row is simply one photo.

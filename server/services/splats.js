@@ -14,7 +14,7 @@ const qAll = db.prepare('SELECT * FROM splats ORDER BY sort, id');
 const qPublished = db.prepare('SELECT * FROM splats WHERE published = 1 ORDER BY sort, id');
 const qOne = db.prepare('SELECT * FROM splats WHERE id = ?');
 const qNextSort = db.prepare('SELECT COALESCE(MIN(sort), 1) - 1 AS s FROM splats'); // new items go to the top
-const qPathUse = db.prepare('SELECT COUNT(*) AS c FROM splats WHERE thumb_path = ? OR splat_path = ?');
+const storage = require('./storage');
 
 const insSplat = db.prepare(`INSERT INTO splats
   (title, year, description, thumb_path, aspect_ratio, splat_path, splat_format, sort, published, flip_up)
@@ -85,7 +85,7 @@ function setExposure(id, value) {
 // /uploads/ (never the bundled site assets), mirroring gallery.removeUploadIfUnused.
 function removeFileIfUnused(publicPath) {
   if (!publicPath || publicPath.indexOf('/uploads/') !== 0) return;
-  if (qPathUse.get(publicPath, publicPath).c > 0) return; // still referenced
+  if (storage.isReferenced(publicPath)) return; // still used somewhere on the site
   const disk = mediaSvc.resolvePublicPath(publicPath);
   if (!disk) return;
   try {

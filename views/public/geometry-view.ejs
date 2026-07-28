@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/head', { title: title }) %>
+    <link rel="stylesheet" href="/css/splat-view.css">
+    <link rel="stylesheet" href="/css/geometry-view.css">
+</head>
+<body class="splat-body">
+    <header class="splat-bar">
+        <a class="splat-back" href="/geometry">&larr; 3D Geometry</a>
+        <div class="splat-titlebox">
+            <span class="splat-title"><%= model.title %></span>
+            <% if (model.year) { %><span class="splat-year"><%= model.year %></span><% } %>
+        </div>
+        <div class="splat-tools">
+            <% if (isOwner) { %>
+            <label class="splat-exposure" title="Exposure — only you see this while logged in; it saves automatically">
+                <span class="splat-exposure-ic" aria-hidden="true">&#9728;</span>
+                <input type="range" id="geoExposure" min="0.1" max="3" step="0.05" value="<%= model.exposure || 1 %>" aria-label="Exposure">
+            </label>
+            <label class="splat-exposure" title="Environment light strength — only you see this while logged in; it saves automatically">
+                <span class="splat-exposure-ic" aria-hidden="true">&#9678;</span>
+                <input type="range" id="geoEnv" min="0" max="4" step="0.05" value="<%= model.env_intensity || 1 %>" aria-label="Environment light">
+            </label>
+            <button id="geoSetView" type="button" title="Save the current camera as the view everyone starts at">Set default view</button>
+            <button id="geoClearView" type="button" title="Go back to automatic framing"<%= model.view ? '' : ' hidden' %>>Clear</button>
+            <% } %>
+            <% if (model.wireframe_ok) { %><button id="geoWire" type="button" title="Toggle wireframe">Wireframe</button><% } %>
+            <button id="geoReset" type="button">Reset view</button>
+            <button id="geoFull" type="button" title="Fullscreen" aria-label="Fullscreen">&#9974;</button>
+        </div>
+    </header>
+
+    <main class="splat-stage" id="geoStage"
+          data-src="<%= model.model_url %>"
+          data-id="<%= model.id %>"
+          data-exposure="<%= model.exposure || 1 %>"
+          data-env="<%= model.env_intensity || 1 %>"
+          data-background="<%= model.background || '' %>"
+          data-autorotate="<%= model.auto_rotate ? '1' : '0' %>"
+          data-view="<%= model.view ? JSON.stringify(model.view) : '' %>">
+        <canvas id="geoCanvas"></canvas>
+
+        <div class="splat-loading" id="geoLoading"<% if (model.thumb_path) { %> style="background-image: url('<%= imgUrl(model.thumb_path, 1600) %>');"<% } %>>
+            <div class="splat-loading-inner">
+                <div class="splat-progress"><span class="splat-progress-bar" id="geoBar"></span></div>
+                <div class="splat-progress-label" id="geoLabel">Loading&hellip;</div>
+            </div>
+        </div>
+
+        <div class="splat-hint" id="geoHint">Drag to orbit &middot; scroll to zoom &middot; right-drag to pan</div>
+        <div class="geo-stats" id="geoStats" hidden></div>
+        <% if (model.description) { %>
+        <div class="splat-caption"><%- nl2br(model.description) %></div>
+        <% } %>
+        <div class="splat-error" id="geoError" hidden></div>
+    </main>
+
+    <%# three.js is an ES module, so it needs an import map. Both entries point at
+        this server (script-src 'self'); nothing is fetched from a CDN. %>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "/vendor/three/build/three.module.min.js",
+            "three/addons/": "/vendor/three/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="/js/geometry-viewer.js"></script>
+</body>
+</html>

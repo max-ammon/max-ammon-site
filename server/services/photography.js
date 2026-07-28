@@ -18,7 +18,7 @@ const qAll = db.prepare('SELECT * FROM photos ORDER BY sort, id');
 const qPublished = db.prepare('SELECT * FROM photos WHERE published = 1 ORDER BY sort, id');
 const qOne = db.prepare('SELECT * FROM photos WHERE id = ?');
 const qNextSort = db.prepare('SELECT COALESCE(MIN(sort), 1) - 1 AS s FROM photos'); // newest to the top
-const qPathUse = db.prepare('SELECT COUNT(*) AS c FROM photos WHERE image_path = ?');
+const storage = require('./storage');
 
 const insPhoto = db.prepare(`INSERT INTO photos
   (title, image_path, width, height, aspect_ratio, sort, published)
@@ -34,7 +34,7 @@ const DEFAULT_RATIO = 1.5; // sane fallback if the file couldn't be measured
 
 function removeFileIfUnused(publicPath) {
   if (!publicPath || publicPath.indexOf('/uploads/') !== 0) return;
-  if (qPathUse.get(publicPath).c > 0) return;
+  if (storage.isReferenced(publicPath)) return; // still used somewhere on the site
   const disk = mediaSvc.resolvePublicPath(publicPath);
   if (!disk) return;
   try {

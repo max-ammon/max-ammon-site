@@ -15,7 +15,7 @@ const qAll = db.prepare('SELECT * FROM demo_archive ORDER BY sort, id');
 const qPublished = db.prepare('SELECT * FROM demo_archive WHERE published = 1 ORDER BY sort, id');
 const qOne = db.prepare('SELECT * FROM demo_archive WHERE id = ?');
 const qNextSort = db.prepare('SELECT COALESCE(MIN(sort), 1) - 1 AS s FROM demo_archive'); // new entries to the top
-const qPosterUse = db.prepare('SELECT COUNT(*) AS c FROM demo_archive WHERE poster_path = ?');
+const storage = require('./storage');
 
 const insItem = db.prepare(`INSERT INTO demo_archive
   (title, youtube_id, aspect_w, aspect_h, poster_path, sort, published)
@@ -33,9 +33,7 @@ const setSort = db.prepare('UPDATE demo_archive SET sort = ? WHERE id = ?');
 // (those live under the same folder but are removed by their own editor).
 function removePosterIfUnused(publicPath) {
   if (!publicPath || publicPath.indexOf('/uploads/') !== 0) return;
-  if (qPosterUse.get(publicPath).c > 0) return;
-  const settingUse = db.prepare('SELECT COUNT(*) AS c FROM site_settings WHERE value = ?').get(publicPath);
-  if (settingUse && settingUse.c > 0) return;
+  if (storage.isReferenced(publicPath)) return; // still used somewhere on the site
   const disk = mediaSvc.resolvePublicPath(publicPath);
   if (!disk) return;
   try {

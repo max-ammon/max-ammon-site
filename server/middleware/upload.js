@@ -93,6 +93,23 @@ const uploadPipeline = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
 });
 
+// 3D geometry. Like the splat uploader, one instance handles the two files the
+// admin form posts together: a `thumb` image and the `model` itself (.glb/.gltf,
+// allow-listed by extension since 3D formats have no dependable mime type).
+const MODEL_EXTS = ['.glb', '.gltf'];
+const uploadModel = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, ensureDir(path.join(UPLOADS_DIR, 'models'))),
+    filename: (req, file, cb) => cb(null, crypto.randomUUID() + safeExt(file.originalname)),
+  }),
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === 'thumb') return cb(null, isImage(file));
+    if (file.fieldname === 'model') return cb(null, MODEL_EXTS.includes(safeExt(file.originalname)));
+    cb(null, false);
+  },
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB
+});
+
 // Photography page images. Their own folder so they're easy to spot in the
 // storage manager; several can be uploaded at once, and originals are kept
 // as-is (the /img route derives the sizes actually served).
@@ -134,4 +151,4 @@ function toPublicPath(diskPath) {
   return '/uploads/' + rel;
 }
 
-module.exports = { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, uploadPhoto, toPublicPath, UPLOADS_DIR, IMAGE_MIMES, VIDEO_MIMES };
+module.exports = { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, uploadPhoto, uploadModel, toPublicPath, UPLOADS_DIR, IMAGE_MIMES, VIDEO_MIMES };

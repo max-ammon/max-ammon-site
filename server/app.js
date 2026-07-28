@@ -13,6 +13,7 @@ const { getPublicSplats, getPublicSplat } = require('./services/splats');
 const { getMarkers } = require('./services/pipeline');
 const { getPublicItems: getDemoArchive } = require('./services/demoarchive');
 const photography = require('./services/photography');
+const geometry = require('./services/geometry');
 const { UPLOADS_DIR } = require('./middleware/upload');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
@@ -48,7 +49,12 @@ app.use(
         imgSrc: ["'self'", 'data:', 'https://img.youtube.com', 'https://i.ytimg.com'],
         mediaSrc: ["'self'"],
         objectSrc: ["'none'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", ...TURNSTILE_CSP],
+        // 'wasm-unsafe-eval' lets the 3D-geometry viewer compile its WebAssembly
+        // decoders (Draco geometry + KTX2/Basis textures, both self-hosted with
+        // three.js). It permits WebAssembly ONLY — it does not re-enable
+        // JavaScript eval()/new Function() — and script-src 'self' still means
+        // those .wasm files can only come from this server.
+        scriptSrc: ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'", ...TURNSTILE_CSP],
         scriptSrcAttr: ["'unsafe-inline'"], // inline onsubmit/onclick confirm() handlers
         styleSrc: ["'self'", "'unsafe-inline'"],
         connectSrc: ["'self'", ...TURNSTILE_CSP],
@@ -132,6 +138,15 @@ app.use(gate.guard);
 const revalidate = (res) => res.setHeader('Cache-Control', 'no-cache');
 app.use('/', imgRoutes); // resized/WebP image derivatives, before the disk lookup
 app.use(express.static(PUBLIC_DIR, { setHeaders: revalidate }));
+// three.js for the 3D-geometry viewer, served from the installed package (MIT).
+// Versioned by the package itself and never edited, so it can cache hard.
+app.use(
+  '/vendor/three',
+  express.static(path.join(ROOT, 'node_modules', 'three'), {
+    index: false,
+    setHeaders: (res) => res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'),
+  })
+);
 app.use('/uploads', express.static(UPLOADS_DIR, { setHeaders: revalidate }));
 // No `extensions:['html']` here, so /gallery falls through to the template route.
 app.use(express.static(SITE_DIR, { index: false, setHeaders: revalidate }));
@@ -225,6 +240,29 @@ app.get('/photography', attachSiteContext, (req, res) => {
     rows: photography.toRows(photography.getPublicPhotos(), cols),
     cols,
   });
+});
+
+// 3D Geometry — glTF/GLB models, listed then opened in the three.js viewer.
+app.get('/geometry', attachSiteContext, (req, res) => {
+  const owner = res.locals.settings.site_title || 'Max Ammon';
+  res.locals.og = pageOg(res.locals.settings, 'geometry');
+  res.render('public/geometry', { title: owner + ' — 3D Geometry', models: geometry.getPublicModels() });
+});
+
+// One model in the viewer. Same shape as the splat viewer route: cosmetic slug,
+// authoritative id, and a per-model social card built from its own data.
+app.get(['/geometry/:id', '/geometry/:id/:slug'], attachSiteContext, (req, res) => {
+  const model = geometry.getPublicModel(req.params.id);
+  if (!model) return res.redirect('/geometry');
+  const owner = res.locals.settings.site_title || 'Max Ammon';
+  res.locals.og = {
+    title: model.title || owner + ' — 3D Geometry',
+    description: ogText(model.description),
+    image: model.thumb_path || '',
+    url: model.view_url,
+  };
+  const isOwner = !!(req.session && req.session.userId);
+  res.render('public/geometry-view', { title: model.title + ' — ' + owner, model, isOwner });
 });
 
 // Gaussian Splats — a separate listing page (reached from the gallery header).

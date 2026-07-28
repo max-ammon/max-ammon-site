@@ -1,0 +1,46 @@
+/* 3D geometry viewer — reuses the splat viewer's page shell (splat-view.css)
+   and only adds what's specific to models. */
+
+#geoCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+#geoCanvas:active {
+  cursor: grabbing;
+}
+
+/* Wireframe toggle reads as "on" while active. */
+.splat-tools button.is-on {
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Mesh/triangle count, bottom-right — a quiet detail for a 3D audience. */
+.geo-stats {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(10, 12, 16, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #b9bec4;
+  font-family: 'uni_regular', sans-serif;
+  font-size: 0.76rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@media (max-width: 600px) {
+  .geo-stats {
+    right: 10px;
+    bottom: 10px;
+    font-size: 0.7rem;
+  }
+}

@@ -72,8 +72,26 @@ nav { padding-inline: clamp(24px, 2.5vw, 48px); }
    (The #name gap is an inline style, so it needs !important — same as the
    mobile rules below.) */
 @media (min-width: 1201px) and (max-width: 1460px) {
-  nav #name { gap: clamp(24px, 4.5vw, 66px) !important; }
-  nav li { padding-left: 1.5rem; }
+  nav #name { gap: clamp(20px, 3.4vw, 66px) !important; }
+  nav li { padding-left: clamp(0.9rem, 1.5vw, 1.5rem); }
+  /* Safety valve for the showcase headers, which carry five links: drop the
+     inline max-content width so they can wrap to a second line rather than
+     pushing the page sideways. The bar is centred, so a wrapped line still sits
+     within the title's height and the header keeps its steady ~74px. */
+  nav ul { flex-wrap: wrap; justify-content: flex-end; max-width: none !important; }
+}
+
+/* The showcase headers (Gallery / Photography / Gaussian Splats / 3D Geometry /
+   back) carry five links — more than the main page — so they need the same
+   treatment across a wider band. Scoped to .nav-showcase so the main page's
+   header is untouched at these widths. */
+@media (min-width: 1461px) and (max-width: 1800px) {
+  nav ul.nav-showcase {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: none !important;
+  }
+  nav ul.nav-showcase li { padding-left: clamp(1.1rem, 1.7vw, 3rem); }
 }
 
 /* Scrollspy: glow the header link whose section is currently in view (driven by

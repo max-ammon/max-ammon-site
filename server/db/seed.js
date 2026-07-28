@@ -111,6 +111,11 @@ const CONTENT = [
   ['demoarchive.heading', 'demoarchive', 'Demo Archive page — heading', 'Demo Archive', 'text'],
   ['demoarchive.button', 'demoarchive', 'Demo Archive — button label (Demo section)', 'Demo Archive', 'text'],
 
+  // 3D Geometry page (a separate /geometry page, reached from the showcase headers).
+  ['geometry.heading', 'geometry', '3D Geometry page — heading', '3D Geometry', 'text'],
+  ['geometry.intro', 'geometry', '3D Geometry page — intro text (HTML)',
+    'Models you can turn around in your browser — drag to orbit, scroll to zoom.', 'html'],
+
   // Gaussian Splats page (a separate /splats page, reached from the gallery header).
   ['splats.heading', 'splats', 'Gaussian Splats page — heading', 'Gaussian Splats', 'text'],
   ['splats.intro', 'splats', 'Gaussian Splats page — intro text (HTML)',

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/head', { title: title }) %>
+    <link rel="stylesheet" href="/css/gallery.css">
+    <link rel="stylesheet" href="/css/splats.css">
+</head>
+<body>
+<%- include('../partials/nav', { navVariant: 'geometry' }) %>
+
+<section id="geometry">
+    <div style="padding-top: 50px; text-align: center;">
+        <h2><%= content['geometry.heading'] || '3D Geometry' %></h2>
+        <% if (content['geometry.intro']) { %>
+        <p class="secondarytitle" style="max-width: 820px; margin: 0 auto; padding: 15px 5vw 0; font-size: 1.4cap; line-height: 1.5;"><%- content['geometry.intro'] %></p>
+        <% } %>
+    </div>
+
+    <% if (!models || !models.length) { %>
+    <div style="padding: 60px 5vw 100px; text-align: center;">
+        <p class="secondarytitle">No models have been added yet.</p>
+    </div>
+    <% } else { %>
+    <%# Same static card layout as the Gaussian Splats listing (gallery.css card
+        styling via id="projects", splats.css for the link/placeholder bits), so
+        the two showcase pages read identically. %>
+    <div id="projects">
+        <% for (var i = 0; i < models.length; i += 2) { %>
+        <div class="project-layout0">
+            <% for (var j = i; j < Math.min(i + 2, models.length); j++) { var m = models[j]; %>
+            <div class="project" data-model-id="<%= m.id %>">
+                <div class="project-media">
+                    <a class="splat-open" href="<%= m.view_url %>" aria-label="Open <%= m.title %> in the 3D viewer">
+                    <div class="image-container">
+                        <div class="image-preview">
+                            <% if (m.thumb_path) { %>
+                            <img class="thumbnail current-image" style="aspect-ratio: <%= m.ratio %>;"
+                                 loading="lazy" decoding="async"
+                                 src="<%= imgUrl(m.thumb_path, 800) %>"
+                                 srcset="<%= imgSrcset(m.thumb_path, [480, 800, 1200]) %>"
+                                 sizes="(max-width: 1200px) 90vw, 700px"
+                                 alt="<%= m.title %>">
+                            <% } else { %>
+                            <div class="splat-noimg" style="aspect-ratio: <%= m.ratio %>;" aria-hidden="true">3D</div>
+                            <% } %>
+                        </div>
+                    </div>
+                    </a>
+                </div>
+                <div class="project-text">
+                    <h3 class="nopadding"><a class="splat-title-link" href="<%= m.view_url %>"><%= m.title %></a></h3>
+                    <% if (m.year) { %><h4 class="nopadding"><%= m.year %></h4><% } %>
+                    <% if (m.description) { %><p style="text-align: left; padding-top: 5%;" class="nopadding"><%- nl2br(m.description) %></p><% } %>
+                </div>
+            </div>
+            <% } %>
+        </div>
+        <% } %>
+    </div>
+    <% } %>
+</section>
+
+<%- include('../partials/footer-bar') %>
+</body>
+</html>

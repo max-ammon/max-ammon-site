@@ -122,6 +122,20 @@ function referencedMap() {
   return map;
 }
 
+/*
+ * Is this uploaded file still used ANYWHERE on the site?
+ *
+ * Each feature used to check only its own table when cleaning up, which meant a
+ * file shared between two features (e.g. a gallery image also set as a splat or
+ * model thumbnail, or pasted into a "poster path" field) could be deleted while
+ * something else still pointed at it. Every delete path now asks this instead.
+ */
+function isReferenced(publicPath) {
+  const n = normalizePath(publicPath);
+  if (!n) return false;
+  return referencedMap().has(n);
+}
+
 function dirSize(dir) {
   let bytes = 0;
   let count = 0;
@@ -330,6 +344,7 @@ async function backupToStream(dest) {
 }
 
 module.exports = {
+  isReferenced,
   scan,
   deleteUnused,
   deleteAllUnused,

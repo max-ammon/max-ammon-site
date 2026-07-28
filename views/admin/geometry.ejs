@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+<style>
+  .geo-list { list-style: none; padding: 0; margin: 0 0 26px; }
+  .geo-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px; background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 8px; margin-bottom: 12px; }
+  .geo-row.hidden-item { opacity: 0.62; }
+  .geo-thumb { width: 132px; height: 88px; flex: none; background: rgba(255,255,255,0.06); border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--a-muted); font-size: 0.72rem; }
+  .geo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .geo-form { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-start; margin: 0; }
+  .geo-form .field { display: flex; flex-direction: column; gap: 3px; font-size: 0.8rem; }
+  .geo-form .field.grow { flex: 1 1 240px; }
+  .geo-form .field.small { flex: 0 0 110px; }
+  .geo-form .field.full { flex: 1 1 100%; }
+  .geo-form .field.chk { flex-direction: row; align-items: center; gap: 6px; align-self: center; }
+  .geo-form .field.chk input { margin: 0; }
+  .geo-form input[type="text"], .geo-form textarea { margin: 0; width: 100%; }
+  .geo-form input[type="color"] { margin: 0; width: 46px; height: 30px; padding: 2px; }
+  .geo-form textarea { min-height: 60px; resize: vertical; }
+  .geo-form input[type="file"] { font-size: 0.76rem; }
+  .geo-meta { font-size: 0.72rem; color: var(--a-muted); margin-top: 2px; }
+  .geo-meta.warn { color: #d9534f; }
+  .geo-save { flex: 1 1 100%; margin-top: 2px; }
+  .geo-actions { flex: none; display: flex; flex-direction: column; gap: 8px; }
+  .geo-move { display: flex; gap: 4px; justify-content: center; }
+  .geo-move button { min-width: 30px; }
+  .danger { color: #d9534f; }
+  @media (max-width: 720px) { .geo-row { flex-direction: column; } .geo-actions { flex-direction: row; justify-content: space-between; } }
+</style>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin">← Dashboard</a></p>
+        <h1>3D Geometry</h1>
+        <p class="muted">Models on your <a href="/geometry" target="_blank" rel="noopener">3D Geometry page ↗</a>, each opened in a viewer people can turn around. Upload <strong>glTF / GLB</strong> (export from Blender, Maya, 3ds Max…) plus a <strong>thumbnail</strong> for its card. Open a model while logged in to set its lighting and starting camera — those save automatically.</p>
+        <div class="card-inset" style="margin-bottom:18px;">
+            <h3 style="margin-top:0;">Getting the best result</h3>
+            <ul class="muted" style="margin:0; padding-left:18px; line-height:1.6;">
+                <li><strong>Bake procedural materials to textures.</strong> Shader-graph noise, geometry nodes and OSL don't survive the export — only image maps do.</li>
+                <li><strong>Keep it light.</strong> Aim under ~25&nbsp;MB and 2K textures. Draco (geometry) and KTX2 (textures) compression are both supported and make a big difference on phones.</li>
+                <li><strong>PBR metallic-roughness</strong> is the material model: base colour, metalness, roughness, normal, occlusion, emissive — plus glass, clearcoat and sheen via glTF extensions.</li>
+                <li><strong>No displacement or subdivision at render time</strong> — apply those before exporting; normal maps carry the fine detail.</li>
+            </ul>
+        </div>
+        <% if (saved) { %><div class="alert ok">Saved. <a href="/geometry" target="_blank" rel="noopener">View page ↗</a></div><% } %>
+        <% if (err === 'nomodel') { %><div class="alert error">No model file was added. Choose a .glb or .gltf file.</div><% } %>
+
+        <ul class="geo-list">
+            <% models.forEach(function (m) { %>
+            <li class="geo-row<%= m.published ? '' : ' hidden-item' %>">
+                <div class="geo-thumb">
+                    <% if (m.thumb_path) { %><img src="<%= m.thumb_path %>" alt=""><% } else { %>no thumb<% } %>
+                </div>
+                <form method="post" action="/admin/geometry/<%= m.id %>" enctype="multipart/form-data" class="geo-form">
+                    <label class="field grow">Title
+                        <input type="text" name="title" value="<%= m.title %>" placeholder="Model title">
+                    </label>
+                    <label class="field small">Year
+                        <input type="text" name="year" value="<%= m.year %>" placeholder="2025">
+                    </label>
+                    <label class="field chk"><input type="checkbox" name="published" <%= m.published ? 'checked' : '' %>> Visible</label>
+                    <label class="field full">Description
+                        <textarea name="description" placeholder="A short description of this model."><%= m.description %></textarea>
+                    </label>
+                    <label class="field chk"><input type="checkbox" name="auto_rotate" <%= m.auto_rotate ? 'checked' : '' %>> Turntable on load</label>
+                    <label class="field chk"><input type="checkbox" name="wireframe_ok" <%= m.wireframe_ok ? 'checked' : '' %>> Offer wireframe</label>
+                    <label class="field chk">Background
+                        <input type="color" name="background" value="<%= m.background || '#0b0d10' %>">
+                    </label>
+                    <label class="field grow">Replace thumbnail <span class="muted">(optional)</span>
+                        <input type="file" name="thumb" accept="image/*">
+                    </label>
+                    <label class="field grow">Replace model <span class="muted">(optional)</span>
+                        <input type="file" name="model" accept=".glb,.gltf">
+                        <span class="geo-meta<%= m.model_exists ? '' : ' warn' %>">
+                            <% if (m.model_exists) { %>Current: <%= (m.model_format || 'file').toUpperCase() %><% if (m.model_size) { %> · <%= m.model_size %><% } %><% if (m.default_view) { %> · camera set<% } %><% } else { %>⚠ model file missing<% } %>
+                        </span>
+                    </label>
+                    <div class="geo-save"><button class="btn-link btn-sm" type="submit">Save changes</button></div>
+                </form>
+                <div class="geo-actions">
+                    <div class="geo-move">
+                        <form method="post" action="/admin/geometry/<%= m.id %>/move" class="inline"><input type="hidden" name="dir" value="up"><button class="btn-link btn-sm" type="submit" title="Move up">↑</button></form>
+                        <form method="post" action="/admin/geometry/<%= m.id %>/move" class="inline"><input type="hidden" name="dir" value="down"><button class="btn-link btn-sm" type="submit" title="Move down">↓</button></form>
+                    </div>
+                    <a class="btn-link btn-sm" href="/geometry/<%= m.id %>" target="_blank" rel="noopener">Open ↗</a>
+                    <form method="post" action="/admin/geometry/<%= m.id %>/delete" class="inline" onsubmit="return confirm('Delete this model and its files?');">
+                        <button class="btn-link btn-sm danger" type="submit">Delete</button>
+                    </form>
+                </div>
+            </li>
+            <% }); %>
+            <% if (!models.length) { %><li class="muted">No models added yet — add your first below.</li><% } %>
+        </ul>
+
+        <div class="card-inset">
+            <h3>Add a model</h3>
+            <form method="post" action="/admin/geometry" enctype="multipart/form-data">
+                <label>Title <input type="text" name="title" placeholder="e.g. Vintage Camera" required></label>
+                <label>Year <span class="muted">(optional)</span> <input type="text" name="year" placeholder="2025"></label>
+                <label>Description <span class="muted">(optional)</span> <textarea name="description" rows="3" placeholder="A short description of this model."></textarea></label>
+                <label>Thumbnail image <span class="muted">(shown on the card)</span> <input type="file" name="thumb" accept="image/*" required></label>
+                <label>Model file <span class="muted">(.glb recommended — a single self-contained file)</span> <input type="file" name="model" accept=".glb,.gltf" required></label>
+                <label class="checkbox"><input type="checkbox" name="published" checked> Visible on the site</label>
+                <button class="btn" type="submit">Add model</button>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

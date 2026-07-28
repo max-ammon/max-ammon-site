@@ -212,15 +212,13 @@ function updateProject(id, data) {
 
 // Delete an uploaded file once nothing references it any more. Only ever
 // touches /uploads — the original /assets media is never removed.
-const qPathInMedia = db.prepare('SELECT COUNT(*) AS c FROM media_items WHERE full_path = ? OR preview_path = ?');
-const qPathInDownloads = db.prepare('SELECT COUNT(*) AS c FROM media_downloads WHERE file_path = ?');
-const qPathInSettings = db.prepare('SELECT COUNT(*) AS c FROM site_settings WHERE value = ?');
+// Site-wide reference check (every table + settings + text), so a file the
+// gallery shares with another feature is never pulled out from under it.
+const storage = require('./storage');
 
 function removeUploadIfUnused(publicPath) {
   if (!publicPath || publicPath.indexOf('/uploads/') !== 0) return;
-  if (qPathInMedia.get(publicPath, publicPath).c > 0) return;
-  if (qPathInDownloads.get(publicPath).c > 0) return;
-  if (qPathInSettings.get(publicPath).c > 0) return;
+  if (storage.isReferenced(publicPath)) return;
   const disk = mediaSvc.resolvePublicPath(publicPath);
   if (!disk) return;
   try {

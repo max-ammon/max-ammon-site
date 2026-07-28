@@ -7,14 +7,15 @@
 <%# The three showcase pages share one header listing all of them in a fixed
     order, with the page you're on glowing via the same .nav-current style the
     main page's scrollspy uses. %>
-<% if (variant === 'gallery' || variant === 'photography' || variant === 'splats') {
+<% if (variant === 'gallery' || variant === 'photography' || variant === 'splats' || variant === 'geometry') {
      var showcase = [
        { key: 'gallery', href: '/gallery', label: 'Gallery' },
        { key: 'photography', href: '/photography', label: 'Photography' },
        { key: 'splats', href: '/splats', label: 'Gaussian Splats' },
+       { key: 'geometry', href: '/geometry', label: '3D Geometry' },
      ];
 %>
-        <ul style="font-size:2cap;max-width: max-content;" class="headerbox nopadding">
+        <ul style="font-size:2cap;max-width: max-content;" class="headerbox nopadding nav-showcase">
             <% showcase.forEach(function (s) { var here = s.key === variant; %>
             <li><a href="<%= s.href %>"<%- here ? ' class="nav-current" aria-current="page"' : '' %>><%= s.label %></a></li>
             <% }); %>

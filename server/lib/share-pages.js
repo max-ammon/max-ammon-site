@@ -38,6 +38,12 @@ const SHARE_PAGES = [
     path: '/splats',
     blurb: 'The card for the Gaussian Splats page. (Individual splats already preview themselves.)',
   },
+  {
+    key: 'geometry',
+    label: '3D Geometry',
+    path: '/geometry',
+    blurb: 'The card for the 3D Geometry page. (Individual models already preview themselves.)',
+  },
 ];
 
 // Per-page OG override built from the settings map. Empty fields stay empty and
