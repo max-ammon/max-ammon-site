@@ -79,6 +79,9 @@ nav { padding-inline: clamp(24px, 2.5vw, 48px); }
      pushing the page sideways. The bar is centred, so a wrapped line still sits
      within the title's height and the header keeps its steady ~74px. */
   nav ul { flex-wrap: wrap; justify-content: flex-end; max-width: none !important; }
+  /* The showcase headers carry five, longer labels — give them a little more
+     room to stay on the same number of lines as the bar's own height allows. */
+  nav ul.nav-showcase li { padding-left: clamp(0.6rem, 1.2vw, 1.5rem); }
 }
 
 /* The showcase headers (Gallery / Photography / Gaussian Splats / 3D Geometry /
