@@ -96,6 +96,21 @@ CREATE TABLE IF NOT EXISTS pipeline_markers (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Photography: a flat list of images shown on /photography, laid out in
+-- justified rows (the images-per-row count is the photography_columns setting).
+-- No viewer and no grouping — each row is simply one photo.
+CREATE TABLE IF NOT EXISTS photos (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  title        TEXT NOT NULL DEFAULT '',   -- also used as the image's alt text
+  image_path   TEXT NOT NULL DEFAULT '',
+  width        INTEGER,
+  height       INTEGER,
+  aspect_ratio REAL,                        -- width/height; drives the justified rows
+  sort         INTEGER NOT NULL DEFAULT 0,
+  published    INTEGER NOT NULL DEFAULT 1,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Demo archive: past demo reels, listed on /demo-archive. Each is the same
 -- click-to-play YouTube embed as the main page's demo (poster + play button,
 -- full page width), with its own title above it.

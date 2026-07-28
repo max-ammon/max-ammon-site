@@ -14,11 +14,12 @@ const {
 const gallery = require('../services/gallery');
 const splatsSvc = require('../services/splats');
 const demoArchive = require('../services/demoarchive');
+const photography = require('../services/photography');
 const messages = require('../services/messages');
 const mediaSvc = require('../services/media');
 const pipeline = require('../services/pipeline');
 const analytics = require('../services/analytics');
-const { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, toPublicPath } = require('../middleware/upload');
+const { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, uploadPhoto, toPublicPath } = require('../middleware/upload');
 const { parseYouTubeId, formatBytes } = require('../lib/format');
 const { SHARE_PAGES } = require('../lib/share-pages');
 const storage = require('../services/storage');
@@ -47,6 +48,7 @@ const SECTIONS = [
   { href: '/admin/demo-archive', title: 'Demo archive', desc: 'Collect your older demo reels on their own page, linked from the Demo section.' },
   { href: '/admin/social', title: 'Social preview', desc: 'The image, title and text shown when your link is shared (LinkedIn, Discord, …).' },
   { href: '/admin/gallery', title: 'Gallery', desc: 'Add projects, upload media, embed videos, arrange the gallery.' },
+  { href: '/admin/photography', title: 'Photography', desc: 'Upload and arrange the photos on your Photography page, and set how many sit in a row.' },
   { href: '/admin/splats', title: 'Gaussian Splats', desc: 'Add and arrange the splats shown on your Gaussian Splats page.' },
   { href: '/admin/messages', title: 'Messages', desc: 'Read messages sent through your contact form.' },
   { href: '/admin/analytics', title: 'Analytics', desc: 'Private, cookie-free visitor stats — views, top pages, and referrers.' },
@@ -234,6 +236,57 @@ router.post('/demo', uploadSiteImage.single('poster'), (req, res) => {
   else if (req.body.demo_poster) updates.demo_poster = req.body.demo_poster;
   updateSettings(updates);
   res.redirect('/admin/demo?saved=1');
+});
+
+// --- Photography -----------------------------------------------------------
+router.get('/photography', (req, res) => {
+  const settings = getSettingsMap();
+  res.render('admin/photography', {
+    title: 'Photography',
+    photos: photography.listPhotos(),
+    columns: photography.columnsFrom(settings),
+    saved: req.query.saved === '1',
+    err: req.query.err || '',
+  });
+});
+
+// Several photos can be uploaded at once; each becomes its own entry, measured
+// so the page can lay them out in justified rows.
+router.post('/photography', uploadPhoto.array('photos', 40), async (req, res) => {
+  const files = req.files || [];
+  if (!files.length) return res.redirect('/admin/photography?err=nofile');
+  try {
+    for (const f of files) {
+      const dim = await mediaSvc.imageSize(f.path);
+      photography.addPhoto({ image_path: toPublicPath(f.path), width: dim.width, height: dim.height });
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('photo upload error:', e.message);
+    return res.redirect('/admin/photography?err=upload');
+  }
+  res.redirect('/admin/photography?saved=1');
+});
+
+router.post('/photography/columns', (req, res) => {
+  const n = parseInt(req.body.photography_columns, 10);
+  if (isFinite(n) && n >= 1 && n <= 4) updateSettings({ photography_columns: String(n) });
+  res.redirect('/admin/photography?saved=1');
+});
+
+router.post('/photography/:id', (req, res) => {
+  photography.updatePhoto(Number(req.params.id), { title: req.body.title, published: req.body.published === 'on' });
+  res.redirect('/admin/photography?saved=1');
+});
+
+router.post('/photography/:id/delete', (req, res) => {
+  photography.deletePhoto(Number(req.params.id));
+  res.redirect('/admin/photography?saved=1');
+});
+
+router.post('/photography/:id/move', (req, res) => {
+  photography.movePhoto(Number(req.params.id), req.body.dir === 'up' ? -1 : 1);
+  res.redirect('/admin/photography');
 });
 
 // --- Demo archive ----------------------------------------------------------

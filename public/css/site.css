@@ -63,6 +63,19 @@ nav { align-items: center; }
    gently with the viewport. The mobile rules below override it on small screens. */
 nav { padding-inline: clamp(24px, 2.5vw, 48px); }
 
+/* Narrow-desktop header fit.
+   Between the mobile rules (<=1200px) and a roomy desktop, the header's fixed
+   sizes — the 200px gap in #name and 3rem per nav link — added up to more than
+   the viewport (measured: it needs ~1450px, so 1201-1450px overflowed sideways).
+   Shrink just those two spacings across that band; everything from ~1461px up
+   keeps the original 200px / 3rem exactly, so the desktop look is untouched.
+   (The #name gap is an inline style, so it needs !important — same as the
+   mobile rules below.) */
+@media (min-width: 1201px) and (max-width: 1460px) {
+  nav #name { gap: clamp(24px, 4.5vw, 66px) !important; }
+  nav li { padding-left: 1.5rem; }
+}
+
 /* Scrollspy: glow the header link whose section is currently in view (driven by
    /js/scrollspy.js), using the same text-shadow the links get on hover, so a
    visitor can see where they are on the page. The short fade also gives the

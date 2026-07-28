@@ -12,6 +12,7 @@ const { getPublicRows } = require('./services/gallery');
 const { getPublicSplats, getPublicSplat } = require('./services/splats');
 const { getMarkers } = require('./services/pipeline');
 const { getPublicItems: getDemoArchive } = require('./services/demoarchive');
+const photography = require('./services/photography');
 const { UPLOADS_DIR } = require('./middleware/upload');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
@@ -212,6 +213,18 @@ app.get('/gallery', attachSiteContext, (req, res) => {
   const owner = res.locals.settings.site_title || 'Max Ammon';
   res.locals.og = pageOg(res.locals.settings, 'gallery');
   res.render('public/gallery', { title: owner + "'s Gallery", rows: getPublicRows(), currentYear: new Date().getFullYear() });
+});
+
+// Photography — a separate page of photos (reached from the gallery/splats headers).
+app.get('/photography', attachSiteContext, (req, res) => {
+  const owner = res.locals.settings.site_title || 'Max Ammon';
+  const cols = photography.columnsFrom(res.locals.settings);
+  res.locals.og = pageOg(res.locals.settings, 'photography');
+  res.render('public/photography', {
+    title: owner + ' — Photography',
+    rows: photography.toRows(photography.getPublicPhotos(), cols),
+    cols,
+  });
 });
 
 // Gaussian Splats — a separate listing page (reached from the gallery header).

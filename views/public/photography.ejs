@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/head', { title: title }) %>
+    <link rel="stylesheet" href="/css/photography.css">
+</head>
+<body>
+<%- include('../partials/nav', { navVariant: 'photography' }) %>
+
+<section id="photography">
+    <div style="padding-top: 50px; text-align: center;">
+        <h2><%= content['photography.heading'] || 'Photography' %></h2>
+        <% if (content['photography.intro']) { %>
+        <p class="secondarytitle" style="max-width: 820px; margin: 0 auto; padding: 15px 5vw 0; font-size: 1.4cap; line-height: 1.5;"><%- content['photography.intro'] %></p>
+        <% } %>
+    </div>
+
+    <% if (!rows || !rows.length) { %>
+    <div style="padding: 60px 5vw 100px; text-align: center;">
+        <p class="secondarytitle">No photos have been added yet.</p>
+    </div>
+    <% } else { %>
+    <%# Justified rows: within a row every image is scaled to the same height and
+        its width comes from its own aspect ratio (flex-grow: ratio), so the row
+        fills the page width exactly and nothing is cropped. A short final row is
+        padded with invisible spacers so its photos keep the size of the rows
+        above instead of stretching. %>
+    <div class="photo-rows">
+        <% rows.forEach(function (row) { %>
+        <div class="photo-row">
+            <% row.items.forEach(function (p) { %>
+            <figure class="photo-item" style="flex-grow: <%= p.ratio %>;">
+                <img src="<%= imgUrl(p.image_path, 1200) %>"
+                     srcset="<%= imgSrcset(p.image_path, [480, 800, 1200, 1600, 2400]) %>"
+                     sizes="(max-width: 700px) 100vw, <%= Math.round(100 / cols) %>vw"
+                     style="aspect-ratio: <%= p.ratio %>;"
+                     loading="lazy" decoding="async" alt="<%= p.title %>">
+            </figure>
+            <% }); %>
+            <% for (var s = 0; s < row.spacers; s++) { %><span class="photo-spacer" aria-hidden="true"></span><% } %>
+        </div>
+        <% }); %>
+    </div>
+    <% } %>
+</section>
+
+<%- include('../partials/footer-bar') %>
+</body>
+</html>

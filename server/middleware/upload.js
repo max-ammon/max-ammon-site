@@ -93,6 +93,18 @@ const uploadPipeline = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
 });
 
+// Photography page images. Their own folder so they're easy to spot in the
+// storage manager; several can be uploaded at once, and originals are kept
+// as-is (the /img route derives the sizes actually served).
+const uploadPhoto = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, ensureDir(path.join(UPLOADS_DIR, 'photography'))),
+    filename: (req, file, cb) => cb(null, crypto.randomUUID() + safeExt(file.originalname)),
+  }),
+  fileFilter: (req, file, cb) => cb(null, isImage(file)),
+  limits: { fileSize: 80 * 1024 * 1024 }, // 80 MB per photo
+});
+
 // Gaussian splats. One uploader handles the two very different files the admin
 // form posts together: a normal image `thumb`, and the `splat` point-cloud file
 // itself (stored untouched). Splat formats have no dependable mime type, so the
@@ -122,4 +134,4 @@ function toPublicPath(diskPath) {
   return '/uploads/' + rel;
 }
 
-module.exports = { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, toPublicPath, UPLOADS_DIR, IMAGE_MIMES, VIDEO_MIMES };
+module.exports = { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, uploadPhoto, toPublicPath, UPLOADS_DIR, IMAGE_MIMES, VIDEO_MIMES };

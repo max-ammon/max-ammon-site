@@ -1,0 +1,62 @@
+/* Photography page — justified rows of photos.
+
+   Each row is a flex line whose items grow in proportion to their aspect ratio
+   (set inline per photo). Because width ∝ ratio and height = width / ratio,
+   every photo in a row ends up the SAME height while the row fills the width
+   exactly — so portrait and landscape shots mix cleanly with no cropping and no
+   ragged right edge. The number of photos per row comes from the dashboard. */
+
+.photo-rows {
+  --photo-gap: clamp(8px, 0.9vw, 18px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--photo-gap);
+  padding: 40px clamp(10px, 2vw, 40px) 90px;
+}
+
+.photo-row {
+  display: flex;
+  gap: var(--photo-gap);
+  align-items: flex-start;
+}
+
+.photo-item {
+  flex-basis: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.photo-item img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 2px;
+}
+
+/* Fills the empty slots of a short final row so its photos keep the height of
+   the rows above rather than stretching across the page. */
+.photo-spacer {
+  flex-grow: 1.5; /* a neutral landscape ratio */
+  flex-basis: 0;
+  min-width: 0;
+}
+
+/* Phones: one photo per row, full width — the justified maths would make three
+   across far too small to see. */
+@media (max-width: 700px) {
+  .photo-row {
+    flex-direction: column;
+    align-items: stretch; /* full width, not shrink-to-content */
+  }
+  /* Stacked, the justified maths no longer applies: the inline flex-grow (the
+     photo's ratio) would stretch items vertically and the 0 flex-basis would
+     collapse their width, so opt out of flexing entirely here. */
+  .photo-item {
+    flex: 0 0 auto !important;
+    width: 100%;
+  }
+  .photo-spacer {
+    display: none;
+  }
+}

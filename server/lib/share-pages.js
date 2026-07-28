@@ -27,6 +27,12 @@ const SHARE_PAGES = [
     blurb: 'The card shown when your Gallery link is shared.',
   },
   {
+    key: 'photography',
+    label: 'Photography',
+    path: '/photography',
+    blurb: 'The card shown when your Photography link is shared.',
+  },
+  {
     key: 'splats',
     label: 'Gaussian Splats',
     path: '/splats',

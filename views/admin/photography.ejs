@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+<style>
+  .cols-form { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+  .cols-form label { margin: 0; }
+  .cols-form select { min-width: 90px; }
+  .ph-grid { list-style: none; padding: 0; margin: 0 0 26px; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .ph-card { background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .ph-card.hidden-photo { opacity: 0.6; }
+  .ph-pic { width: 100%; aspect-ratio: 4 / 3; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .ph-pic img { width: 100%; height: 100%; object-fit: contain; }
+  .ph-meta { font-size: 0.72rem; color: var(--a-muted); }
+  .ph-card form { margin: 0; }
+  .ph-card input[type="text"] { width: 100%; margin: 0; font-size: 0.82rem; }
+  .ph-row2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .ph-vis { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; color: var(--a-muted); }
+  .ph-vis input { margin: 0; width: auto; }
+  .ph-tools { display: flex; gap: 4px; }
+  .ph-tools button { min-width: 28px; }
+  .danger { color: #d9534f; }
+</style>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin">← Dashboard</a></p>
+        <h1>Photography</h1>
+        <p class="muted">The photos on your <a href="/photography" target="_blank" rel="noopener">Photography page ↗</a>, reached from the “Photography” button in the Gallery and Gaussian Splats headers. They're laid out in rows that fill the page width — mixed portrait and landscape shots sit together at a matching height, never cropped. Newest uploads go to the top; use the arrows to reorder.</p>
+        <% if (saved) { %><div class="alert ok">Saved. <a href="/photography" target="_blank" rel="noopener">View page ↗</a></div><% } %>
+        <% if (err === 'nofile') { %><div class="alert error">No images were added. Choose one or more image files.</div><% } %>
+        <% if (err === 'upload') { %><div class="alert error">Something went wrong while saving those images. Please try again.</div><% } %>
+
+        <div class="card-inset">
+            <h3>Add photos</h3>
+            <form method="post" action="/admin/photography" enctype="multipart/form-data">
+                <label>Images <span class="muted">(you can select several at once)</span>
+                    <input type="file" name="photos" accept="image/*" multiple required>
+                </label>
+                <button class="btn" type="submit">Upload</button>
+            </form>
+        </div>
+
+        <div class="card-inset" style="margin-top:18px;">
+            <h3>Layout</h3>
+            <form method="post" action="/admin/photography/columns" class="cols-form">
+                <label>Photos per row
+                    <select name="photography_columns">
+                        <% [1,2,3,4].forEach(function (n) { %>
+                        <option value="<%= n %>" <%= columns === n ? 'selected' : '' %>><%= n %></option>
+                        <% }); %>
+                    </select>
+                </label>
+                <button class="btn-link btn-sm" type="submit">Save layout</button>
+                <span class="muted" style="font-size:0.82rem;">Rows stack to fewer columns on phones automatically.</span>
+            </form>
+        </div>
+
+        <h3 style="margin-top:26px;"><%= photos.length %> photo<%= photos.length === 1 ? '' : 's' %></h3>
+        <ul class="ph-grid">
+            <% photos.forEach(function (p) { %>
+            <li class="ph-card<%= p.published ? '' : ' hidden-photo' %>">
+                <div class="ph-pic"><img src="<%= p.image_path %>" alt="<%= p.title %>" loading="lazy"></div>
+                <div class="ph-meta"><%= p.width && p.height ? p.width + ' × ' + p.height : 'size unknown' %></div>
+                <form method="post" action="/admin/photography/<%= p.id %>">
+                    <input type="text" name="title" value="<%= p.title %>" placeholder="Caption / alt text (optional)">
+                    <div class="ph-row2" style="margin-top:7px;">
+                        <label class="ph-vis"><input type="checkbox" name="published" <%= p.published ? 'checked' : '' %>> Visible</label>
+                        <button class="btn-link btn-sm" type="submit">Save</button>
+                    </div>
+                </form>
+                <div class="ph-row2">
+                    <div class="ph-tools">
+                        <form method="post" action="/admin/photography/<%= p.id %>/move" class="inline"><input type="hidden" name="dir" value="up"><button class="btn-link btn-sm" type="submit" title="Move up">↑</button></form>
+                        <form method="post" action="/admin/photography/<%= p.id %>/move" class="inline"><input type="hidden" name="dir" value="down"><button class="btn-link btn-sm" type="submit" title="Move down">↓</button></form>
+                    </div>
+                    <form method="post" action="/admin/photography/<%= p.id %>/delete" class="inline" onsubmit="return confirm('Delete this photo? This also removes the file.');">
+                        <button class="btn-link btn-sm danger" type="submit">Delete</button>
+                    </form>
+                </div>
+            </li>
+            <% }); %>
+            <% if (!photos.length) { %><li class="muted">No photos yet — upload your first above.</li><% } %>
+        </ul>
+    </main>
+</body>
+</html>

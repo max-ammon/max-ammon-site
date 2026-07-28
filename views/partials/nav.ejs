@@ -4,14 +4,24 @@
             <h1 class="sitetitle"><a href="/"><%= settings.site_title %></a></h1>
             <h1 class="jobtitle"><%= settings.job_title %></h1>
         </div>
+<%# The three showcase pages cross-link to each other in one consistent order
+    (Gallery, Photography, Gaussian Splats), each listing the two it isn't. %>
 <% if (variant === 'gallery') { %>
         <ul style="font-size:2cap;max-width: max-content;" class="headerbox nopadding">
+            <li><a href="/photography">Photography</a></li>
+            <li><a href="/splats">Gaussian Splats</a></li>
+            <li><a href="/" rel="noopener noreferrer">go back to main site</a></li>
+        </ul>
+<% } else if (variant === 'photography') { %>
+        <ul style="font-size:2cap;max-width: max-content;" class="headerbox nopadding">
+            <li><a href="/gallery">Gallery</a></li>
             <li><a href="/splats">Gaussian Splats</a></li>
             <li><a href="/" rel="noopener noreferrer">go back to main site</a></li>
         </ul>
 <% } else if (variant === 'splats') { %>
         <ul style="font-size:2cap;max-width: max-content;" class="headerbox nopadding">
             <li><a href="/gallery">Gallery</a></li>
+            <li><a href="/photography">Photography</a></li>
             <li><a href="/" rel="noopener noreferrer">go back to main site</a></li>
         </ul>
 <% } else if (variant === 'back') { %>

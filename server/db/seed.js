@@ -28,6 +28,8 @@ const SETTINGS = {
   share_description:   'Portfolio of Max Ammon, 3D artist based in Cologne, Germany.',
   share_image:         '',
   social_preview_bots: '1',
+  // Photography page: how many images sit in each row (1-4).
+  photography_columns: '3',
   demo_youtube_id:   'CL1Xj0JybFY',
   demo_aspect_w:     '3840',
   demo_aspect_h:     '1646',
@@ -100,6 +102,10 @@ const CONTENT = [
     'html'],
   ['gallery.journey.title', 'gallery', 'CG-journey bar — the label written down the bar (gallery timeline rail)', 'my cg journey', 'text'],
   ['gallery.journey.start_year', 'gallery', 'CG-journey bar — the year shown at the bottom of the bar', '2015', 'text'],
+
+  // Photography page (a separate /photography page, reached from the gallery header).
+  ['photography.heading', 'photography', 'Photography page — heading', 'Photography', 'text'],
+  ['photography.intro', 'photography', 'Photography page — intro text (HTML)', '', 'html'],
 
   // Demo archive page (/demo-archive, reached from the button beside the Demo heading).
   ['demoarchive.heading', 'demoarchive', 'Demo Archive page — heading', 'Demo Archive', 'text'],
