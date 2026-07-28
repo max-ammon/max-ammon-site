@@ -245,6 +245,7 @@ router.get('/photography', (req, res) => {
     title: 'Photography',
     photos: photography.listPhotos(),
     columns: photography.columnsFrom(settings),
+    maxColumns: photography.MAX_COLUMNS,
     saved: req.query.saved === '1',
     err: req.query.err || '',
   });
@@ -270,12 +271,17 @@ router.post('/photography', uploadPhoto.array('photos', 40), async (req, res) =>
 
 router.post('/photography/columns', (req, res) => {
   const n = parseInt(req.body.photography_columns, 10);
-  if (isFinite(n) && n >= 1 && n <= 4) updateSettings({ photography_columns: String(n) });
+  if (isFinite(n) && n >= 1 && n <= photography.MAX_COLUMNS) updateSettings({ photography_columns: String(n) });
   res.redirect('/admin/photography?saved=1');
 });
 
 router.post('/photography/:id', (req, res) => {
-  photography.updatePhoto(Number(req.params.id), { title: req.body.title, published: req.body.published === 'on' });
+  photography.updatePhoto(Number(req.params.id), {
+    title: req.body.title,
+    date_text: req.body.date_text,
+    published: req.body.published === 'on',
+    row_break: req.body.row_break === 'on',
+  });
   res.redirect('/admin/photography?saved=1');
 });
 

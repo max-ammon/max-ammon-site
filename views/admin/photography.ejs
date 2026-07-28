@@ -44,16 +44,17 @@
 
         <div class="card-inset" style="margin-top:18px;">
             <h3>Layout</h3>
+            <p class="muted" style="margin-top:-4px;">You compose the rows yourself: tick <strong>“End row after this photo”</strong> on any photo and the next one starts a new row. This setting is just the fallback — a row that isn't ended by hand breaks once it reaches this many photos.</p>
             <form method="post" action="/admin/photography/columns" class="cols-form">
-                <label>Photos per row
+                <label>Maximum photos per row
                     <select name="photography_columns">
-                        <% [1,2,3,4].forEach(function (n) { %>
+                        <% for (var n = 1; n <= maxColumns; n++) { %>
                         <option value="<%= n %>" <%= columns === n ? 'selected' : '' %>><%= n %></option>
-                        <% }); %>
+                        <% } %>
                     </select>
                 </label>
                 <button class="btn-link btn-sm" type="submit">Save layout</button>
-                <span class="muted" style="font-size:0.82rem;">Rows stack to fewer columns on phones automatically.</span>
+                <span class="muted" style="font-size:0.82rem;">On narrower screens a row splits into more lines by itself, and photos stack on phones.</span>
             </form>
         </div>
 
@@ -65,6 +66,8 @@
                 <div class="ph-meta"><%= p.width && p.height ? p.width + ' × ' + p.height : 'size unknown' %></div>
                 <form method="post" action="/admin/photography/<%= p.id %>">
                     <input type="text" name="title" value="<%= p.title %>" placeholder="Caption / alt text (optional)">
+                    <input type="text" name="date_text" value="<%= p.date_text || '' %>" placeholder="Date, e.g. 2024 or March 2024" style="margin-top:6px;">
+                    <label class="ph-vis" style="margin-top:7px;"><input type="checkbox" name="row_break" <%= p.row_break ? 'checked' : '' %>> End row after this photo</label>
                     <div class="ph-row2" style="margin-top:7px;">
                         <label class="ph-vis"><input type="checkbox" name="published" <%= p.published ? 'checked' : '' %>> Visible</label>
                         <button class="btn-link btn-sm" type="submit">Save</button>

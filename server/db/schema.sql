@@ -102,10 +102,12 @@ CREATE TABLE IF NOT EXISTS pipeline_markers (
 CREATE TABLE IF NOT EXISTS photos (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   title        TEXT NOT NULL DEFAULT '',   -- also used as the image's alt text
+  date_text    TEXT NOT NULL DEFAULT '',   -- free-form date shown under the photo
   image_path   TEXT NOT NULL DEFAULT '',
   width        INTEGER,
   height       INTEGER,
   aspect_ratio REAL,                        -- width/height; drives the justified rows
+  row_break    INTEGER NOT NULL DEFAULT 0, -- 1 = this photo ends its row
   sort         INTEGER NOT NULL DEFAULT 0,
   published    INTEGER NOT NULL DEFAULT 1,
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))

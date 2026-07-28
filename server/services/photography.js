@@ -24,7 +24,9 @@ const insPhoto = db.prepare(`INSERT INTO photos
   (title, image_path, width, height, aspect_ratio, sort, published)
   VALUES (@title, @image_path, @width, @height, @aspect_ratio, @sort, @published)`);
 
-const updPhoto = db.prepare('UPDATE photos SET title=@title, published=@published WHERE id=@id');
+const updPhoto = db.prepare(
+  'UPDATE photos SET title=@title, date_text=@date_text, published=@published, row_break=@row_break WHERE id=@id'
+);
 const delPhoto = db.prepare('DELETE FROM photos WHERE id = ?');
 const setSort = db.prepare('UPDATE photos SET sort = ? WHERE id = ?');
 
@@ -74,15 +76,17 @@ function addPhoto(data) {
   return info.lastInsertRowid;
 }
 
-// Only the caption/alt text and visibility are editable; to change the picture
-// itself you delete it and upload again (the file is the content here).
+// Caption/alt text, date, visibility and the row break are editable; to change
+// the picture itself you delete it and upload again (the file is the content here).
 function updatePhoto(id, data) {
   const cur = qOne.get(Number(id));
   if (!cur) return;
   updPhoto.run({
     id: Number(id),
     title: data.title != null ? data.title : cur.title,
+    date_text: data.date_text != null ? String(data.date_text).trim() : cur.date_text,
     published: data.published ? 1 : 0,
+    row_break: data.row_break ? 1 : 0,
   });
 }
 
@@ -107,22 +111,39 @@ function movePhoto(id, dir) {
   })();
 }
 
-// Images per row, clamped to the 1-4 the layout is designed for.
+// Upper bound on how many photos share a row before one is forced to wrap.
+// Rows normally end where the owner marks "end of row"; this is the fallback so
+// unmarked photos can't run on forever.
+const MAX_COLUMNS = 6;
 function columnsFrom(settings) {
   const n = parseInt((settings && settings.photography_columns) || '3', 10);
-  return isFinite(n) && n >= 1 && n <= 4 ? n : 3;
+  return isFinite(n) && n >= 1 && n <= MAX_COLUMNS ? n : 3;
 }
 
 /*
- * Split the list into rows of `cols`. A trailing short row is padded with
- * "spacer" ratios so its images stay the size of the rows above instead of
- * stretching across the full width.
+ * Build the rows. A row ends where a photo is marked `row_break`, or when it
+ * reaches `maxCols` — so the owner composes the rows and the setting is just a
+ * safety net.
+ *
+ * Spacers (invisible flex fillers) are added only to a FINAL row that ran out of
+ * photos. A row the owner ended deliberately is meant to fill the width, so it
+ * gets none.
  */
-function toRows(photos, cols) {
+function toRows(photos, maxCols) {
   const rows = [];
-  for (let i = 0; i < photos.length; i += cols) {
-    const items = photos.slice(i, i + cols);
-    rows.push({ items, spacers: Math.max(0, cols - items.length) });
+  let cur = [];
+  for (const p of photos) {
+    cur.push(p);
+    if (p.row_break || cur.length >= maxCols) {
+      rows.push({ items: cur, spacers: 0 });
+      cur = [];
+    }
+  }
+  if (cur.length) rows.push({ items: cur, spacers: 0 });
+
+  const last = rows[rows.length - 1];
+  if (last && last.items.length < maxCols && !last.items[last.items.length - 1].row_break) {
+    last.spacers = maxCols - last.items.length;
   }
   return rows;
 }
@@ -138,4 +159,5 @@ module.exports = {
   columnsFrom,
   toRows,
   DEFAULT_RATIO,
+  MAX_COLUMNS,
 };

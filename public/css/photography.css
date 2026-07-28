@@ -14,6 +14,11 @@
   padding: 40px clamp(10px, 2vw, 40px) 90px;
 }
 
+/* Rows are never re-chunked by CSS: a minimum width would clamp the narrowest
+   photo and break the equal-height maths (a portrait next to an ultrawide came
+   out ragged). Instead a row keeps the composition set in the dashboard and the
+   whole row scales down together as the page narrows — always perfectly
+   justified — until the mobile rule below stacks them. */
 .photo-row {
   display: flex;
   gap: var(--photo-gap);
@@ -35,11 +40,22 @@
 }
 
 /* Fills the empty slots of a short final row so its photos keep the height of
-   the rows above rather than stretching across the page. */
+   the rows above rather than stretching across the page. min-width:0 so a
+   spacer never itself forces a line to wrap. */
 .photo-spacer {
   flex-grow: 1.5; /* a neutral landscape ratio */
   flex-basis: 0;
   min-width: 0;
+}
+
+/* The photo's date, under the image. */
+.photo-date {
+  margin: 6px 0 0;
+  font-family: 'uni_regular', sans-serif;
+  font-size: 1.05cap;
+  line-height: 1.2;
+  color: var(--lightcolor);
+  text-align: right;
 }
 
 /* Phones: one photo per row, full width — the justified maths would make three
