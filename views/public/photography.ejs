@@ -27,12 +27,20 @@
         above instead of stretching. %>
     <div class="photo-rows">
         <% rows.forEach(function (row) { %>
+        <%
+          // Each photo's real share of the page width — its ratio over the row's
+          // total growth (spacers grow 1.5, matching the CSS). This is what the
+          // `sizes` hint needs: with owner-composed rows a photo alone in its row
+          // is full-bleed, so a fixed "100/columns" guess would have the browser
+          // download a far too small file for it.
+          var rowTotal = row.items.reduce(function (sum, x) { return sum + x.ratio; }, 0) + row.spacers * 1.5;
+        %>
         <div class="photo-row">
-            <% row.items.forEach(function (p) { %>
+            <% row.items.forEach(function (p) { var sharePct = Math.max(5, Math.round((p.ratio / rowTotal) * 100)); %>
             <figure class="photo-item" style="flex-grow: <%= p.ratio %>;">
                 <img src="<%= imgUrl(p.image_path, 1200) %>"
                      srcset="<%= imgSrcset(p.image_path, [480, 800, 1200, 1600, 2400]) %>"
-                     sizes="(max-width: 700px) 100vw, <%= Math.round(100 / cols) %>vw"
+                     sizes="(max-width: 700px) 100vw, <%= sharePct %>vw"
                      style="aspect-ratio: <%= p.ratio %>;"
                      loading="lazy" decoding="async" alt="<%= p.title %>">
                 <% if (p.date_text) { %><figcaption class="photo-date"><%= p.date_text %></figcaption><% } %>
