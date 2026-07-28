@@ -65,7 +65,7 @@
                 <div class="ph-pic"><img src="<%= p.image_path %>" alt="<%= p.title %>" loading="lazy"></div>
                 <div class="ph-meta"><%= p.width && p.height ? p.width + ' × ' + p.height : 'size unknown' %></div>
                 <form method="post" action="/admin/photography/<%= p.id %>">
-                    <input type="text" name="title" value="<%= p.title %>" placeholder="Caption / alt text (optional)">
+                    <input type="text" name="title" value="<%= p.title %>" placeholder="Caption — shown under the photo (optional)">
                     <input type="text" name="date_text" value="<%= p.date_text || '' %>" placeholder="Date, e.g. 2024 or March 2024" style="margin-top:6px;">
                     <label class="ph-vis" style="margin-top:7px;"><input type="checkbox" name="row_break" <%= p.row_break ? 'checked' : '' %>> End row after this photo</label>
                     <div class="ph-row2" style="margin-top:7px;">

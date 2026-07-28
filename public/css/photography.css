@@ -48,14 +48,30 @@
   min-width: 0;
 }
 
-/* The photo's date, under the image. */
-.photo-date {
+/* Caption under the image: the photo's title on the left, its date on the
+   right. Either can be empty — the date always keeps to the right edge. */
+.photo-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
   margin: 6px 0 0;
   font-family: 'uni_regular', sans-serif;
   font-size: 1.05cap;
-  line-height: 1.2;
+  line-height: 1.25;
   color: var(--lightcolor);
+}
+
+.photo-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.photo-date {
+  margin-left: auto; /* stays right even when there's no title */
+  flex: none;
   text-align: right;
+  white-space: nowrap;
 }
 
 /* Phones: one photo per row, full width — the justified maths would make three

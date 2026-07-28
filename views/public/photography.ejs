@@ -43,7 +43,12 @@
                      sizes="(max-width: 700px) 100vw, <%= sharePct %>vw"
                      style="aspect-ratio: <%= p.ratio %>;"
                      loading="lazy" decoding="async" alt="<%= p.title %>">
-                <% if (p.date_text) { %><figcaption class="photo-date"><%= p.date_text %></figcaption><% } %>
+                <% if (p.title || p.date_text) { %>
+                <figcaption class="photo-caption">
+                    <% if (p.title) { %><span class="photo-title"><%= p.title %></span><% } %>
+                    <% if (p.date_text) { %><span class="photo-date"><%= p.date_text %></span><% } %>
+                </figcaption>
+                <% } %>
             </figure>
             <% }); %>
             <% for (var s = 0; s < row.spacers; s++) { %><span class="photo-spacer" aria-hidden="true"></span><% } %>
