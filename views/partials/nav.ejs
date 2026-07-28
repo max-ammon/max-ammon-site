@@ -35,3 +35,8 @@
         </ul>
 <% } %>
     </nav>
+<%# The shrink-on-scroll behaviour lives with the header itself, so every page
+    that uses this nav gets it — it used to be included per page, which meant
+    newer pages (Photography, Splats, 3D Geometry, Demo Archive) silently
+    didn't shrink. %>
+<%- include('scroll-nav') %>
