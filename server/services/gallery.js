@@ -27,13 +27,15 @@ const qLinkSplat = db.prepare('SELECT id, title FROM splats WHERE id = ? AND pub
 
 function projectLinks(p) {
   const links = [];
+  // ?from=gallery so the viewer's back link returns here rather than to the
+  // model's/splat's own listing page.
   if (p.link_model_id) {
     const m = qLinkModel.get(p.link_model_id);
-    if (m) links.push({ kind: 'model', href: '/geometry/' + m.id + '/' + slugify(m.title), title: m.title || 'this model' });
+    if (m) links.push({ kind: 'model', href: '/geometry/' + m.id + '/' + slugify(m.title) + '?from=gallery', title: m.title || 'this model' });
   }
   if (p.link_splat_id) {
     const s = qLinkSplat.get(p.link_splat_id);
-    if (s) links.push({ kind: 'splat', href: '/splats/' + s.id + '/' + slugify(s.title), title: s.title || 'this splat' });
+    if (s) links.push({ kind: 'splat', href: '/splats/' + s.id + '/' + slugify(s.title) + '?from=gallery', title: s.title || 'this splat' });
   }
   return links;
 }

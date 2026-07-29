@@ -100,18 +100,13 @@
                     <h3 class="nopadding"><%= p.title %></h3>
                     <h4 class="nopadding"><%= p.year %></h4>
                     <p style="text-align: left;padding-top: 5%;" class="nopadding"><%- nl2br(p.description) %></p>
-                    <% if (p.downloads && p.downloads.length) { %>
-                    <div class="download">
-                        <% p.downloads.forEach(function (d) { %>
-                        <a class="downloadbutton" href="<%= d.file_path %>" download><%= d.label %><% if (d.sizeLabel) { %> (<%= d.sizeLabel %>)<% } %></a>
-                        <% }); %>
-                    </div>
-                    <% } %>
+                    <%# Downloads now live behind the ⤓ icon in the card's bottom-right. %>
                 </div>
                 <%# Cross-links to this project's 3D model / Gaussian splat, bottom-right
                     of the card. Each is an icon plus a small pointer glyph so it reads as
                     clickable. Only shown when the target is still published. %>
-                <% if (p.links && p.links.length) { %>
+                <% var hasDownloads = p.downloads && p.downloads.length; %>
+                <% if ((p.links && p.links.length) || hasDownloads) { %>
                 <div class="project-links">
                     <% p.links.forEach(function (l) { %>
                     <a class="project-link" href="<%= l.href %>" title="<%= l.kind === 'model' ? 'View the 3D model: ' : 'View the Gaussian splat: ' %><%= l.title %>" aria-label="<%= l.kind === 'model' ? 'View the 3D model: ' : 'View the Gaussian splat: ' %><%= l.title %>">
@@ -136,6 +131,30 @@
                         </svg>
                     </a>
                     <% }); %>
+                    <%# Downloads: same pill, opening a little menu of the files. %>
+                    <% if (hasDownloads) { %>
+                    <div class="project-dl">
+                        <button type="button" class="project-link project-dl-toggle" aria-haspopup="true" aria-expanded="false"
+                                title="Download files from this project" aria-label="Download files from this project">
+                            <svg class="pl-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                                <path d="M11 3h2v7h3.2L12 15.2 7.8 10H11z"/><path d="M4.5 17.5h15V20h-15z"/>
+                            </svg>
+                            <svg class="pl-cursor" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                                <path d="M6 2.6v15.1l3.9-3.6 2.5 5.6 2.4-1.1-2.5-5.5h5.2z"/>
+                            </svg>
+                        </button>
+                        <ul class="project-dl-menu" hidden>
+                            <% p.downloads.forEach(function (d) { %>
+                            <li>
+                                <a href="<%= d.file_path %>" download>
+                                    <span class="dl-label"><%= d.label %></span>
+                                    <% if (d.sizeLabel) { %><span class="dl-size"><%= d.sizeLabel %></span><% } %>
+                                </a>
+                            </li>
+                            <% }); %>
+                        </ul>
+                    </div>
+                    <% } %>
                 </div>
                 <% } %>
                 <script type="application/json" class="project-media-data"><%- JSON.stringify(p.viewerMedia) %></script>
@@ -158,6 +177,7 @@
     </div>
 </div>
 <script src="/js/viewer.js"></script>
+<script src="/js/project-downloads.js"></script>
 <script src="/js/journey.js"></script>
 
 <%# (shrink-on-scroll now ships with the nav partial itself) %>

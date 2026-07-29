@@ -6,7 +6,7 @@
 </head>
 <body class="splat-body">
     <header class="splat-bar">
-        <a class="splat-back" href="/splats">&larr; Splats</a>
+        <a class="splat-back" href="<%= back.href %>">&larr; <%= back.label %></a>
         <div class="splat-titlebox">
             <span class="splat-title"><%= splat.title %></span>
             <% if (splat.year) { %><span class="splat-year"><%= splat.year %></span><% } %>

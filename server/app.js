@@ -203,6 +203,19 @@ function attachSiteContext(req, res, next) {
   next();
 }
 
+/*
+ * Where a viewer's "back" link should point. A splat or model opened from a
+ * gallery card carries ?from=gallery so leaving the viewer returns there rather
+ * than to its own listing. Only these known keys are honoured, so the parameter
+ * can never be used to bounce a visitor somewhere unexpected.
+ */
+const VIEWER_ORIGINS = {
+  gallery: { href: '/gallery', label: 'Project Gallery' },
+};
+function backLink(req, href, label) {
+  return VIEWER_ORIGINS[String(req.query.from || '')] || { href: href, label: label };
+}
+
 // Plain-text, length-limited text for a social-preview description card.
 function ogText(s) {
   const t = String(s || '')
@@ -262,7 +275,12 @@ app.get(['/geometry/:id', '/geometry/:id/:slug'], attachSiteContext, (req, res) 
     url: model.view_url,
   };
   const isOwner = !!(req.session && req.session.userId);
-  res.render('public/geometry-view', { title: model.title + ' — ' + owner, model, isOwner });
+  res.render('public/geometry-view', {
+    title: model.title + ' — ' + owner,
+    model,
+    isOwner,
+    back: backLink(req, '/geometry', '3D Geometry'),
+  });
 });
 
 // Gaussian Splats — a separate listing page (reached from the gallery header).
@@ -289,7 +307,12 @@ app.get(['/splats/:id', '/splats/:id/:slug'], attachSiteContext, (req, res) => {
   };
   // The live exposure slider is shown only to the logged-in owner.
   const isOwner = !!(req.session && req.session.userId);
-  res.render('public/splat-view', { title: splat.title + ' — ' + owner, splat, isOwner });
+  res.render('public/splat-view', {
+    title: splat.title + ' — ' + owner,
+    splat,
+    isOwner,
+    back: backLink(req, '/splats', 'Splats'),
+  });
 });
 
 app.get('/impressum', attachSiteContext, (req, res) => {
