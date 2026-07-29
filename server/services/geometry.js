@@ -165,6 +165,28 @@ function moveModel(id, dir) {
 }
 
 // Owner-set lighting, saved live from the viewer's sliders.
+/*
+ * Owner overrides for a material that didn't survive the export well. A glTF
+ * without an explicit metallicFactor defaults to fully metallic, which renders
+ * dark and mirror-like; and an export with no vertex normals shades faceted.
+ * Passing '' for metalness/roughness clears the override (back to the file).
+ */
+const setMaterialStmt = db.prepare(
+  'UPDATE models SET smooth_normals = ?, metalness = ?, roughness = ? WHERE id = ?'
+);
+function setMaterial(id, { smooth, metalness, roughness }) {
+  const opt = (v) => {
+    if (v === '' || v == null) return null; // "use the file's value"
+    const n = parseFloat(v);
+    return isFinite(n) ? Math.min(1, Math.max(0, n)) : null;
+  };
+  const m = opt(metalness);
+  const r = opt(roughness);
+  const s = smooth ? 1 : 0;
+  setMaterialStmt.run(s, m, r, Number(id));
+  return { smooth_normals: s, metalness: m, roughness: r };
+}
+
 function setLook(id, exposure, envIntensity) {
   const clamp = (v, lo, hi, def) => {
     const n = parseFloat(v);
@@ -205,6 +227,7 @@ module.exports = {
   deleteModel,
   moveModel,
   setLook,
+  setMaterial,
   setDefaultView,
   clearDefaultView,
 };

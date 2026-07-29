@@ -34,6 +34,13 @@ let exposure = parseFloat(stage.dataset.exposure) || 1;
 let envIntensity = stage.dataset.env === '' ? 1 : parseFloat(stage.dataset.env);
 if (!isFinite(envIntensity)) envIntensity = 1;
 
+// Owner material overrides ('' = keep whatever the file says).
+let smoothOn = stage.dataset.smooth === '1';
+let metalOverride = stage.dataset.metalness === '' ? null : parseFloat(stage.dataset.metalness);
+let roughOverride = stage.dataset.roughness === '' ? null : parseFloat(stage.dataset.roughness);
+if (!isFinite(metalOverride)) metalOverride = null;
+if (!isFinite(roughOverride)) roughOverride = null;
+
 const DEFAULT_VIEW = (() => {
   try {
     const v = JSON.parse(stage.dataset.view || '');
@@ -108,6 +115,111 @@ const draco = new DRACOLoader().setDecoderPath('/vendor/three/examples/jsm/libs/
 const ktx2 = new KTX2Loader().setTranscoderPath('/vendor/three/examples/jsm/libs/basis/').detectSupport(renderer);
 
 const loader = new GLTFLoader().setDRACOLoader(draco).setKTX2Loader(ktx2);
+
+/*
+ * ---- material overrides ----------------------------------------------------
+ * Exports don't always describe the surface the way the DCC preview did:
+ *   - glTF's metallicFactor defaults to 1 when omitted, and a fully metallic
+ *     surface has no diffuse at all — it reads dark and mirror-like.
+ *   - an export without vertex normals shades faceted.
+ * These let the owner correct both without re-exporting; each material's own
+ * values are kept so "use file values" can put them back.
+ */
+const materials = []; // { mat, metalness, roughness, flatShading }
+const meshes = []; // { mesh, original geometry normals }
+let fileHasNormals = true;
+
+function collectMaterials(obj) {
+  materials.length = 0;
+  meshes.length = 0;
+  fileHasNormals = true;
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    if (o.geometry && !o.geometry.attributes.normal) fileHasNormals = false;
+    meshes.push({ mesh: o, smoothed: false });
+    const list = Array.isArray(o.material) ? o.material : [o.material];
+    list.forEach((m) => {
+      if (!m || materials.some((e) => e.mat === m)) return;
+      materials.push({
+        mat: m,
+        metalness: typeof m.metalness === 'number' ? m.metalness : null,
+        roughness: typeof m.roughness === 'number' ? m.roughness : null,
+        flatShading: !!m.flatShading,
+      });
+    });
+  });
+}
+
+/*
+ * Smooth normals averaged per POSITION rather than per vertex index, so shading
+ * runs across UV seams too (where the exporter has split the mesh). Weighted by
+ * triangle area, which keeps large faces from being outvoted by slivers.
+ */
+function smoothGeometry(geometry) {
+  const pos = geometry.attributes.position;
+  if (!pos) return;
+  const index = geometry.index;
+  const count = index ? index.count : pos.count;
+  const get = (i) => (index ? index.getX(i) : i);
+  const key = (v) =>
+    Math.round(pos.getX(v) * 1e4) + '|' + Math.round(pos.getY(v) * 1e4) + '|' + Math.round(pos.getZ(v) * 1e4);
+
+  const acc = new Map();
+  const ax = new THREE.Vector3();
+  const bx = new THREE.Vector3();
+  const cx = new THREE.Vector3();
+  const e1 = new THREE.Vector3();
+  const e2 = new THREE.Vector3();
+  const n = new THREE.Vector3();
+  for (let i = 0; i < count; i += 3) {
+    const a = get(i);
+    const b = get(i + 1);
+    const c = get(i + 2);
+    ax.fromBufferAttribute(pos, a);
+    bx.fromBufferAttribute(pos, b);
+    cx.fromBufferAttribute(pos, c);
+    e1.subVectors(bx, ax);
+    e2.subVectors(cx, ax);
+    n.crossVectors(e1, e2); // length == 2 * area, so it is area-weighted
+    [a, b, c].forEach((v) => {
+      const k = key(v);
+      let s = acc.get(k);
+      if (!s) acc.set(k, (s = new THREE.Vector3()));
+      s.add(n);
+    });
+  }
+
+  const normals = new Float32Array(pos.count * 3);
+  const out = new THREE.Vector3();
+  for (let v = 0; v < pos.count; v++) {
+    const s = acc.get(key(v));
+    out.copy(s || new THREE.Vector3(0, 1, 0)).normalize();
+    normals[v * 3] = out.x;
+    normals[v * 3 + 1] = out.y;
+    normals[v * 3 + 2] = out.z;
+  }
+  geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+  geometry.attributes.normal.needsUpdate = true;
+}
+
+function applyMaterialOverrides() {
+  materials.forEach((e) => {
+    if (metalOverride != null && 'metalness' in e.mat) e.mat.metalness = metalOverride;
+    else if (e.metalness != null) e.mat.metalness = e.metalness;
+    if (roughOverride != null && 'roughness' in e.mat) e.mat.roughness = roughOverride;
+    else if (e.roughness != null) e.mat.roughness = e.roughness;
+    // Smooth shading also has to switch off any per-material flat shading.
+    if ('flatShading' in e.mat) e.mat.flatShading = smoothOn ? false : e.flatShading;
+    e.mat.needsUpdate = true;
+  });
+  if (smoothOn) {
+    meshes.forEach((m) => {
+      if (m.smoothed || !m.mesh.geometry) return;
+      smoothGeometry(m.mesh.geometry);
+      m.smoothed = true;
+    });
+  }
+}
 
 // ---- camera framing ---------------------------------------------------------
 let target = new THREE.Vector3();
@@ -197,6 +309,8 @@ if (!SRC) {
     SRC,
     (gltf) => {
       root = gltf.scene || gltf.scenes[0];
+      collectMaterials(root);
+      applyMaterialOverrides();
       scene.add(root);
 
       autoView = frameObject(root);
@@ -219,6 +333,7 @@ if (!SRC) {
       }
 
       hideLoading();
+      window.dispatchEvent(new CustomEvent('geo:loaded'));
     },
     (ev) => {
       if (ev && ev.total) {
@@ -286,6 +401,92 @@ function saveLook() {
   lookTimer = setTimeout(() => {
     post('/admin/geometry/' + encodeURIComponent(MODEL_ID) + '/look', 'exposure=' + exposure + '&env_intensity=' + envIntensity).catch(() => {});
   }, 500);
+}
+
+// ---- owner-only material panel ---------------------------------------------
+const matPanel = document.getElementById('geoMatPanel');
+if (matPanel) {
+  const btn = document.getElementById('geoMatBtn');
+  const smoothEl = document.getElementById('geoSmooth');
+  const metalEl = document.getElementById('geoMetal');
+  const roughEl = document.getElementById('geoRough');
+  const metalOut = document.getElementById('geoMetalOut');
+  const roughOut = document.getElementById('geoRoughOut');
+  const resetEl = document.getElementById('geoMatReset');
+  const infoEl = document.getElementById('geoMatInfo');
+  let saveTimer = null;
+
+  const showOuts = () => {
+    metalOut.textContent = metalOverride == null ? 'file' : Number(metalEl.value).toFixed(2);
+    roughOut.textContent = roughOverride == null ? 'file' : Number(roughEl.value).toFixed(2);
+  };
+
+  // What the file itself specifies — so the cause of a dark/glossy render is
+  // visible rather than guessed at.
+  window.addEventListener('geo:loaded', () => {
+    if (!materials.length) return;
+    const m = materials[0];
+    if (metalOverride == null && m.metalness != null) metalEl.value = m.metalness;
+    if (roughOverride == null && m.roughness != null) roughEl.value = m.roughness;
+    infoEl.textContent =
+      'file: metalness ' + (m.metalness == null ? '—' : m.metalness.toFixed(2)) +
+      ' · roughness ' + (m.roughness == null ? '—' : m.roughness.toFixed(2)) +
+      ' · normals ' + (fileHasNormals ? 'present' : 'MISSING') +
+      (materials.length > 1 ? ' · ' + materials.length + ' materials' : '');
+    showOuts();
+  });
+
+  const save = () => {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      post(
+        '/admin/geometry/' + encodeURIComponent(MODEL_ID) + '/material',
+        'smooth=' + (smoothOn ? '1' : '0') +
+          '&metalness=' + (metalOverride == null ? '' : metalOverride) +
+          '&roughness=' + (roughOverride == null ? '' : roughOverride)
+      ).catch(() => {});
+    }, 400);
+  };
+
+  btn.addEventListener('click', () => {
+    matPanel.hidden = !matPanel.hidden;
+    btn.classList.toggle('is-on', !matPanel.hidden);
+  });
+  smoothEl.addEventListener('change', () => {
+    smoothOn = smoothEl.checked;
+    // Turning smoothing off needs the original normals back, so reload the file.
+    if (!smoothOn) {
+      applyMaterialOverrides();
+      location.reload();
+      return;
+    }
+    applyMaterialOverrides();
+    save();
+  });
+  metalEl.addEventListener('input', () => {
+    metalOverride = parseFloat(metalEl.value);
+    applyMaterialOverrides();
+    showOuts();
+    save();
+  });
+  roughEl.addEventListener('input', () => {
+    roughOverride = parseFloat(roughEl.value);
+    applyMaterialOverrides();
+    showOuts();
+    save();
+  });
+  resetEl.addEventListener('click', () => {
+    metalOverride = null;
+    roughOverride = null;
+    applyMaterialOverrides();
+    if (materials.length) {
+      if (materials[0].metalness != null) metalEl.value = materials[0].metalness;
+      if (materials[0].roughness != null) roughEl.value = materials[0].roughness;
+    }
+    showOuts();
+    save();
+  });
+  showOuts();
 }
 
 const expEl = document.getElementById('geoExposure');

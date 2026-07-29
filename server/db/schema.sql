@@ -116,6 +116,11 @@ CREATE TABLE IF NOT EXISTS models (
   default_view  TEXT NOT NULL DEFAULT '',     -- owner-set starting camera (JSON)
   auto_rotate   INTEGER NOT NULL DEFAULT 0,   -- 1 = gentle turntable on load
   wireframe_ok  INTEGER NOT NULL DEFAULT 1,   -- 1 = offer the wireframe toggle
+  -- Owner overrides for exports whose material didn't come across well.
+  -- NULL metalness/roughness = use whatever the file says.
+  smooth_normals INTEGER NOT NULL DEFAULT 0,  -- 1 = recompute smooth vertex normals
+  metalness      REAL,
+  roughness      REAL,
   sort          INTEGER NOT NULL DEFAULT 0,
   published     INTEGER NOT NULL DEFAULT 1,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))

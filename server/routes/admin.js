@@ -724,6 +724,19 @@ router.post('/geometry/:id/look', (req, res) => {
   res.json({ ok: true, ...geometry.setLook(Number(req.params.id), req.body.exposure, req.body.env_intensity) });
 });
 
+// Owner-only material overrides (smooth shading, metalness/roughness), saved
+// live from the viewer's Material panel.
+router.post('/geometry/:id/material', (req, res) => {
+  res.json({
+    ok: true,
+    ...geometry.setMaterial(Number(req.params.id), {
+      smooth: req.body.smooth === '1',
+      metalness: req.body.metalness,
+      roughness: req.body.roughness,
+    }),
+  });
+});
+
 router.post('/geometry/:id/view', (req, res) => {
   if (req.body.clear) {
     geometry.clearDefaultView(Number(req.params.id));

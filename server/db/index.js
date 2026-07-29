@@ -35,6 +35,9 @@ addColumnIfMissing('splats', 'default_view', "TEXT NOT NULL DEFAULT ''");
 // the new 'video' type once.
 db.prepare("UPDATE media_downloads SET kind = 'video' WHERE kind IN ('rec2020', 'p3d65', 'srgb')").run();
 
+addColumnIfMissing('models', 'smooth_normals', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('models', 'metalness', 'REAL');
+addColumnIfMissing('models', 'roughness', 'REAL');
 addColumnIfMissing('gallery_projects', 'link_model_id', 'INTEGER');
 addColumnIfMissing('gallery_projects', 'link_splat_id', 'INTEGER');
 addColumnIfMissing('photos', 'date_text', "TEXT NOT NULL DEFAULT ''");
