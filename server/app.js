@@ -147,7 +147,17 @@ app.use(
     setHeaders: (res) => res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'),
   })
 );
-app.use('/uploads', express.static(UPLOADS_DIR, { setHeaders: revalidate }));
+app.use(
+  '/uploads',
+  express.static(UPLOADS_DIR, {
+    setHeaders: (res, filePath) => {
+      revalidate(res);
+      // Project downloads can be any file type, so always hand them over as a
+      // download rather than letting the browser render them in this origin.
+      if (/[\\/]downloads[\\/]/.test(filePath)) res.setHeader('Content-Disposition', 'attachment');
+    },
+  })
+);
 // No `extensions:['html']` here, so /gallery falls through to the template route.
 app.use(express.static(SITE_DIR, { index: false, setHeaders: revalidate }));
 

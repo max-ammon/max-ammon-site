@@ -29,6 +29,12 @@ addColumnIfMissing('pipeline_markers', 'vertical', 'INTEGER NOT NULL DEFAULT 1')
 addColumnIfMissing('splats', 'flip_up', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('splats', 'exposure', 'REAL NOT NULL DEFAULT 1');
 addColumnIfMissing('splats', 'default_view', "TEXT NOT NULL DEFAULT ''");
+// The download "kind" used to be a colour space (rec2020 / p3d65 / srgb), which
+// described the grade rather than the file. Those are all video files and the
+// colour space is already spelled out in each download's label, so map them onto
+// the new 'video' type once.
+db.prepare("UPDATE media_downloads SET kind = 'video' WHERE kind IN ('rec2020', 'p3d65', 'srgb')").run();
+
 addColumnIfMissing('gallery_projects', 'link_model_id', 'INTEGER');
 addColumnIfMissing('gallery_projects', 'link_splat_id', 'INTEGER');
 addColumnIfMissing('photos', 'date_text', "TEXT NOT NULL DEFAULT ''");

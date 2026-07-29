@@ -54,9 +54,12 @@ function mediaFilter(req, file, cb) {
   cb(null, isImage(file) || isVideo(file));
 }
 
+// Project downloads are whatever the owner wants to hand out — a master video,
+// a texture set, an .fbx, a .zip — so no type restriction here. They're stored
+// under generated names and served with Content-Disposition: attachment (see
+// app.js), so a file is only ever downloaded, never rendered in the site's origin.
 function downloadFilter(req, file, cb) {
-  // .mxf has no reliable mime type, so allow-list by extension here.
-  cb(null, ['.mp4', '.mxf', '.mov', '.webm'].includes(safeExt(file.originalname)));
+  cb(null, true);
 }
 
 const uploadMedia = multer({

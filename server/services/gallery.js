@@ -3,6 +3,7 @@
 const fs = require('fs');
 const db = require('../db');
 const { formatFileSize, formatBytes, slugify } = require('../lib/format');
+const { kindLabel, normalizeKind } = require('../lib/download-kinds');
 const { mediaRatio } = require('../lib/aspect');
 const { imgUrl } = require('../lib/images');
 const mediaSvc = require('./media');
@@ -61,6 +62,7 @@ function decorateProject(p) {
   const downloads = qDownloadsByProject.all(p.id).map((d) => ({
     ...d,
     sizeLabel: formatFileSize(d.filesize_bytes),
+    kindLabel: kindLabel(d.kind),
   }));
   const thumbRow = media.find((m) => m.id === p.thumbnail_media_id) || media[0] || null;
   // Thumbnails are sized by a uniform height; the width comes from this ratio.
@@ -161,7 +163,7 @@ function getProjectFull(id) {
   return {
     ...p,
     media: qMediaByProject.all(id).map(describeMediaFiles),
-    downloads: qDownloadsByProject.all(id).map((d) => ({ ...d, sizeLabel: formatFileSize(d.filesize_bytes) })),
+    downloads: qDownloadsByProject.all(id).map((d) => ({ ...d, sizeLabel: formatFileSize(d.filesize_bytes), kindLabel: kindLabel(d.kind) })),
   };
 }
 
@@ -205,6 +207,7 @@ const nextDownloadSort = db.prepare('SELECT COALESCE(MAX(sort), 0) + 1 AS s FROM
 const delDownload = db.prepare('DELETE FROM media_downloads WHERE id = ?');
 const qDownload = db.prepare('SELECT * FROM media_downloads WHERE id = ?');
 const updDownloadLabel = db.prepare('UPDATE media_downloads SET label = @label WHERE id = @id');
+const updDownloadKind = db.prepare('UPDATE media_downloads SET kind = @kind WHERE id = @id');
 
 function createProject(data) {
   const sort = nextProjectSort.get().s;
@@ -424,10 +427,13 @@ function addDownload(projectId, data) {
 // Edit the visible button text of a download. Returns the project id (for the
 // redirect) or null if the row is gone. An empty label is ignored — the button
 // would otherwise render blank — so the existing label is kept.
-function updateDownloadLabel(id, label) {
+// Rename a download and/or change its type. `kind` is only touched when the
+// caller passes one, so a label-only save leaves the type alone.
+function updateDownloadLabel(id, label, kind) {
   const cur = qDownload.get(id);
   if (!cur) return null;
   if (label != null && String(label).trim() !== '') updDownloadLabel.run({ id, label });
+  if (kind !== undefined) updDownloadKind.run({ id, kind: normalizeKind(kind) });
   return cur.project_id;
 }
 

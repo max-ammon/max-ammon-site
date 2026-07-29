@@ -23,6 +23,7 @@ const analytics = require('../services/analytics');
 const { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, uploadPhoto, uploadModel, toPublicPath } = require('../middleware/upload');
 const { parseYouTubeId, formatBytes } = require('../lib/format');
 const { SHARE_PAGES } = require('../lib/share-pages');
+const { DOWNLOAD_KINDS } = require('../lib/download-kinds');
 const storage = require('../services/storage');
 
 const router = express.Router();
@@ -411,6 +412,7 @@ router.get('/gallery/:id', (req, res) => {
     // Pickable cross-link targets for the little icons on the gallery card.
     linkModels: geometry.listModels(),
     linkSplats: splatsSvc.listSplats(),
+    downloadKinds: DOWNLOAD_KINDS,
     hasSharp: mediaSvc.hasSharp,
     saved: req.query.saved === '1',
     err: req.query.err || '',
@@ -550,7 +552,7 @@ router.post('/gallery/:id/downloads', uploadDownload.single('file'), (req, res) 
 
 // Rename a download button (the text visitors see on it).
 router.post('/downloads/:id/label', (req, res) => {
-  const pid = gallery.updateDownloadLabel(Number(req.params.id), req.body.label);
+  const pid = gallery.updateDownloadLabel(Number(req.params.id), req.body.label, req.body.kind);
   res.redirect(pid ? '/admin/gallery/' + pid : req.get('Referer') || '/admin/gallery');
 });
 

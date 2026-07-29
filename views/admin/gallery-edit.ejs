@@ -169,12 +169,19 @@
         </section>
 
         <section class="edit-group">
-            <h2>Downloads <span class="muted">— colour-managed files visitors can download</span></h2>
+            <h2>Downloads <span class="muted">— files visitors can download from this project</span></h2>
+            <p class="muted" style="margin-top:-6px;">Any file type. They appear behind the ⤓ icon on the project's gallery card, listed with their label, type and size.</p>
             <ul class="download-list">
                 <% project.downloads.forEach(function (d) { %>
                     <li class="download-row">
                         <form method="post" action="/admin/downloads/<%= d.id %>/label" class="download-edit">
-                            <input type="text" name="label" value="<%= d.label %>" required aria-label="Download button text" title="The text shown on the download button">
+                            <input type="text" name="label" value="<%= d.label %>" required aria-label="Download button text" title="The text shown in the download menu">
+                            <select name="kind" aria-label="File type" title="File type shown next to the label">
+                                <option value="">— type —</option>
+                                <% downloadKinds.forEach(function (k) { %>
+                                <option value="<%= k.value %>"<%= d.kind === k.value ? ' selected' : '' %>><%= k.label %></option>
+                                <% }); %>
+                            </select>
                             <button type="submit" class="btn-link btn-sm">Save</button>
                         </form>
                         <% if (d.sizeLabel) { %><span class="muted">(<%= d.sizeLabel %>)</span><% } %>
@@ -186,10 +193,13 @@
             <div class="card-inset">
                 <h3>Add download</h3>
                 <form method="post" action="/admin/gallery/<%= project.id %>/downloads" enctype="multipart/form-data">
-                    <label>File <span class="muted">(.mp4 / .mxf / .mov / .webm)</span> <input type="file" name="file" accept=".mp4,.mxf,.mov,.webm"></label>
+                    <label>File <span class="muted">(any type)</span> <input type="file" name="file"></label>
                     <label>Label <input type="text" name="label" placeholder="rec2020 10bit .mxf/DNxHQX"></label>
-                    <label>Kind
-                        <select name="kind"><option value="">—</option><option value="rec2020">rec2020</option><option value="p3d65">p3d65</option><option value="srgb">srgb</option></select>
+                    <label>Type
+                        <select name="kind">
+                            <option value="">—</option>
+                            <% downloadKinds.forEach(function (k) { %><option value="<%= k.value %>"><%= k.label %></option><% }); %>
+                        </select>
                     </label>
                     <button class="btn" type="submit">Add download</button>
                 </form>
