@@ -46,7 +46,11 @@ app.use(
         formAction: ["'self'"],
         frameAncestors: ["'self'"],
         frameSrc: ["'self'", 'https://www.youtube-nocookie.com', 'https://www.youtube.com', ...TURNSTILE_CSP],
-        imgSrc: ["'self'", 'data:', 'https://img.youtube.com', 'https://i.ytimg.com'],
+        // blob: is required by the 3D viewer: three.js extracts textures embedded
+        // in a .glb into blob URLs and loads them as images. A blob URL can only
+        // be minted by this page's own script from data it already holds, so this
+        // adds no external origin — without it, models load untextured.
+        imgSrc: ["'self'", 'data:', 'blob:', 'https://img.youtube.com', 'https://i.ytimg.com'],
         mediaSrc: ["'self'"],
         objectSrc: ["'none'"],
         // 'wasm-unsafe-eval' lets the 3D-geometry viewer compile its WebAssembly
@@ -57,7 +61,10 @@ app.use(
         scriptSrc: ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'", ...TURNSTILE_CSP],
         scriptSrcAttr: ["'unsafe-inline'"], // inline onsubmit/onclick confirm() handlers
         styleSrc: ["'self'", "'unsafe-inline'"],
-        connectSrc: ["'self'", ...TURNSTILE_CSP],
+        // blob: as above — three.js fetches those texture blobs (and the KTX2
+        // transcoder runs from one) rather than loading them via <img>.
+        connectSrc: ["'self'", 'blob:', ...TURNSTILE_CSP],
+        workerSrc: ["'self'", 'blob:'], // KTX2/Basis transcoder + Draco workers
       },
     },
     crossOriginEmbedderPolicy: false,

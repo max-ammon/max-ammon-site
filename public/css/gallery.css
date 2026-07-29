@@ -254,6 +254,15 @@ button.project-link {
 
   #projects .download { max-width: 90vw; }
 
+  /* Stacked, the card's text fills its lower half, so the corner pills would sit
+     on top of the description. Drop them back into the flow as their own row at
+     the end of the card instead. */
+  #projects .project-links {
+    position: static;
+    align-self: flex-end;
+    margin: 10px 4vw 2px 0;
+  }
+
   #colorinfo p { max-width: 90vw; }
 }
 
