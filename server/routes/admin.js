@@ -408,6 +408,9 @@ router.get('/gallery/:id', (req, res) => {
   res.render('admin/gallery-edit', {
     title: 'Edit — ' + project.title,
     project,
+    // Pickable cross-link targets for the little icons on the gallery card.
+    linkModels: geometry.listModels(),
+    linkSplats: splatsSvc.listSplats(),
     hasSharp: mediaSvc.hasSharp,
     saved: req.query.saved === '1',
     err: req.query.err || '',
@@ -421,6 +424,8 @@ router.post('/gallery/:id', (req, res) => {
     description: req.body.description,
     layout: req.body.layout,
     published: req.body.published === 'on',
+    link_model_id: req.body.link_model_id,
+    link_splat_id: req.body.link_splat_id,
   });
   res.redirect('/admin/gallery/' + req.params.id + '?saved=1');
 });

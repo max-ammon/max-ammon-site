@@ -29,6 +29,8 @@ addColumnIfMissing('pipeline_markers', 'vertical', 'INTEGER NOT NULL DEFAULT 1')
 addColumnIfMissing('splats', 'flip_up', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('splats', 'exposure', 'REAL NOT NULL DEFAULT 1');
 addColumnIfMissing('splats', 'default_view', "TEXT NOT NULL DEFAULT ''");
+addColumnIfMissing('gallery_projects', 'link_model_id', 'INTEGER');
+addColumnIfMissing('gallery_projects', 'link_splat_id', 'INTEGER');
 addColumnIfMissing('photos', 'date_text', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('photos', 'row_break', 'INTEGER NOT NULL DEFAULT 0');
 

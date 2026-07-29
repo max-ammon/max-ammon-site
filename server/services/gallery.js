@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const db = require('../db');
-const { formatFileSize, formatBytes } = require('../lib/format');
+const { formatFileSize, formatBytes, slugify } = require('../lib/format');
 const { mediaRatio } = require('../lib/aspect');
 const { imgUrl } = require('../lib/images');
 const mediaSvc = require('./media');
@@ -14,6 +14,29 @@ const qProject = db.prepare('SELECT * FROM gallery_projects WHERE id = ?');
 const qMediaByProject = db.prepare('SELECT * FROM media_items WHERE project_id = ? ORDER BY sort, id');
 const qMedia = db.prepare('SELECT * FROM media_items WHERE id = ?');
 const qDownloadsByProject = db.prepare('SELECT * FROM media_downloads WHERE project_id = ? ORDER BY sort, id');
+
+/*
+ * Optional cross-links from a project to the 3D Geometry model or Gaussian
+ * splat it belongs to. Queried straight from those tables (rather than through
+ * their services) to keep this module dependency-free, and only while the
+ * target is still published — a hidden or deleted target simply drops the icon
+ * instead of leaving a dead link on the card.
+ */
+const qLinkModel = db.prepare('SELECT id, title FROM models WHERE id = ? AND published = 1');
+const qLinkSplat = db.prepare('SELECT id, title FROM splats WHERE id = ? AND published = 1');
+
+function projectLinks(p) {
+  const links = [];
+  if (p.link_model_id) {
+    const m = qLinkModel.get(p.link_model_id);
+    if (m) links.push({ kind: 'model', href: '/geometry/' + m.id + '/' + slugify(m.title), title: m.title || 'this model' });
+  }
+  if (p.link_splat_id) {
+    const s = qLinkSplat.get(p.link_splat_id);
+    if (s) links.push({ kind: 'splat', href: '/splats/' + s.id + '/' + slugify(s.title), title: s.title || 'this splat' });
+  }
+  return links;
+}
 
 // --- helpers ---------------------------------------------------------------
 function toViewerItem(m) {
@@ -53,7 +76,7 @@ function decorateProject(p) {
   // Counts for the little badge on each gallery card. Embeds are videos too.
   const imageCount = media.filter((m) => m.type === 'image').length;
   const videoCount = media.filter((m) => m.type === 'video' || m.type === 'embed').length;
-  return { ...p, media, downloads, thumb, imageCount, videoCount, viewerMedia: media.map(toViewerItem) };
+  return { ...p, media, downloads, thumb, imageCount, videoCount, links: projectLinks(p), viewerMedia: media.map(toViewerItem) };
 }
 
 // Group projects into rows: pair up half-width (layout0), full-width (layout1) alone.
@@ -154,7 +177,7 @@ const insProject = db.prepare(
 // reordering renumbers them 1..N anyway.
 const nextProjectSort = db.prepare('SELECT COALESCE(MIN(sort), 1) - 1 AS s FROM gallery_projects');
 const updProject = db.prepare(
-  "UPDATE gallery_projects SET title=@title, year=@year, description=@description, layout=@layout, published=@published, updated_at=datetime('now') WHERE id=@id"
+  "UPDATE gallery_projects SET title=@title, year=@year, description=@description, layout=@layout, published=@published, link_model_id=@link_model_id, link_splat_id=@link_splat_id, updated_at=datetime('now') WHERE id=@id"
 );
 const delProject = db.prepare('DELETE FROM gallery_projects WHERE id = ?');
 const setProjectSort = db.prepare('UPDATE gallery_projects SET sort = ? WHERE id = ?');
@@ -207,6 +230,9 @@ function updateProject(id, data) {
     description: data.description != null ? data.description : cur.description,
     layout: data.layout === 'project-layout1' ? 'project-layout1' : 'project-layout0',
     published: data.published ? 1 : 0,
+    // '' (the "none" option) clears the link.
+    link_model_id: data.link_model_id ? Number(data.link_model_id) : null,
+    link_splat_id: data.link_splat_id ? Number(data.link_splat_id) : null,
   });
 }
 

@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS gallery_projects (
   description        TEXT NOT NULL DEFAULT '',
   layout             TEXT NOT NULL DEFAULT 'project-layout0', -- row layout (pair vs single)
   thumbnail_media_id INTEGER,
+  link_model_id      INTEGER,                 -- optional: 3D Geometry model this project links to
+  link_splat_id      INTEGER,                 -- optional: Gaussian splat this project links to
   sort               INTEGER NOT NULL DEFAULT 0,
   published          INTEGER NOT NULL DEFAULT 1,
   created_at         TEXT NOT NULL DEFAULT (datetime('now')),

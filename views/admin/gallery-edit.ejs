@@ -24,6 +24,28 @@
                 </select>
             </label>
             <label class="checkbox"><input type="checkbox" name="published"<%= project.published ? ' checked' : '' %>> Visible on the site</label>
+
+            <h3 style="margin:20px 0 4px;font-size:1rem;">Link to a 3D view</h3>
+            <p class="muted" style="margin:0 0 10px;font-size:0.85rem;">Adds a small clickable icon to the bottom-right of this project's card in the Project Gallery — a cube for a 3D model, a point cloud for a Gaussian splat. Pick “None” to remove it. (An icon is hidden automatically if its target is hidden or deleted.)</p>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                <label style="flex:1 1 240px;">3D Geometry model
+                    <select name="link_model_id">
+                        <option value="">None</option>
+                        <% linkModels.forEach(function (m) { %>
+                        <option value="<%= m.id %>"<%= project.link_model_id === m.id ? ' selected' : '' %>><%= m.title %><%= m.published ? '' : ' (hidden)' %></option>
+                        <% }); %>
+                    </select>
+                </label>
+                <label style="flex:1 1 240px;">Gaussian splat
+                    <select name="link_splat_id">
+                        <option value="">None</option>
+                        <% linkSplats.forEach(function (s) { %>
+                        <option value="<%= s.id %>"<%= project.link_splat_id === s.id ? ' selected' : '' %>><%= s.title %><%= s.published ? '' : ' (hidden)' %></option>
+                        <% }); %>
+                    </select>
+                </label>
+            </div>
+
             <div class="form-actions"><button class="btn">Save project</button></div>
         </form>
 

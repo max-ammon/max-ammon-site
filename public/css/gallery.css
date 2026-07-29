@@ -24,6 +24,43 @@
   pointer-events: none; /* never swallow a click meant for the thumbnail */
 }
 
+/* --- Cross-links to a project's 3D model / Gaussian splat ------------------
+   Sit in the bottom-right corner of the project box (the mirror of the
+   media-count badge bottom-left). Absolutely positioned, so they never affect
+   the card's layout; the translucent pill keeps them legible over whatever is
+   behind them. */
+#projects .project { position: relative; }
+
+.project-links {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.project-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 7px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  text-decoration: none;
+  line-height: 1;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.project-link:hover {
+  background: rgba(0, 0, 0, 0.75);
+  transform: scale(1.08);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.35);
+}
+.project-link .pl-icon { width: 19px; height: 19px; display: block; }
+.project-link .pl-cursor { width: 11px; height: 11px; display: block; opacity: 0.85; }
+
 .mc-item { display: inline-flex; align-items: center; gap: 4px; }
 .mc-item svg { width: 1.15em; height: 1.15em; fill: currentColor; display: block; }
 
