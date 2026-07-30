@@ -127,10 +127,13 @@ button.project-link {
 .project-dl-menu .dl-size { opacity: 0.7; }
 
 /* --- Key to the card symbols (above the colour-info box) ------------------ */
-/* The line introducing the previews, matching the key beneath it exactly.
-   Scoped with #gallery so it outranks `#gallery p` in the site stylesheet, which
-   would otherwise make it bold, larger and dark like the section intro. */
-#gallery .symbol-key-lead {
+/* The line introducing the previews, matching the key beneath it exactly. Each
+   section is named so the rule outranks `#gallery p` in the site stylesheet,
+   which would otherwise make it bold, larger and dark like the section intro
+   (the same guard keeps the 3D Geometry and Splats pages consistent). */
+#gallery .symbol-key-lead,
+#geometry .symbol-key-lead,
+#splats .symbol-key-lead {
   margin: 18px auto 0;
   padding: 0 5vw;
   max-width: 1000px;
