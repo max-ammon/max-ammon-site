@@ -91,3 +91,26 @@
   line-height: 1.35;
 }
 .splat-tools button.is-on { background: rgba(255, 255, 255, 0.22); }
+
+/* The Lighting panel shares the Material panel's chrome and position — only one
+   of the two is open at a time — and adds group headings + colour swatches. */
+
+.geo-mat .gm-sub {
+  margin: 12px 0 4px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  opacity: 0.6;
+}
+.geo-mat .gm-sub:first-of-type { margin-top: 8px; }
+
+.geo-mat .gm-row input[type='color'] {
+  flex: none;
+  width: 46px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}

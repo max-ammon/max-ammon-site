@@ -113,6 +113,13 @@ CREATE TABLE IF NOT EXISTS models (
   exposure      REAL NOT NULL DEFAULT 1,      -- tone-mapping exposure
   env_intensity REAL NOT NULL DEFAULT 1,      -- environment lighting strength
   background    TEXT NOT NULL DEFAULT '',     -- '' = viewer default, or a #hex
+  -- Owner-saved lighting rig. The key light defaults to intensity 0 (off), so a
+  -- model lit only by the environment looks exactly as it did before.
+  key_intensity REAL NOT NULL DEFAULT 0,      -- directional "key" light strength
+  key_color     TEXT NOT NULL DEFAULT '#ffffff',
+  key_azimuth   REAL NOT NULL DEFAULT 135,    -- degrees around the model
+  key_elevation REAL NOT NULL DEFAULT 45,     -- degrees above the horizon
+  env_color     TEXT NOT NULL DEFAULT '#ffffff', -- tints the studio environment
   default_view  TEXT NOT NULL DEFAULT '',     -- owner-set starting camera (JSON)
   auto_rotate   INTEGER NOT NULL DEFAULT 0,   -- 1 = gentle turntable on load
   wireframe_ok  INTEGER NOT NULL DEFAULT 1,   -- 1 = offer the wireframe toggle

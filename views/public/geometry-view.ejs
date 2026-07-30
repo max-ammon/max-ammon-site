@@ -22,6 +22,7 @@
                 <span class="splat-exposure-ic" aria-hidden="true">&#9678;</span>
                 <input type="range" id="geoEnv" min="0" max="4" step="0.05" value="<%= model.env_intensity || 1 %>" aria-label="Environment light">
             </label>
+            <button id="geoLightBtn" type="button" title="Lighting rig — only you see this; changes save automatically">Light</button>
             <button id="geoMatBtn" type="button" title="Material overrides — only you see this; changes save automatically">Material</button>
             <button id="geoSetView" type="button" title="Save the current camera as the view everyone starts at">Set default view</button>
             <button id="geoClearView" type="button" title="Go back to automatic framing"<%= model.view ? '' : ' hidden' %>>Clear</button>
@@ -39,6 +40,11 @@
           data-env="<%= model.env_intensity || 1 %>"
           data-background="<%= model.background || '' %>"
           data-autorotate="<%= model.auto_rotate ? '1' : '0' %>"
+          data-key-intensity="<%= model.key_intensity == null ? 0 : model.key_intensity %>"
+          data-key-color="<%= model.key_color || '#ffffff' %>"
+          data-key-azimuth="<%= model.key_azimuth == null ? 135 : model.key_azimuth %>"
+          data-key-elevation="<%= model.key_elevation == null ? 45 : model.key_elevation %>"
+          data-env-color="<%= model.env_color || '#ffffff' %>"
           data-smooth="<%= model.smooth_normals ? '1' : '0' %>"
           data-metalness="<%= model.metalness == null ? '' : model.metalness %>"
           data-roughness="<%= model.roughness == null ? '' : model.roughness %>"
@@ -56,6 +62,42 @@
         <div class="geo-stats" id="geoStats" hidden></div>
 
         <% if (isOwner) { %>
+        <%# Owner-only lighting rig, saved per model and shown to every visitor.
+            The key light starts at 0 so a model lit purely by the environment is
+            unchanged until you dial one in. %>
+        <div class="geo-mat geo-light" id="geoLightPanel" hidden>
+            <div class="gm-head">Lighting <span class="gm-note">only you see this</span></div>
+            <div class="gm-sub">Key light</div>
+            <label class="gm-row">Strength
+                <input type="range" id="geoKeyInt" min="0" max="10" step="0.05" value="<%= model.key_intensity == null ? 0 : model.key_intensity %>">
+                <output id="geoKeyIntOut"></output>
+            </label>
+            <label class="gm-row">Rotation
+                <input type="range" id="geoKeyAz" min="0" max="360" step="1" value="<%= model.key_azimuth == null ? 135 : model.key_azimuth %>">
+                <output id="geoKeyAzOut"></output>
+            </label>
+            <label class="gm-row">Height
+                <input type="range" id="geoKeyEl" min="-89" max="89" step="1" value="<%= model.key_elevation == null ? 45 : model.key_elevation %>">
+                <output id="geoKeyElOut"></output>
+            </label>
+            <label class="gm-row">Colour
+                <input type="color" id="geoKeyCol" value="<%= model.key_color || '#ffffff' %>">
+            </label>
+
+            <div class="gm-sub">Environment</div>
+            <label class="gm-row">Brightness
+                <input type="range" id="geoEnvInt" min="0" max="4" step="0.05" value="<%= model.env_intensity == null ? 1 : model.env_intensity %>">
+                <output id="geoEnvIntOut"></output>
+            </label>
+            <label class="gm-row">Colour
+                <input type="color" id="geoEnvCol" value="<%= model.env_color || '#ffffff' %>">
+            </label>
+
+            <div class="gm-row gm-actions">
+                <button type="button" id="geoLightReset">Reset lighting</button>
+            </div>
+        </div>
+
         <%# Owner-only material overrides. Exports often arrive fully metallic
             (glTF's default when metallicFactor is omitted), which reads dark and
             mirror-like, or without vertex normals, which shades faceted. %>

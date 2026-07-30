@@ -92,14 +92,62 @@ controls.addEventListener('start', () => {
   dismissHint();
 });
 
-// ---- environment lighting ---------------------------------------------------
-// A generated soft-box "room" — good PBR reflections without shipping an HDRI.
+// ---- lighting ---------------------------------------------------------------
+// Owner-saved rig: a directional key light (aimed by two angles) over a generated
+// soft-box "room" environment that can be tinted. Strength 0 = no key light,
+// which is the default, so a model lit purely by the environment is unchanged.
+let keyIntensity = parseFloat(stage.dataset.keyIntensity);
+if (!isFinite(keyIntensity)) keyIntensity = 0;
+let keyColor = stage.dataset.keyColor || '#ffffff';
+let keyAzimuth = parseFloat(stage.dataset.keyAzimuth);
+if (!isFinite(keyAzimuth)) keyAzimuth = 135;
+let keyElevation = parseFloat(stage.dataset.keyElevation);
+if (!isFinite(keyElevation)) keyElevation = 45;
+let envColor = stage.dataset.envColor || '#ffffff';
+
+const keyLight = new THREE.DirectionalLight(new THREE.Color(keyColor), keyIntensity);
+scene.add(keyLight);
+// A directional light only cares about its direction, and its target defaults to
+// the origin — so placing it on a unit sphere aims it regardless of where the
+// model sits in space.
+function aimKeyLight() {
+  const az = (keyAzimuth * Math.PI) / 180;
+  const el = (keyElevation * Math.PI) / 180;
+  keyLight.position.set(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az));
+}
+aimKeyLight();
+
+// ---- environment ------------------------------------------------------------
 const pmrem = new THREE.PMREMGenerator(renderer);
 let envMap = null;
-try {
-  envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+/*
+ * Build the environment map, optionally tinted. RoomEnvironment is a little scene
+ * of emissive panels, so multiplying their colours before pre-filtering gives a
+ * genuinely coloured studio — reflections included — rather than a flat wash on
+ * top. White skips the tint entirely, so the default is bit-for-bit as before.
+ */
+function buildEnvironment(hex) {
+  const room = new RoomEnvironment();
+  if (hex && hex.toLowerCase() !== '#ffffff') {
+    const tint = new THREE.Color(hex);
+    room.traverse((o) => {
+      const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+      mats.forEach((m) => {
+        if (m.color) m.color.multiply(tint);
+        if (m.emissive) m.emissive.multiply(tint);
+      });
+    });
+  }
+  const tex = pmrem.fromScene(room, 0.04).texture;
+  if (envMap) envMap.dispose(); // the previous map is no longer referenced
+  envMap = tex;
   scene.environment = envMap;
   scene.environmentIntensity = envIntensity;
+}
+
+try {
+  buildEnvironment(envColor);
 } catch (e) {
   // Extremely old hardware: fall back to plain lights so something still shows.
   scene.add(new THREE.HemisphereLight(0xffffff, 0x333344, 2));
@@ -451,6 +499,12 @@ if (matPanel) {
   btn.addEventListener('click', () => {
     matPanel.hidden = !matPanel.hidden;
     btn.classList.toggle('is-on', !matPanel.hidden);
+    const other = document.getElementById('geoLightPanel');
+    const otherBtn = document.getElementById('geoLightBtn');
+    if (!matPanel.hidden && other) {
+      other.hidden = true;
+      if (otherBtn) otherBtn.classList.remove('is-on');
+    }
   });
   smoothEl.addEventListener('change', () => {
     smoothOn = smoothEl.checked;
@@ -504,8 +558,144 @@ if (envEl) {
     envIntensity = parseFloat(envEl.value);
     if (!isFinite(envIntensity)) envIntensity = 1;
     scene.environmentIntensity = envIntensity;
+    syncEnvControls();
     saveLook();
   });
+}
+
+/*
+ * ---- owner-only lighting panel ---------------------------------------------
+ * Key light: strength, the two aiming angles and colour. Environment: brightness
+ * (shared with the toolbar's quick slider) and a colour tint. Everything applies
+ * live and saves per model, so visitors get the rig as set here.
+ */
+const lightPanel = document.getElementById('geoLightPanel');
+const envIntEl = document.getElementById('geoEnvInt');
+
+// Keeps the panel slider and the toolbar slider showing the same value.
+function syncEnvControls() {
+  if (envEl && Number(envEl.value) !== envIntensity) envEl.value = envIntensity;
+  if (envIntEl) {
+    if (Number(envIntEl.value) !== envIntensity) envIntEl.value = envIntensity;
+    const out = document.getElementById('geoEnvIntOut');
+    if (out) out.textContent = envIntensity.toFixed(2);
+  }
+}
+
+if (lightPanel) {
+  const btn = document.getElementById('geoLightBtn');
+  const keyIntEl = document.getElementById('geoKeyInt');
+  const keyAzEl = document.getElementById('geoKeyAz');
+  const keyElEl = document.getElementById('geoKeyEl');
+  const keyColEl = document.getElementById('geoKeyCol');
+  const envColEl = document.getElementById('geoEnvCol');
+  const resetEl = document.getElementById('geoLightReset');
+  let lightTimer = null;
+  let envTimer = null;
+
+  const showLightOuts = () => {
+    document.getElementById('geoKeyIntOut').textContent = keyIntensity.toFixed(2);
+    document.getElementById('geoKeyAzOut').textContent = Math.round(keyAzimuth) + '°';
+    document.getElementById('geoKeyElOut').textContent = Math.round(keyElevation) + '°';
+    syncEnvControls();
+  };
+
+  const saveLighting = () => {
+    if (lightTimer) clearTimeout(lightTimer);
+    lightTimer = setTimeout(() => {
+      post(
+        '/admin/geometry/' + encodeURIComponent(MODEL_ID) + '/lighting',
+        'key_intensity=' + keyIntensity +
+          '&key_color=' + encodeURIComponent(keyColor) +
+          '&key_azimuth=' + keyAzimuth +
+          '&key_elevation=' + keyElevation +
+          '&env_color=' + encodeURIComponent(envColor)
+      ).catch(() => {});
+    }, 400);
+  };
+
+  btn.addEventListener('click', () => {
+    lightPanel.hidden = !lightPanel.hidden;
+    btn.classList.toggle('is-on', !lightPanel.hidden);
+    // The two panels share the same corner, so only one is open at a time.
+    const other = document.getElementById('geoMatPanel');
+    const otherBtn = document.getElementById('geoMatBtn');
+    if (!lightPanel.hidden && other) {
+      other.hidden = true;
+      if (otherBtn) otherBtn.classList.remove('is-on');
+    }
+  });
+
+  keyIntEl.addEventListener('input', () => {
+    keyIntensity = parseFloat(keyIntEl.value) || 0;
+    keyLight.intensity = keyIntensity;
+    showLightOuts();
+    saveLighting();
+  });
+  keyAzEl.addEventListener('input', () => {
+    keyAzimuth = parseFloat(keyAzEl.value) || 0;
+    aimKeyLight();
+    showLightOuts();
+    saveLighting();
+  });
+  keyElEl.addEventListener('input', () => {
+    keyElevation = parseFloat(keyElEl.value) || 0;
+    aimKeyLight();
+    showLightOuts();
+    saveLighting();
+  });
+  keyColEl.addEventListener('input', () => {
+    keyColor = keyColEl.value;
+    keyLight.color.set(keyColor);
+    saveLighting();
+  });
+
+  envIntEl.addEventListener('input', () => {
+    envIntensity = parseFloat(envIntEl.value);
+    if (!isFinite(envIntensity)) envIntensity = 1;
+    scene.environmentIntensity = envIntensity;
+    syncEnvControls();
+    saveLook();
+  });
+  // Re-tinting rebuilds the pre-filtered map, so debounce it while dragging.
+  envColEl.addEventListener('input', () => {
+    envColor = envColEl.value;
+    if (envTimer) clearTimeout(envTimer);
+    envTimer = setTimeout(() => {
+      try {
+        buildEnvironment(envColor);
+      } catch (e) {
+        /* keep the current environment */
+      }
+    }, 120);
+    saveLighting();
+  });
+
+  resetEl.addEventListener('click', () => {
+    keyIntensity = 0;
+    keyColor = '#ffffff';
+    keyAzimuth = 135;
+    keyElevation = 45;
+    envColor = '#ffffff';
+    envIntensity = 1;
+    keyLight.intensity = 0;
+    keyLight.color.set('#ffffff');
+    aimKeyLight();
+    scene.environmentIntensity = 1;
+    try {
+      buildEnvironment('#ffffff');
+    } catch (e) {}
+    keyIntEl.value = 0;
+    keyAzEl.value = 135;
+    keyElEl.value = 45;
+    keyColEl.value = '#ffffff';
+    envColEl.value = '#ffffff';
+    showLightOuts();
+    saveLighting();
+    saveLook();
+  });
+
+  showLightOuts();
 }
 
 function flash(btn, text) {

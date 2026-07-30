@@ -51,6 +51,11 @@ if (addColumnIfMissing('analytics_events', 'assets_loaded', 'INTEGER NOT NULL DE
     ).run(today);
   }
 }
+addColumnIfMissing('models', 'key_intensity', 'REAL NOT NULL DEFAULT 0');
+addColumnIfMissing('models', 'key_color', "TEXT NOT NULL DEFAULT '#ffffff'");
+addColumnIfMissing('models', 'key_azimuth', 'REAL NOT NULL DEFAULT 135');
+addColumnIfMissing('models', 'key_elevation', 'REAL NOT NULL DEFAULT 45');
+addColumnIfMissing('models', 'env_color', "TEXT NOT NULL DEFAULT '#ffffff'");
 addColumnIfMissing('models', 'link_splat_id', 'INTEGER');
 addColumnIfMissing('splats', 'link_model_id', 'INTEGER');
 addColumnIfMissing('models', 'smooth_normals', 'INTEGER NOT NULL DEFAULT 0');

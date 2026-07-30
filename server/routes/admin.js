@@ -729,6 +729,12 @@ router.post('/geometry/:id/look', (req, res) => {
   res.json({ ok: true, ...geometry.setLook(Number(req.params.id), req.body.exposure, req.body.env_intensity) });
 });
 
+// Owner-only lighting rig (key light + environment tint), saved live from the
+// viewer's Light panel.
+router.post('/geometry/:id/lighting', (req, res) => {
+  res.json({ ok: true, ...geometry.setLighting(Number(req.params.id), req.body) });
+});
+
 // Owner-only material overrides (smooth shading, metalness/roughness), saved
 // live from the viewer's Material panel.
 router.post('/geometry/:id/material', (req, res) => {

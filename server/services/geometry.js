@@ -202,6 +202,40 @@ function setMaterial(id, { smooth, metalness, roughness }) {
   return { smooth_normals: s, metalness: m, roughness: r };
 }
 
+/*
+ * Owner-saved lighting rig: a directional key light (strength, colour and the two
+ * angles that aim it) plus a colour tint for the studio environment. Saved live
+ * from the viewer's Light panel and applied for every visitor. Intensity 0 means
+ * no key light at all, which is the default.
+ */
+const setLightingStmt = db.prepare(
+  'UPDATE models SET key_intensity = ?, key_color = ?, key_azimuth = ?, key_elevation = ?, env_color = ? WHERE id = ?'
+);
+function setLighting(id, d) {
+  const num = (v, lo, hi, def) => {
+    const n = parseFloat(v);
+    return isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def;
+  };
+  const col = (v, def) => normalizeColor(v) || def;
+  const out = {
+    key_intensity: num(d.key_intensity, 0, 10, 0),
+    key_color: col(d.key_color, '#ffffff'),
+    // Azimuth wraps; elevation is clamped so the light can't flip past vertical.
+    key_azimuth: ((num(d.key_azimuth, -3600, 3600, 135) % 360) + 360) % 360,
+    key_elevation: num(d.key_elevation, -89, 89, 45),
+    env_color: col(d.env_color, '#ffffff'),
+  };
+  setLightingStmt.run(
+    out.key_intensity,
+    out.key_color,
+    out.key_azimuth,
+    out.key_elevation,
+    out.env_color,
+    Number(id)
+  );
+  return out;
+}
+
 // Owner-set lighting, saved live from the viewer's sliders.
 function setLook(id, exposure, envIntensity) {
   const clamp = (v, lo, hi, def) => {
@@ -244,6 +278,7 @@ module.exports = {
   moveModel,
   setLook,
   setMaterial,
+  setLighting,
   setDefaultView,
   clearDefaultView,
 };
