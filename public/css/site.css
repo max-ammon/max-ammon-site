@@ -276,3 +276,52 @@ nav a.nav-current { text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
   #contact .ci-label { text-align: right; }
   #contact .ci-value { min-width: 0; }
 }
+
+/* --- Floating welcome note (main page) -------------------------------------
+   Sits just under the header on the left, over everything else (the sticky nav
+   is z-index 1007). Deliberately warm/high-contrast against the site's greys so
+   it's noticed, and slightly translucent so it still reads as an overlay rather
+   than part of the page. pointer-events:none so it can never swallow a click on
+   whatever sits beneath it, and it fades out gently — see /js/welcome-note.js.
+   `top` is a sensible fallback; the script replaces it with the header's real
+   height so it tucks under the title at any width. */
+.welcome-note {
+  position: fixed;
+  top: 90px;
+  left: clamp(16px, 2.5vw, 48px);
+  z-index: 2000;
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 15px 19px;
+  border-radius: 6px;
+  background: rgba(214, 58, 26, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.38);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  color: #fff;
+  font-family: 'uni_regular', sans-serif;
+  font-size: 1.35cap;
+  line-height: 1.45;
+  pointer-events: none;
+  transition: opacity 1.6s ease;
+}
+
+/* The fade-out state. */
+.welcome-note.is-out {
+  opacity: 0;
+}
+
+@media (max-width: 700px) {
+  .welcome-note {
+    left: 10px;
+    right: 10px;
+    max-width: none;
+    padding: 12px 14px;
+    font-size: 1.15cap;
+  }
+}
+
+/* Someone who asked for less motion gets it removed rather than animated. */
+@media (prefers-reduced-motion: reduce) {
+  .welcome-note { transition: opacity 0.2s linear; }
+}

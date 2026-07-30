@@ -7,6 +7,13 @@
 <body>
 <%- include('../partials/nav', { navVariant: 'main' }) %>
 
+<%# Floating welcome note: sits under the header on the left, over everything
+    else, and fades away on the first scroll or after a few seconds. Editable
+    under Admin -> Text; blank it there to switch it off. %>
+<% if (content['welcome.note']) { %>
+<div class="welcome-note" id="welcomeNote" role="status"><%- content['welcome.note'] %></div>
+<% } %>
+
     <section id="demo">
         <div style="padding-top:50px" class="nopadding">
             <%# The archive link is an absolutely-positioned child of this
@@ -224,6 +231,7 @@
     <script src="/js/pipeline.js"></script>
     <script src="/js/scrollspy.js"></script>
     <script src="/js/nav-scroll.js"></script>
+    <script src="/js/welcome-note.js"></script>
 
 </body>
 </html>
