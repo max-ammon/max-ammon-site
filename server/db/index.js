@@ -22,7 +22,9 @@ db.exec(schema);
 // IF NOT EXISTS won't add columns to an existing table, so do it explicitly.
 function addColumnIfMissing(table, column, definition) {
   const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
-  if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  if (cols.includes(column)) return false;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  return true;
 }
 addColumnIfMissing('media_items', 'aspect_ratio', 'REAL');
 addColumnIfMissing('pipeline_markers', 'vertical', 'INTEGER NOT NULL DEFAULT 1');
@@ -35,6 +37,20 @@ addColumnIfMissing('splats', 'default_view', "TEXT NOT NULL DEFAULT ''");
 // the new 'video' type once.
 db.prepare("UPDATE media_downloads SET kind = 'video' WHERE kind IN ('rec2020', 'p3d65', 'srgb')").run();
 
+// Views recorded before this column existed have no real-browser signal, so they
+// would all read as "bot-shaped". Note the day measurement began and let the
+// dashboard report the split only from then on.
+if (addColumnIfMissing('analytics_events', 'assets_loaded', 'INTEGER NOT NULL DEFAULT 0')) {
+  const hasHistory = db.prepare('SELECT COUNT(*) AS c FROM analytics_events').get().c > 0;
+  if (hasHistory) {
+    const d = new Date();
+    const today =
+      d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    db.prepare(
+      "INSERT INTO site_settings (key, value) VALUES ('assets_signal_since', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+    ).run(today);
+  }
+}
 addColumnIfMissing('models', 'smooth_normals', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('models', 'metalness', 'REAL');
 addColumnIfMissing('models', 'roughness', 'REAL');

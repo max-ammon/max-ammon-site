@@ -11,8 +11,12 @@
   .an-card .n { font-size: 2rem; font-weight: 800; line-height: 1.1; color: var(--a-text); }
   .an-card .l { font-size: 0.8rem; color: var(--a-muted); margin-top: 3px; }
   .an-chart { display: flex; align-items: flex-end; gap: 2px; height: 150px; padding: 6px 0; overflow: hidden; }
-  .an-bar { flex: 1 1 0; min-width: 0; background: var(--a-accent); border-radius: 2px 2px 0 0; opacity: 0.85; }
-  .an-bar:hover { opacity: 1; }
+  .an-bar { flex: 1 1 0; min-width: 0; background: var(--a-accent); border-radius: 2px 2px 0 0; opacity: 0.32; position: relative; display: flex; align-items: flex-end; }
+  .an-bar:hover { opacity: 0.5; }
+  /* The solid lower part of each bar: the views that actually rendered. */
+  .an-bar-real { display: block; width: 100%; background: var(--a-accent); border-radius: 2px 2px 0 0; opacity: 1; }
+  .an-warn .n { color: #d9534f; }
+  .an-note { font-size: 0.85rem; color: var(--a-muted); line-height: 1.5; margin: 14px 0 4px; }
   .an-axis { display: flex; justify-content: space-between; gap: 12px; font-size: 0.72rem; color: var(--a-muted); border-top: 1px solid var(--a-border); padding-top: 6px; margin: 0 0 28px; }
   .an-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: start; }
   @media (max-width: 720px) { .an-grid { grid-template-columns: 1fr; } }
@@ -41,17 +45,32 @@
         <% if (!data.views) { %>
             <div class="an-empty">No visits recorded yet in this range.<br>Once people browse the site, their anonymous page views will appear here.</div>
         <% } else { %>
-            <% var perVisitor = Math.round(data.views / Math.max(data.visitors, 1) * 10) / 10; %>
+            <% var perVisitor = Math.round(data.engagedViews / Math.max(data.engagedVisitors, 1) * 10) / 10; %>
+            <% var botPct = data.splitViews ? Math.round(data.botViews / data.splitViews * 100) : 0; %>
             <div class="an-cards">
-                <div class="an-card"><div class="n"><%= data.views.toLocaleString('en-US') %></div><div class="l">Page views</div></div>
-                <div class="an-card"><div class="n"><%= data.visitors.toLocaleString('en-US') %></div><div class="l">Unique visitors <span class="muted">(per day)</span></div></div>
-                <div class="an-card"><div class="n"><%= perVisitor %></div><div class="l">Views per visitor</div></div>
+                <div class="an-card"><div class="n"><%= data.engagedViews.toLocaleString('en-US') %></div><div class="l">Real page views <span class="muted">(page rendered)</span></div></div>
+                <div class="an-card"><div class="n"><%= data.engagedVisitors.toLocaleString('en-US') %></div><div class="l">Real visitors <span class="muted">(per day)</span></div></div>
+                <div class="an-card"><div class="n"><%= perVisitor %></div><div class="l">Views per real visitor</div></div>
+                <div class="an-card<%= botPct >= 50 ? ' an-warn' : '' %>"><div class="n"><%= data.botViews.toLocaleString('en-US') %></div><div class="l">Bot-shaped <span class="muted">(<%= botPct %>% of <%= data.splitViews.toLocaleString('en-US') %>)</span></div></div>
             </div>
+
+            <p class="an-note">
+                <strong>Real</strong> means the visitor also fetched the stylesheet and fonts, so something actually rendered the page.
+                <strong>Bot-shaped</strong> took the HTML and nothing else — typical of crawlers, including the many that pose as phones.
+                It's a strong hint, not proof: a visitor who leaves instantly can land in the bot column.
+                <% if (data.splitPartial) { %>
+                <br><em>This split covers <%= data.splitFrom %> onwards — views recorded before then carry no signal. Page views and unique visitors above still cover the whole range (<%= data.views.toLocaleString('en-US') %> views).</em>
+                <% } %>
+            </p>
 
             <% var maxV = Math.max.apply(null, data.perDay.map(function (d) { return d.views; }).concat([1])); %>
             <div class="an-chart">
+                <%# Each bar is the day's total; the solid part is the share that
+                    actually rendered the page, so bot noise reads as the faint tip. %>
                 <% data.perDay.forEach(function (d) { %>
-                    <div class="an-bar" style="height: <%= d.views ? Math.max(3, Math.round(d.views / maxV * 100)) : 0 %>%;" title="<%= d.day %> — <%= d.views %> views, <%= d.visitors %> visitors"></div>
+                    <div class="an-bar" style="height: <%= d.views ? Math.max(3, Math.round(d.views / maxV * 100)) : 0 %>%;" title="<%= d.day %> — <%= d.engaged %> real of <%= d.views %> views, <%= d.visitors %> visitors">
+                        <span class="an-bar-real" style="height: <%= d.views ? Math.round((d.engaged / d.views) * 100) : 0 %>%;"></span>
+                    </div>
                 <% }); %>
             </div>
             <div class="an-axis"><span><%= fromDay %></span><span>hover a bar for its day &middot; <%= toDay %></span></div>
@@ -78,10 +97,13 @@
                     </table>
 
                     <table class="an-table" style="margin-top: 24px;">
-                        <caption>Devices</caption>
+                        <caption>Devices <span class="muted" style="font-weight:400;">— real / bot-shaped</span></caption>
                         <tbody>
                             <% data.devices.forEach(function (r) { %>
-                                <tr><td class="name" style="text-transform: capitalize;"><%= r.device || 'unknown' %></td><td class="num"><%= r.c.toLocaleString('en-US') %></td></tr>
+                                <tr>
+                                    <td class="name" style="text-transform: capitalize;"><%= r.device || 'unknown' %></td>
+                                    <td class="num"><%= (r.engaged || 0).toLocaleString('en-US') %><span class="muted"> / <%= (r.bot || 0).toLocaleString('en-US') %></span></td>
+                                </tr>
                             <% }); %>
                         </tbody>
                     </table>

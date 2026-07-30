@@ -53,6 +53,60 @@ function visitorHash(day, ip, ua) {
     .slice(0, 16);
 }
 
+/*
+ * ---- real-browser signal ----------------------------------------------------
+ * A crawler normally takes the HTML and stops; a browser goes on to fetch the
+ * stylesheet and fonts to render it. Watching for those follow-up requests marks
+ * a visitor's page views as a genuine render, which separates real visits from
+ * bot-shaped traffic — including the many bots that pose as phones.
+ *
+ * Only the stylesheet/font requests are considered: every page pulls them, and
+ * `Cache-Control: no-cache` means even a repeat visitor revalidates, so the
+ * request still reaches us. Hashes are batched in memory and flushed on a timer,
+ * so a page load costs one small UPDATE rather than one per asset. Nothing extra
+ * is stored about anyone — it's the same daily-rotating hash, plus one flag.
+ */
+const ASSET_HINT = /\.(css|woff2?)$/i;
+const pendingByDay = new Map(); // day -> Set(visitorHash)
+
+function flushEngaged() {
+  if (!pendingByDay.size) return;
+  const batch = new Map(pendingByDay);
+  pendingByDay.clear();
+  batch.forEach((set, day) => {
+    try {
+      analytics.markEngaged(day, Array.from(set));
+    } catch (e) {
+      /* never let analytics break anything */
+    }
+  });
+}
+// unref so this timer never holds the process open on shutdown.
+const flushTimer = setInterval(flushEngaged, 10000);
+if (flushTimer.unref) flushTimer.unref();
+
+function markAssets(req, res, next) {
+  if (req.method !== 'GET') return next();
+  const p = req.path || '';
+  if (!ASSET_HINT.test(p)) return next();
+  const ua = req.headers['user-agent'] || '';
+  const optedOut = req.headers.dnt === '1' || req.headers['sec-gpc'] === '1';
+  const isOwner = !!(req.session && req.session.userId);
+  if (optedOut || isOwner || BOT_UA.test(ua)) return next();
+  try {
+    const day = analytics.localDay(new Date());
+    const v = visitorHash(day, req.ip, ua);
+    let set = pendingByDay.get(day);
+    if (!set) pendingByDay.set(day, (set = new Set()));
+    set.add(v);
+    // Keep the batch small on a busy moment rather than growing unbounded.
+    if (set.size >= 200) flushEngaged();
+  } catch (e) {
+    /* ignore */
+  }
+  next();
+}
+
 function track(req, res, next) {
   if (req.method !== 'GET') return next();
   const p = req.path || '/';
@@ -91,4 +145,4 @@ function track(req, res, next) {
   next();
 }
 
-module.exports = { track };
+module.exports = { track, markAssets };

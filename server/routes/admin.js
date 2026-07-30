@@ -9,6 +9,7 @@ const {
   updateColorsBulk,
   resetColors,
   getSettingsMap,
+  getSetting,
   updateSettings,
 } = require('../services/content');
 const gallery = require('../services/gallery');
@@ -93,7 +94,7 @@ router.get('/analytics', (req, res) => {
     ranges: ANALYTICS_RANGES,
     fromDay,
     toDay,
-    data: analytics.summary(fromDay, toDay),
+    data: analytics.summary(fromDay, toDay, undefined, getSetting('assets_signal_since', '')),
   });
 });
 

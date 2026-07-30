@@ -183,7 +183,11 @@ CREATE TABLE IF NOT EXISTS analytics_events (
   path          TEXT NOT NULL DEFAULT '',      -- pathname only, no query string
   referrer_host TEXT NOT NULL DEFAULT '',      -- external referrer host; '' = direct/internal
   device        TEXT NOT NULL DEFAULT '',      -- 'mobile' | 'tablet' | 'desktop'
-  visitor       TEXT NOT NULL DEFAULT ''       -- daily-rotating salted hash (unique estimate)
+  visitor       TEXT NOT NULL DEFAULT '',      -- daily-rotating salted hash (unique estimate)
+  -- 1 once this visitor was also seen fetching the stylesheet/fonts, i.e. a real
+  -- browser rendering the page. A crawler almost always takes the HTML alone, so
+  -- 0 marks bot-shaped traffic — including bots posing as mobile browsers.
+  assets_loaded INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_analytics_day ON analytics_events(day);
 CREATE INDEX IF NOT EXISTS idx_analytics_path ON analytics_events(path);

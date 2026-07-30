@@ -143,6 +143,11 @@ app.use(gate.guard);
 // edited CSS/JS/images (and regenerated *_opt.mp4 / *_preview.jpg, which reuse
 // their URL) are never served stale.
 const revalidate = (res) => res.setHeader('Cache-Control', 'no-cache');
+// Notes which visitors go on to fetch the stylesheet/fonts — the signal that a
+// real browser rendered the page, rather than a crawler taking the HTML alone.
+// Must sit before the static handlers, which end the request.
+app.use(analytics.markAssets);
+
 app.use('/', imgRoutes); // resized/WebP image derivatives, before the disk lookup
 app.use(express.static(PUBLIC_DIR, { setHeaders: revalidate }));
 // three.js for the 3D-geometry viewer, served from the installed package (MIT).
