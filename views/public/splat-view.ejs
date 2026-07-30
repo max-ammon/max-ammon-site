@@ -36,7 +36,11 @@
         </div>
 
         <div class="splat-hint" id="splatHint">Drag to orbit &middot; scroll to zoom &middot; right-drag to pan</div>
-        <div class="splat-mobile-note" id="splatMobileNote">Quality is reduced on mobile for performance &mdash; open on desktop for the best quality.</div>
+        <% if (isOwner) { %>
+        <%# What the adaptive quality settled on — only you see this. %>
+        <div class="splat-quality" id="splatQuality" hidden></div>
+        <% } %>
+        <div class="splat-mobile-note" id="splatMobileNote">Quality adjusts itself to your device &mdash; a desktop will usually show more detail.</div>
         <% if (splat.description) { %>
         <div class="splat-caption"><%- nl2br(splat.description) %></div>
         <% } %>

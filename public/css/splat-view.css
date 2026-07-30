@@ -278,3 +278,22 @@ body.splat-body {
     text-align: center;
   }
 }
+
+/* Owner-only readout of what the adaptive quality settled on. */
+.splat-quality {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  z-index: 3;
+  padding: 5px 10px;
+  border-radius: 4px;
+  background: rgba(10, 12, 16, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cfd2d6;
+  font-family: 'uni_regular', sans-serif;
+  font-size: 0.76rem;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.splat-quality[hidden] { display: none; }

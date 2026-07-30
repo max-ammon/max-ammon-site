@@ -38,6 +38,7 @@
   var hintEl = document.getElementById('splatHint');
   var mobileNoteEl = document.getElementById('splatMobileNote');
   var captionEl = document.querySelector('.splat-caption');
+  var qualityEl = document.getElementById('splatQuality'); // owner-only readout
   var resetBtn = document.getElementById('splatReset');
   var fullBtn = document.getElementById('splatFull');
 
@@ -248,23 +249,56 @@
   var autoFramed = null; // the computed framing, kept for "Clear default view"
   var haveData = false;
 
-  // Mobile GPUs are fill-rate bound on the heavy blended overdraw splats produce,
-  // so render at a lower internal resolution: capped harder on mobile, and dropped
-  // further while the user is actively orbiting/zooming (restored to full shortly
-  // after they stop). This is the main performance lever for phones.
+  /*
+   * ---- adaptive quality ------------------------------------------------------
+   * Splat rendering is fill-rate bound: cost scales with the pixels drawn and the
+   * number of splats. How much a device can take varies enormously — and a user
+   * agent string won't tell you, since a flagship phone can outrun an old laptop.
+   *
+   * So this measures instead of guessing. The browser's hints (touch, cores,
+   * memory, pixel ratio) only pick a safe *starting* point; from there the frame
+   * rate decides: while frames stay fast the render resolution climbs, and if
+   * they slow it backs off. A strong desktop settles at full device pixels — the
+   * old build capped it at 1.75 and dropped to ~1.5 whenever you orbited — while
+   * a weak phone settles low, with neither hard-coded.
+   */
   var IS_MOBILE = false;
   try {
     IS_MOBILE = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
   } catch (e) {}
-  var MAX_DPR = IS_MOBILE ? 1.25 : 1.75;
-  var MOVE_SCALE = IS_MOBILE ? 0.55 : 0.85;
-  // On phones, also cap how many splats are drawn — only the most visually
-  // significant ones — which is the heaviest lever for large captures. Desktop
-  // renders everything (renderCount is set to the full count once it's known).
-  var MOBILE_MAX_SPLATS = 700000;
-  var renderCount = 0;
-  var activeScale = 1;
+
+  var DPR = window.devicePixelRatio || 1;
+  // Never render above the screen's own pixels (wasted work), and cap at 2 so a
+  // 3x phone screen doesn't ask for 9x the fragments.
+  var MAX_SCALE = Math.min(DPR, 2);
+  var MIN_SCALE = IS_MOBILE ? 0.4 : 0.6;
+
+  // Opening guess only — the measured frame rate takes over within ~a second.
+  function startingScale() {
+    var cores = navigator.hardwareConcurrency || 0; // absent on some browsers
+    var mem = navigator.deviceMemory || 0; // Chromium only
+    var score = IS_MOBILE ? 0 : 2;
+    if (cores >= 8) score += 2;
+    else if (cores >= 4) score += 1;
+    if (mem >= 8) score += 2;
+    else if (mem >= 4) score += 1;
+    // A clearly capable machine opens at full quality rather than easing up to
+    // it, so the first second already looks its best; if it can't hold the pace
+    // the measurements pull it back within one sampling window.
+    var frac = score >= 5 ? 1 : score >= 3 ? 0.65 : 0.5;
+    return Math.max(MIN_SCALE, Math.min(MAX_SCALE, MAX_SCALE * frac));
+  }
+
+  var renderScale = startingScale(); // device pixels per CSS pixel
+  var moveFactor = IS_MOBILE ? 0.65 : 0.9; // extra reduction while the camera moves
+  var activeScale = 1; // 1 at rest, moveFactor while moving
   var idleTimer = null;
+
+  // Splat budget: how many of the (importance-ordered) splats we draw. Starts
+  // conservative on mobile and is raised or lowered by the same measurements.
+  var MIN_SPLATS = 150000;
+  var totalSplats = 0;
+  var renderCount = 0;
 
   var focalX = 1000;
   var focalY = 1000;
@@ -277,7 +311,7 @@
     var s = stageSize();
     var W = s[0];
     var H = s[1];
-    var dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR) * activeScale;
+    var dpr = renderScale * activeScale;
     canvas.width = Math.max(1, Math.round(W * dpr));
     canvas.height = Math.max(1, Math.round(H * dpr));
     gl.viewport(0, 0, canvas.width, canvas.height);
@@ -291,18 +325,78 @@
   window.addEventListener('resize', resize);
   resize();
 
-  // Drop to a lower render resolution while the camera is moving, then restore
-  // full resolution ~0.2s after the last input — smooth while dragging, crisp at rest.
+  // Drop the render resolution a little while the camera is moving, then restore
+  // it ~0.2s after the last input — smooth while dragging, crisp at rest. On a
+  // device that's comfortably fast, moveFactor becomes 1 and nothing is dropped.
   function markInteracting() {
-    if (activeScale === 1) {
-      activeScale = MOVE_SCALE;
+    if (activeScale === 1 && moveFactor < 1) {
+      activeScale = moveFactor;
       resize();
     }
     if (idleTimer) clearTimeout(idleTimer);
     idleTimer = setTimeout(function () {
-      activeScale = 1;
-      resize();
+      if (activeScale !== 1) {
+        activeScale = 1;
+        resize();
+      }
     }, 220);
+  }
+
+  /*
+   * Frame-rate feedback. Sampled over ~0.7s windows, with a gap between the
+   * "speed up" and "slow down" thresholds so it settles instead of oscillating.
+   * Resolution is traded first (cheap, reversible); only once it's already at the
+   * floor does the splat count come down, since that's the visible one.
+   */
+  var fpsFrames = 0;
+  var fpsSince = 0;
+  var lastFps = 0;
+
+  function setScale(next) {
+    next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, next));
+    if (Math.abs(next - renderScale) < 0.02) return false;
+    renderScale = next;
+    resize();
+    return true;
+  }
+
+  function adapt(fps) {
+    if (!textureReady || !drawCount) return; // nothing drawn yet — don't judge
+    if (fps >= 55) {
+      // Headroom: sharpen first, then draw more of the splats we're holding back.
+      if (!setScale(renderScale + 0.15) && renderCount < totalSplats) {
+        renderCount = Math.min(totalSplats, Math.round(renderCount * 1.25) + 50000);
+        lastPosted = ''; // force a re-sort at the new budget
+      }
+      if (fps >= 58 && renderScale >= MAX_SCALE - 0.01) moveFactor = 1;
+    } else if (fps < 40) {
+      if (!setScale(renderScale - 0.2) && renderCount > MIN_SPLATS) {
+        renderCount = Math.max(MIN_SPLATS, Math.round(renderCount * 0.75));
+        lastPosted = '';
+      }
+      moveFactor = IS_MOBILE ? 0.55 : 0.8;
+    }
+  }
+
+  function sampleFps(now) {
+    if (!fpsSince) {
+      fpsSince = now;
+      return;
+    }
+    fpsFrames++;
+    var elapsed = now - fpsSince;
+    if (elapsed < 700) return;
+    lastFps = (fpsFrames * 1000) / elapsed;
+    fpsFrames = 0;
+    fpsSince = now;
+    adapt(lastFps);
+    if (qualityEl) {
+      qualityEl.textContent =
+        renderScale.toFixed(2) + '× · ' + Math.round(lastFps) + ' fps · ' +
+        (renderCount >= 1e6 ? (renderCount / 1e6).toFixed(1) + 'M' : Math.round(renderCount / 1000) + 'k') +
+        (renderCount < totalSplats ? ' of ' + (totalSplats / 1e6).toFixed(1) + 'M' : '') + ' splats';
+      qualityEl.hidden = false;
+    }
   }
 
   function eyePosition() {
@@ -329,7 +423,10 @@
       return;
     }
     if (d.bounds) {
-      renderCount = IS_MOBILE ? Math.min(d.vertexCount, MOBILE_MAX_SPLATS) : d.vertexCount;
+      // Start mobile on a subset of the (importance-ordered) splats and let the
+      // measurements raise it; desktop starts with everything.
+      totalSplats = d.vertexCount;
+      renderCount = IS_MOBILE ? Math.min(totalSplats, 700000) : totalSplats;
       initCamera(d.bounds);
     }
     if (d.texdata) uploadTexture(d);
@@ -374,7 +471,8 @@
 
   // ---- render loop ----------------------------------------------------------
   var lastPosted = '';
-  function frame() {
+  function frame(now) {
+    sampleFps(now || performance.now());
     if (haveData) {
       var view = currentView();
       var key = view.join(',');
