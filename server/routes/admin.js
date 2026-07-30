@@ -583,6 +583,7 @@ router.get('/splats', (req, res) => {
   res.render('admin/splats', {
     title: 'Gaussian Splats',
     splats: splatsSvc.listSplats(),
+    linkModels: geometry.listModels(),
     saved: req.query.saved === '1',
     err: req.query.err || '',
   });
@@ -615,6 +616,7 @@ router.post('/splats/:id', splatFields, async (req, res) => {
     description: req.body.description,
     published: req.body.published === 'on',
     flip_up: req.body.flip_up === 'on',
+    link_model_id: req.body.link_model_id,
   };
   // A new upload replaces that file; omitting it keeps the current one.
   if (thumb) Object.assign(data, await thumbInfo(thumb));
@@ -667,6 +669,7 @@ router.get('/geometry', (req, res) => {
   res.render('admin/geometry', {
     title: '3D Geometry',
     models: geometry.listModels(),
+    linkSplats: splatsSvc.listSplats(),
     saved: req.query.saved === '1',
     err: req.query.err || '',
   });
@@ -700,6 +703,7 @@ router.post('/geometry/:id', modelFields, async (req, res) => {
     auto_rotate: req.body.auto_rotate === 'on',
     wireframe_ok: req.body.wireframe_ok === 'on',
     background: req.body.background,
+    link_splat_id: req.body.link_splat_id,
   };
   if (thumb) Object.assign(data, await thumbInfo(thumb));
   if (model) {

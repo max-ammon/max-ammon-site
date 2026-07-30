@@ -58,8 +58,9 @@
   transform: scale(1.08);
   box-shadow: 0 0 12px rgba(255, 255, 255, 0.35);
 }
-.project-link .pl-icon { width: 19px; height: 19px; display: block; }
-.project-link .pl-cursor { width: 11px; height: 11px; display: block; opacity: 0.85; }
+/* Icons come from views/partials/icon.ejs, so one size rule covers them all. */
+.project-link .ic { width: 19px; height: 19px; display: block; }
+.project-link .ic-cursor { width: 11px; height: 11px; opacity: 0.85; }
 
 /* The downloads pill is a button, so strip the UA button styling. */
 button.project-link {
@@ -142,8 +143,7 @@ button.project-link {
 }
 .symbol-key li { display: inline-flex; align-items: center; gap: 7px; margin: 0; }
 .symbol-key .sk-icons { display: inline-flex; align-items: center; gap: 3px; flex: none; }
-.symbol-key svg { width: 17px; height: 17px; display: block; fill: currentColor; }
-.symbol-key svg[fill='none'] { fill: none; }
+.symbol-key .ic { width: 17px; height: 17px; display: block; }
 
 @media (max-width: 700px) {
   .symbol-key {

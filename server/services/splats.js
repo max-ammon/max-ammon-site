@@ -22,7 +22,8 @@ const insSplat = db.prepare(`INSERT INTO splats
 
 const updSplat = db.prepare(`UPDATE splats SET
   title=@title, year=@year, description=@description, thumb_path=@thumb_path,
-  aspect_ratio=@aspect_ratio, splat_path=@splat_path, splat_format=@splat_format, published=@published, flip_up=@flip_up
+  aspect_ratio=@aspect_ratio, splat_path=@splat_path, splat_format=@splat_format, published=@published, flip_up=@flip_up,
+  link_model_id=@link_model_id
   WHERE id=@id`);
 
 const delSplat = db.prepare('DELETE FROM splats WHERE id = ?');
@@ -95,11 +96,25 @@ function removeFileIfUnused(publicPath) {
   }
 }
 
-// Shape a row for the public listing: a usable aspect ratio and a cache-busting
-// URL for the splat file (the viewer, added later, will fetch this).
+/*
+ * Cross-link to the same subject modelled as 3D geometry — the mirror of the
+ * link on the geometry cards. Published-only, and tagged ?from=splats so the
+ * model viewer's back link returns to this listing.
+ */
+const qLinkModel = db.prepare('SELECT id, title FROM models WHERE id = ? AND published = 1');
+function splatLinks(s) {
+  if (!s.link_model_id) return [];
+  const m = qLinkModel.get(s.link_model_id);
+  if (!m) return [];
+  return [{ kind: 'model', href: '/geometry/' + m.id + '/' + slugify(m.title) + '?from=splats', title: m.title || 'this model' }];
+}
+
+// Shape a row for the public listing: a usable aspect ratio, a cache-busting URL
+// for the splat file, and any cross-link to the matching model.
 function decoratePublic(s) {
   return {
     ...s,
+    links: splatLinks(s),
     ratio: s.aspect_ratio ? Number(s.aspect_ratio) : 1.5,
     splat_url: mediaSvc.versionedUrl(s.splat_path),
     view_url: '/splats/' + s.id + '/' + slugify(s.title),
@@ -170,6 +185,7 @@ function updateSplat(id, data) {
     splat_format: nextFormat,
     published: data.published ? 1 : 0,
     flip_up: data.flip_up ? 1 : 0,
+    link_model_id: data.link_model_id ? Number(data.link_model_id) : null,
   });
   if (nextThumb !== cur.thumb_path) removeFileIfUnused(cur.thumb_path);
   if (nextSplat !== cur.splat_path) removeFileIfUnused(cur.splat_path);

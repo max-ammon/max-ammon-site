@@ -25,7 +25,8 @@ const insModel = db.prepare(`INSERT INTO models
 const updModel = db.prepare(`UPDATE models SET
   title=@title, year=@year, description=@description, thumb_path=@thumb_path,
   aspect_ratio=@aspect_ratio, model_path=@model_path, model_format=@model_format,
-  published=@published, auto_rotate=@auto_rotate, wireframe_ok=@wireframe_ok, background=@background
+  published=@published, auto_rotate=@auto_rotate, wireframe_ok=@wireframe_ok, background=@background,
+  link_splat_id=@link_splat_id
   WHERE id=@id`);
 
 const delModel = db.prepare('DELETE FROM models WHERE id = ?');
@@ -67,6 +68,19 @@ function parseView(s) {
   }
 }
 
+/*
+ * Cross-link to the same subject captured as a Gaussian splat, so a model and
+ * its scan stay connected. Only while that splat is still published, and tagged
+ * ?from=geometry so leaving its viewer returns to this listing.
+ */
+const qLinkSplat = db.prepare('SELECT id, title FROM splats WHERE id = ? AND published = 1');
+function modelLinks(m) {
+  if (!m.link_splat_id) return [];
+  const s = qLinkSplat.get(m.link_splat_id);
+  if (!s) return [];
+  return [{ kind: 'splat', href: '/splats/' + s.id + '/' + slugify(s.title) + '?from=geometry', title: s.title || 'this splat' }];
+}
+
 function decoratePublic(m) {
   return {
     ...m,
@@ -74,6 +88,7 @@ function decoratePublic(m) {
     model_url: mediaSvc.versionedUrl(m.model_path),
     view_url: '/geometry/' + m.id + '/' + slugify(m.title),
     view: parseView(m.default_view),
+    links: modelLinks(m),
   };
 }
 
@@ -138,6 +153,7 @@ function updateModel(id, data) {
     auto_rotate: data.auto_rotate ? 1 : 0,
     wireframe_ok: data.wireframe_ok ? 1 : 0,
     background: normalizeColor(data.background),
+    link_splat_id: data.link_splat_id ? Number(data.link_splat_id) : null,
   });
   if (nextThumb !== cur.thumb_path) removeFileIfUnused(cur.thumb_path);
   if (nextModel !== cur.model_path) removeFileIfUnused(cur.model_path);
@@ -164,7 +180,6 @@ function moveModel(id, dir) {
   })();
 }
 
-// Owner-set lighting, saved live from the viewer's sliders.
 /*
  * Owner overrides for a material that didn't survive the export well. A glTF
  * without an explicit metallicFactor defaults to fully metallic, which renders
@@ -187,6 +202,7 @@ function setMaterial(id, { smooth, metalness, roughness }) {
   return { smooth_normals: s, metalness: m, roughness: r };
 }
 
+// Owner-set lighting, saved live from the viewer's sliders.
 function setLook(id, exposure, envIntensity) {
   const clamp = (v, lo, hi, def) => {
     const n = parseFloat(v);

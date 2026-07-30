@@ -51,6 +51,8 @@ if (addColumnIfMissing('analytics_events', 'assets_loaded', 'INTEGER NOT NULL DE
     ).run(today);
   }
 }
+addColumnIfMissing('models', 'link_splat_id', 'INTEGER');
+addColumnIfMissing('splats', 'link_model_id', 'INTEGER');
 addColumnIfMissing('models', 'smooth_normals', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('models', 'metalness', 'REAL');
 addColumnIfMissing('models', 'roughness', 'REAL');

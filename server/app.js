@@ -233,6 +233,9 @@ function attachSiteContext(req, res, next) {
  */
 const VIEWER_ORIGINS = {
   gallery: { href: '/gallery', label: 'Project Gallery' },
+  geometry: { href: '/geometry', label: '3D Geometry' },
+  splats: { href: '/splats', label: 'Gaussian Splats' },
+  photography: { href: '/photography', label: 'Photography' },
 };
 function backLink(req, href, label) {
   return VIEWER_ORIGINS[String(req.query.from || '')] || { href: href, label: label };

@@ -1,0 +1,50 @@
+<%
+/*
+ * The little pill row in the bottom-right corner of a card.
+ *
+ *   links     — [{ kind: 'model' | 'splat', href, title }]  cross-links to the
+ *               same subject's 3D model / Gaussian splat
+ *   downloads — optional [{ file_path, label, sizeLabel, kindLabel }], rendered
+ *               as a menu behind a download pill (gallery cards only)
+ *
+ * Each pill carries a pointer glyph so it reads as clickable. Shared by the
+ * Project Gallery, 3D Geometry and Gaussian Splats cards.
+ */
+var _links = (typeof links !== 'undefined' && links) ? links : [];
+var _dls = (typeof downloads !== 'undefined' && downloads) ? downloads : [];
+var _label = function (l) {
+  return (l.kind === 'model' ? 'View the 3D model: ' : 'View the Gaussian splat: ') + l.title;
+};
+%>
+<% if (_links.length || _dls.length) { %>
+<div class="project-links">
+    <% _links.forEach(function (l) { %>
+    <a class="project-link" href="<%= l.href %>" title="<%= _label(l) %>" aria-label="<%= _label(l) %>">
+        <%- include('icon', { name: l.kind === 'model' ? 'cube' : 'points' }) %>
+        <%- include('icon', { name: 'cursor' }) %>
+    </a>
+    <% }); %>
+    <% if (_dls.length) { %>
+    <div class="project-dl">
+        <button type="button" class="project-link project-dl-toggle" aria-haspopup="true" aria-expanded="false"
+                title="Download files from this project" aria-label="Download files from this project">
+            <%- include('icon', { name: 'download' }) %>
+            <%- include('icon', { name: 'cursor' }) %>
+        </button>
+        <ul class="project-dl-menu" hidden>
+            <% _dls.forEach(function (d) { %>
+            <li>
+                <a href="<%= d.file_path %>" download>
+                    <span class="dl-label"><%= d.label %></span>
+                    <span class="dl-meta">
+                        <% if (d.kindLabel) { %><span class="dl-kind"><%= d.kindLabel %></span><% } %>
+                        <% if (d.sizeLabel) { %><span class="dl-size"><%= d.sizeLabel %></span><% } %>
+                    </span>
+                </a>
+            </li>
+            <% }); %>
+        </ul>
+    </div>
+    <% } %>
+</div>
+<% } %>

@@ -78,6 +78,14 @@
                             <% if (m.model_exists) { %>Current: <%= (m.model_format || 'file').toUpperCase() %><% if (m.model_size) { %> · <%= m.model_size %><% } %><% if (m.default_view) { %> · camera set<% } %><% } else { %>⚠ model file missing<% } %>
                         </span>
                     </label>
+                    <label class="field grow">Linked Gaussian splat <span class="muted">(same subject)</span>
+                        <select name="link_splat_id">
+                            <option value="">None</option>
+                            <% linkSplats.forEach(function (ls) { %>
+                            <option value="<%= ls.id %>"<%= m.link_splat_id === ls.id ? ' selected' : '' %>><%= ls.title %><%= ls.published ? '' : ' (hidden)' %></option>
+                            <% }); %>
+                        </select>
+                    </label>
                     <div class="geo-save"><button class="btn-link btn-sm" type="submit">Save changes</button></div>
                 </form>
                 <div class="geo-actions">

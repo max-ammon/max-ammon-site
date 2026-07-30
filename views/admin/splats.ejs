@@ -63,6 +63,14 @@
                             <% if (s.splat_exists) { %>Current: <%= (s.splat_format || 'file').toUpperCase() %><% if (s.splat_size) { %> · <%= s.splat_size %><% } %><% } else { %>⚠ splat file missing<% } %>
                         </span>
                     </label>
+                    <label class="field grow">Linked 3D model <span class="muted">(same subject)</span>
+                        <select name="link_model_id">
+                            <option value="">None</option>
+                            <% linkModels.forEach(function (lm) { %>
+                            <option value="<%= lm.id %>"<%= s.link_model_id === lm.id ? ' selected' : '' %>><%= lm.title %><%= lm.published ? '' : ' (hidden)' %></option>
+                            <% }); %>
+                        </select>
+                    </label>
                     <div class="splat-save"><button class="btn-link btn-sm" type="submit">Save changes</button></div>
                 </form>
                 <div class="splat-actions">

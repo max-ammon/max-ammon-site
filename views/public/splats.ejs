@@ -12,6 +12,13 @@
     <div style="padding-top: 50px; text-align: center;">
         <h2><%= content['splats.heading'] || 'Gaussian Splats' %></h2>
         <p class="secondarytitle" style="max-width: 820px; margin: 0 auto; padding: 15px 5vw 0; font-size: 1.4cap; line-height: 1.5;"><%- content['splats.intro'] || '' %></p>
+    <%# Key to the cross-link symbol on the cards. %>
+    <ul class="symbol-key">
+        <li>
+            <span class="sk-icons"><%- include('../partials/icon', { name: 'cube' }) %></span>
+            <span class="sk-text">open the matching 3D model of the same subject</span>
+        </li>
+    </ul>
     </div>
 
     <% if (!splats || !splats.length) { %>
@@ -52,6 +59,7 @@
                     <% if (s.year) { %><h4 class="nopadding"><%= s.year %></h4><% } %>
                     <% if (s.description) { %><p style="text-align: left; padding-top: 5%;" class="nopadding"><%- nl2br(s.description) %></p><% } %>
                 </div>
+                <%- include('../partials/card-links', { links: s.links }) %>
             </div>
             <% } %>
         </div>
