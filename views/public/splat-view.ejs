@@ -17,6 +17,7 @@
                 <span class="splat-exposure-ic" aria-hidden="true">&#9728;</span>
                 <input type="range" id="splatExposure" min="0.2" max="3" step="0.05" value="<%= splat.exposure || 1 %>" aria-label="Exposure">
             </label>
+            <button id="splatColourBtn" type="button" title="White balance and tint — only you see this; changes save automatically">Colour</button>
             <button id="splatSetView" type="button" title="Save the current camera as the view everyone starts at">Set default view</button>
             <button id="splatClearView" type="button" title="Go back to automatic framing"<%= splat.view ? '' : ' hidden' %>>Clear</button>
             <% } %>
@@ -39,6 +40,25 @@
         <% if (isOwner) { %>
         <%# What the adaptive quality settled on — only you see this. %>
         <div class="splat-quality" id="splatQuality" hidden></div>
+
+        <%# Owner-only colour correction. Captures often come out with a cast
+            from the lighting they were shot under; these two save per splat and
+            are applied for every visitor. %>
+        <div class="view-panel" id="splatColourPanel" hidden>
+            <div class="gm-head">Colour <span class="gm-note">only you see this</span></div>
+            <label class="gm-row">Warmth
+                <input type="range" id="splatWb" min="-1" max="1" step="0.01" value="<%= splat.white_balance || 0 %>">
+                <output id="splatWbOut"></output>
+            </label>
+            <label class="gm-row">Tint
+                <input type="range" id="splatTint" min="-1" max="1" step="0.01" value="<%= splat.tint || 0 %>">
+                <output id="splatTintOut"></output>
+            </label>
+            <div class="gm-row gm-actions">
+                <button type="button" id="splatGradeReset">Neutral</button>
+            </div>
+            <div class="gm-file">Warmth runs blue &rarr; orange, tint green &rarr; magenta. Brightness stays put either way.</div>
+        </div>
         <% } %>
         <div class="splat-mobile-note" id="splatMobileNote">Quality adjusts itself to your device &mdash; a desktop will usually show more detail.</div>
         <% if (splat.description) { %>
@@ -52,6 +72,8 @@
             data-format="<%= splat.splat_format %>"
             data-flip="<%= splat.flip_up ? '1' : '0' %>"
             data-exposure="<%= splat.exposure || 1 %>"
+            data-wb="<%= splat.white_balance || 0 %>"
+            data-tint="<%= splat.tint || 0 %>"
             data-view="<%= splat.view ? JSON.stringify(splat.view) : '' %>"
             data-id="<%= splat.id %>"></script>
 </body>

@@ -30,6 +30,25 @@ const delSplat = db.prepare('DELETE FROM splats WHERE id = ?');
 const setSort = db.prepare('UPDATE splats SET sort = ? WHERE id = ?');
 const setExp = db.prepare('UPDATE splats SET exposure = ? WHERE id = ?');
 const setView = db.prepare('UPDATE splats SET default_view = ? WHERE id = ?');
+const setGradeStmt = db.prepare('UPDATE splats SET white_balance = ?, tint = ? WHERE id = ?');
+
+/*
+ * Owner white balance / tint, applied in linear light by the viewer's
+ * tone-mapping pass. Both run -1 .. +1 with 0 neutral: white balance from cool
+ * (blue) to warm (orange), tint from green to magenta — the usual photographic
+ * pair. Stored per splat so a capture with an off colour cast can be corrected
+ * once for every visitor.
+ */
+function setGrade(id, whiteBalance, tint) {
+  const clamp = (v) => {
+    const n = parseFloat(v);
+    return isFinite(n) ? Math.min(1, Math.max(-1, Math.round(n * 1000) / 1000)) : 0;
+  };
+  const wb = clamp(whiteBalance);
+  const ti = clamp(tint);
+  setGradeStmt.run(wb, ti, Number(id));
+  return { white_balance: wb, tint: ti };
+}
 
 /*
  * Owner-set starting camera for one splat: the orbit camera's target point,
@@ -223,6 +242,7 @@ module.exports = {
   deleteSplat,
   moveSplat,
   setExposure,
+  setGrade,
   setDefaultView,
   clearDefaultView,
 };

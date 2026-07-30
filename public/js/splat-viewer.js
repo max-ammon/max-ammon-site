@@ -17,6 +17,8 @@
   var FLIP_UP = SELF.getAttribute('data-flip') === '1';
   var EXPOSURE = parseFloat(SELF.getAttribute('data-exposure')) || 1;
   var SPLAT_ID = SELF.getAttribute('data-id') || '';
+  var WB = parseFloat(SELF.getAttribute('data-wb')) || 0;    // -1 cool .. +1 warm
+  var TINT = parseFloat(SELF.getAttribute('data-tint')) || 0; // -1 green .. +1 magenta
   // Owner-set starting camera ({t:[x,y,z], d, y, p}); null = auto-frame the splat.
   var DEFAULT_VIEW = (function () {
     var raw = SELF.getAttribute('data-view');
@@ -183,6 +185,7 @@
     'in vec4 vColor;\n' +
     'in vec2 vPosition;\n' +
     'uniform float exposure;\n' +
+    'uniform vec3 grade;\n' +
     'out vec4 fragColor;\n' +
     'void main () {\n' +
     '    float A = -dot(vPosition, vPosition);\n' +
@@ -192,7 +195,7 @@
     // mid-blend; the fallback keeps applying it here as before.
     (HDR_OK
       ? '    fragColor = vec4(B * vColor.rgb, B);\n'
-      : '    fragColor = vec4(exposure * B * vColor.rgb, B);\n') +
+      : '    fragColor = vec4(exposure * grade * B * vColor.rgb, B);\n') +
     '}\n';
 
   // Fullscreen pass: exposure, a hue-preserving highlight shoulder, then sRGB.
@@ -210,13 +213,15 @@
     'precision highp float;\n' +
     'uniform sampler2D tex;\n' +
     'uniform float exposure;\n' +
+    // White balance / tint as per-channel gains, applied in linear light.
+    'uniform vec3 grade;\n' +
     'in vec2 vUv;\n' +
     'out vec4 fragColor;\n' +
     // Highlights below the knee pass through untouched, so a splat left at
     // exposure 1 keeps very close to its original brightness.
     'const float KNEE = 0.85;\n' +
     'void main () {\n' +
-    '    vec3 c = texture(tex, vUv).rgb * exposure;\n' +
+    '    vec3 c = texture(tex, vUv).rgb * exposure * grade;\n' +
     // Compress the brightest channel and scale the other two by the same factor,
     // so an over-exposed orange desaturates towards white instead of turning
     // yellow. Below the knee nothing is touched.
@@ -317,6 +322,32 @@
     return hdrReady;
   }
 
+  var u_grade = gl.getUniformLocation(program, 'grade');
+  var u_postGrade = postProgram ? gl.getUniformLocation(postProgram, 'grade') : null;
+
+  /*
+   * White balance and tint as per-channel gains. Warm lifts red and drops blue;
+   * tint trades green against magenta. The result is divided by its own
+   * luminance so moving either slider changes the colour cast without also
+   * changing how bright the splat is.
+   */
+  function gradeGain() {
+    var r = 1 + 0.35 * WB + 0.15 * TINT;
+    var g = 1 - 0.3 * TINT;
+    var b = 1 - 0.35 * WB + 0.15 * TINT;
+    r = Math.max(r, 0.05); g = Math.max(g, 0.05); b = Math.max(b, 0.05);
+    var lum = Math.max(0.2126 * r + 0.7152 * g + 0.0722 * b, 1e-4);
+    return [r / lum, g / lum, b / lum];
+  }
+  function applyGrade() {
+    var v = gradeGain();
+    if (!HDR_OK) {
+      gl.useProgram(program);
+      gl.uniform3f(u_grade, v[0], v[1], v[2]);
+    }
+    // In the HDR path the post pass sets it per frame from WB/TINT.
+  }
+
   var u_projection = gl.getUniformLocation(program, 'projection');
   var u_viewport = gl.getUniformLocation(program, 'viewport');
   var u_focal = gl.getUniformLocation(program, 'focal');
@@ -324,6 +355,7 @@
   var u_exposure = gl.getUniformLocation(program, 'exposure');
   // In the HDR path exposure is applied by the tone-mapping pass each frame.
   if (!HDR_OK) gl.uniform1f(u_exposure, EXPOSURE);
+  applyGrade(); // the fallback shader needs a gain before the first draw
 
   // Quad corners (per-vertex, one instance per splat).
   var vertexBuffer = gl.createBuffer();
@@ -620,6 +652,8 @@
       gl.bindTexture(gl.TEXTURE_2D, hdrTex);
       gl.uniform1i(u_postTex, 1);
       gl.uniform1f(u_postExposure, EXPOSURE);
+      var gainv = gradeGain();
+      gl.uniform3f(u_postGrade, gainv[0], gainv[1], gainv[2]);
       gl.bindVertexArray(postVao);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       gl.bindVertexArray(null);
@@ -856,6 +890,57 @@
         }).catch(function () {});
       }, 500);
     });
+  }
+
+  /*
+   * Owner-only white balance + tint. Same live-then-save shape as the exposure
+   * slider: the gain is recomputed on every input event (free — the HDR pass
+   * reads it per frame) and the pair is written back once the sliders settle.
+   */
+  var wbEl = document.getElementById('splatWb');
+  var tintEl = document.getElementById('splatTint');
+  var colourBtn = document.getElementById('splatColourBtn');
+  var colourPanel = document.getElementById('splatColourPanel');
+  if (colourBtn && colourPanel) {
+    colourBtn.addEventListener('click', function () {
+      colourPanel.hidden = !colourPanel.hidden;
+      colourBtn.classList.toggle('is-on', !colourPanel.hidden);
+    });
+  }
+  if (wbEl && tintEl) {
+    var gradeTimer = null;
+    var wbOut = document.getElementById('splatWbOut');
+    var tintOut = document.getElementById('splatTintOut');
+    var showGrade = function () {
+      if (wbOut) wbOut.textContent = WB.toFixed(2);
+      if (tintOut) tintOut.textContent = TINT.toFixed(2);
+    };
+    var readGrade = function () {
+      WB = parseFloat(wbEl.value) || 0;
+      TINT = parseFloat(tintEl.value) || 0;
+      showGrade();
+      applyGrade();
+      if (gradeTimer) clearTimeout(gradeTimer);
+      gradeTimer = setTimeout(function () {
+        fetch('/admin/splats/' + encodeURIComponent(SPLAT_ID) + '/grade', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'white_balance=' + encodeURIComponent(WB) + '&tint=' + encodeURIComponent(TINT),
+          credentials: 'same-origin',
+        }).catch(function () {});
+      }, 500);
+    };
+    showGrade();
+    wbEl.addEventListener('input', readGrade);
+    tintEl.addEventListener('input', readGrade);
+    var gradeResetEl = document.getElementById('splatGradeReset');
+    if (gradeResetEl) {
+      gradeResetEl.addEventListener('click', function () {
+        wbEl.value = 0;
+        tintEl.value = 0;
+        readGrade();
+      });
+    }
   }
 
   // ---- loading UI -----------------------------------------------------------

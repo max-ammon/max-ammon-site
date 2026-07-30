@@ -14,12 +14,6 @@
   cursor: grabbing;
 }
 
-/* Wireframe toggle reads as "on" while active. */
-.splat-tools button.is-on {
-  background: rgba(255, 255, 255, 0.24);
-  border-color: rgba(255, 255, 255, 0.4);
-}
-
 /* Mesh/triangle count, bottom-right — a quiet detail for a 3D audience. */
 .geo-stats {
   position: absolute;
@@ -43,74 +37,4 @@
     bottom: 10px;
     font-size: 0.7rem;
   }
-}
-
-/* Owner-only material overrides panel (toggled by the "Material" button).
-   Anchored under the top bar, out of the way of the model. */
-.geo-mat {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 5;
-  width: min(280px, 82vw);
-  padding: 12px 14px;
-  border-radius: 8px;
-  background: rgba(10, 12, 16, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  font-family: 'uni_regular', sans-serif;
-  font-size: 0.85rem;
-  color: #e8e8ea;
-}
-.geo-mat[hidden] { display: none; }
-.geo-mat .gm-head { font-weight: 700; margin-bottom: 8px; }
-.geo-mat .gm-note { font-weight: 400; opacity: 0.6; font-size: 0.78rem; margin-left: 6px; }
-.geo-mat .gm-row { display: flex; align-items: center; gap: 8px; margin: 7px 0; }
-.geo-mat .gm-row input[type='range'] { flex: 1; min-width: 0; accent-color: #cfd2d6; }
-.geo-mat .gm-row output { flex: none; width: 34px; text-align: right; opacity: 0.85; font-variant-numeric: tabular-nums; }
-.geo-mat .gm-check { gap: 7px; }
-.geo-mat .gm-check input { margin: 0; }
-.geo-mat .gm-actions { justify-content: flex-end; }
-.geo-mat .gm-actions button {
-  font: inherit;
-  font-size: 0.8rem;
-  color: #e8e8ea;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 4px;
-  padding: 5px 10px;
-  cursor: pointer;
-}
-.geo-mat .gm-actions button:hover { background: rgba(255, 255, 255, 0.16); }
-.geo-mat .gm-file {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 0.75rem;
-  opacity: 0.75;
-  line-height: 1.35;
-}
-.splat-tools button.is-on { background: rgba(255, 255, 255, 0.22); }
-
-/* The Lighting panel shares the Material panel's chrome and position — only one
-   of the two is open at a time — and adds group headings + colour swatches. */
-
-.geo-mat .gm-sub {
-  margin: 12px 0 4px;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  opacity: 0.6;
-}
-.geo-mat .gm-sub:first-of-type { margin-top: 8px; }
-
-.geo-mat .gm-row input[type='color'] {
-  flex: none;
-  width: 46px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  background: none;
-  cursor: pointer;
 }

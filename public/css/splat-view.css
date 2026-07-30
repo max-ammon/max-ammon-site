@@ -297,3 +297,78 @@ body.splat-body {
   pointer-events: none;
 }
 .splat-quality[hidden] { display: none; }
+
+/* Owner-only settings panel, shared by both viewers (Colour here, Lighting and
+   Material on the geometry page). Toggled by a button in the top bar and
+   anchored under it, out of the way of the model. Only one is ever open. */
+.view-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  width: min(280px, 82vw);
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(10, 12, 16, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  font-family: 'uni_regular', sans-serif;
+  font-size: 0.85rem;
+  color: #e8e8ea;
+}
+.view-panel[hidden] { display: none; }
+.view-panel .gm-head { font-weight: 700; margin-bottom: 8px; }
+.view-panel .gm-note { font-weight: 400; opacity: 0.6; font-size: 0.78rem; margin-left: 6px; }
+.view-panel .gm-row { display: flex; align-items: center; gap: 8px; margin: 7px 0; }
+.view-panel .gm-row input[type='range'] { flex: 1; min-width: 0; accent-color: #cfd2d6; }
+.view-panel .gm-row output { flex: none; width: 34px; text-align: right; opacity: 0.85; font-variant-numeric: tabular-nums; }
+.view-panel .gm-check { gap: 7px; }
+.view-panel .gm-check input { margin: 0; }
+.view-panel .gm-actions { justify-content: flex-end; }
+.view-panel .gm-actions button {
+  font: inherit;
+  font-size: 0.8rem;
+  color: #e8e8ea;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.view-panel .gm-actions button:hover { background: rgba(255, 255, 255, 0.16); }
+.view-panel .gm-file {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.75rem;
+  opacity: 0.75;
+  line-height: 1.35;
+}
+/* Group headings and colour swatches, for panels with more than one section. */
+
+.view-panel .gm-sub {
+  margin: 12px 0 4px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  opacity: 0.6;
+}
+.view-panel .gm-sub:first-of-type { margin-top: 8px; }
+
+.view-panel .gm-row input[type='color'] {
+  flex: none;
+  width: 46px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+/* A top-bar toggle (Colour, Material, Lighting, Wireframe) reads as "on" while
+   its panel is open. */
+.splat-tools button.is-on {
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.4);
+}

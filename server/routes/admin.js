@@ -645,6 +645,11 @@ router.post('/splats/:id/exposure', (req, res) => {
   res.json({ ok: true, exposure });
 });
 
+// Owner-only white balance / tint, saved live from the viewer's Colour panel.
+router.post('/splats/:id/grade', (req, res) => {
+  res.json({ ok: true, ...splatsSvc.setGrade(Number(req.params.id), req.body.white_balance, req.body.tint) });
+});
+
 // Owner-only, called by the viewer's "Set default view" / "Clear" buttons: saves
 // the camera the visitor starts at (and that Reset returns to).
 router.post('/splats/:id/view', (req, res) => {

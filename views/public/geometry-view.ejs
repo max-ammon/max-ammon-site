@@ -65,7 +65,7 @@
         <%# Owner-only lighting rig, saved per model and shown to every visitor.
             The key light starts at 0 so a model lit purely by the environment is
             unchanged until you dial one in. %>
-        <div class="geo-mat geo-light" id="geoLightPanel" hidden>
+        <div class="view-panel geo-light" id="geoLightPanel" hidden>
             <div class="gm-head">Lighting <span class="gm-note">only you see this</span></div>
             <div class="gm-sub">Key light</div>
             <label class="gm-row">Strength
@@ -101,7 +101,7 @@
         <%# Owner-only material overrides. Exports often arrive fully metallic
             (glTF's default when metallicFactor is omitted), which reads dark and
             mirror-like, or without vertex normals, which shades faceted. %>
-        <div class="geo-mat" id="geoMatPanel" hidden>
+        <div class="view-panel" id="geoMatPanel" hidden>
             <div class="gm-head">Material <span class="gm-note">only you see this</span></div>
             <label class="gm-row gm-check"><input type="checkbox" id="geoSmooth"<%= model.smooth_normals ? ' checked' : '' %>> Smooth shading</label>
             <label class="gm-row">Metalness
