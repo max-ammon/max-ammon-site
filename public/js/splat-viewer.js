@@ -153,6 +153,30 @@
     '    gl_Position = vec4(vCenter + position.x * majorAxis / viewport + position.y * minorAxis / viewport, 0.0, 1.0);\n' +
     '}\n';
 
+  /*
+   * ---- colour pipeline --------------------------------------------------------
+   * Splat colours are stored sRGB-encoded. Blending them directly (as the
+   * reference implementation does) has two problems: the semi-transparent
+   * splats composite in gamma space, which washes overlapping colour out, and
+   * `exposure` multiplies straight into an 8-bit buffer, where each channel
+   * clips on its own — an orange (1.0, 0.55, 0.2) brightened 2x becomes
+   * (1.0, 1.0, 0.4), i.e. pure yellow with the warmth gone.
+   *
+   * So when the GPU can render to a float buffer we decode to linear light,
+   * blend there at high precision, and only at the very end apply exposure with
+   * a shoulder that scales all three channels together — hue survives — before
+   * encoding back to sRGB. Older GPUs keep the original single-pass path.
+   */
+  var HDR_OK = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
+
+  if (HDR_OK) {
+    // sRGB -> linear before anything is blended.
+    vsSource = vsSource.replace(
+      '    vPosition = position;\n',
+      '    vColor.rgb = pow(vColor.rgb, vec3(2.2));\n    vPosition = position;\n'
+    );
+  }
+
   var fsSource =
     '#version 300 es\n' +
     'precision highp float;\n' +
@@ -164,7 +188,47 @@
     '    float A = -dot(vPosition, vPosition);\n' +
     '    if (A < -4.0) discard;\n' +
     '    float B = exp(A) * vColor.a;\n' +
-    '    fragColor = vec4(exposure * B * vColor.rgb, B);\n' +
+    // In the HDR path exposure is applied after compositing, so nothing clips
+    // mid-blend; the fallback keeps applying it here as before.
+    (HDR_OK
+      ? '    fragColor = vec4(B * vColor.rgb, B);\n'
+      : '    fragColor = vec4(exposure * B * vColor.rgb, B);\n') +
+    '}\n';
+
+  // Fullscreen pass: exposure, a hue-preserving highlight shoulder, then sRGB.
+  var postVs =
+    '#version 300 es\n' +
+    'out vec2 vUv;\n' +
+    'void main () {\n' +
+    '    vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));\n' +
+    '    vUv = p;\n' +
+    '    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);\n' +
+    '}\n';
+
+  var postFs =
+    '#version 300 es\n' +
+    'precision highp float;\n' +
+    'uniform sampler2D tex;\n' +
+    'uniform float exposure;\n' +
+    'in vec2 vUv;\n' +
+    'out vec4 fragColor;\n' +
+    // Highlights below the knee pass through untouched, so a splat left at
+    // exposure 1 keeps very close to its original brightness.
+    'const float KNEE = 0.85;\n' +
+    'void main () {\n' +
+    '    vec3 c = texture(tex, vUv).rgb * exposure;\n' +
+    // Compress the brightest channel and scale the other two by the same factor,
+    // so an over-exposed orange desaturates towards white instead of turning
+    // yellow. Below the knee nothing is touched.
+    '    float m = max(c.r, max(c.g, c.b));\n' +
+    '    if (m > KNEE) {\n' +
+    '        float over = m - KNEE;\n' +
+    '        float mapped = KNEE + (1.0 - KNEE) * (over / (over + (1.0 - KNEE)));\n' +
+    '        c *= mapped / m;\n' +
+    '    }\n' +
+    '    c = max(c, vec3(0.0));\n' +
+    '    vec3 srgb = mix(12.92 * c, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c));\n' +
+    '    fragColor = vec4(clamp(srgb, 0.0, 1.0), 1.0);\n' +
     '}\n';
 
   function compile(type, src) {
@@ -199,12 +263,67 @@
   gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
   gl.clearColor(0, 0, 0, 0);
 
+  // --- HDR target + tone-mapping pass (skipped where float targets are absent) ---
+  var postProgram = null;
+  var postVao = null;
+  var u_postTex = null;
+  var u_postExposure = null;
+  var hdrFbo = null;
+  var hdrTex = null;
+  var hdrW = 0;
+  var hdrH = 0;
+  var hdrReady = false;
+
+  if (HDR_OK) {
+    try {
+      postProgram = gl.createProgram();
+      gl.attachShader(postProgram, compile(gl.VERTEX_SHADER, postVs));
+      gl.attachShader(postProgram, compile(gl.FRAGMENT_SHADER, postFs));
+      gl.linkProgram(postProgram);
+      if (!gl.getProgramParameter(postProgram, gl.LINK_STATUS)) throw new Error('post link failed');
+      u_postTex = gl.getUniformLocation(postProgram, 'tex');
+      u_postExposure = gl.getUniformLocation(postProgram, 'exposure');
+      postVao = gl.createVertexArray(); // attribute-less draw; keeps the main VAO clean
+      gl.useProgram(program);
+    } catch (e) {
+      HDR_OK = false; // fall back to the single-pass path
+      postProgram = null;
+    }
+  }
+
+  // (Re)allocate the float colour buffer the splats composite into.
+  function ensureHdr(w, h) {
+    if (!HDR_OK || w < 1 || h < 1) return false;
+    if (hdrReady && w === hdrW && h === hdrH) return true;
+    if (!hdrTex) {
+      hdrTex = gl.createTexture();
+      hdrFbo = gl.createFramebuffer();
+    }
+    gl.activeTexture(gl.TEXTURE1); // unit 0 stays with the splat data texture
+    gl.bindTexture(gl.TEXTURE_2D, hdrTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, hdrFbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, hdrTex, 0);
+    hdrReady = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.activeTexture(gl.TEXTURE0);
+    hdrW = w;
+    hdrH = h;
+    if (!hdrReady) HDR_OK = false; // never retry a target this GPU refused
+    return hdrReady;
+  }
+
   var u_projection = gl.getUniformLocation(program, 'projection');
   var u_viewport = gl.getUniformLocation(program, 'viewport');
   var u_focal = gl.getUniformLocation(program, 'focal');
   var u_view = gl.getUniformLocation(program, 'view');
   var u_exposure = gl.getUniformLocation(program, 'exposure');
-  gl.uniform1f(u_exposure, EXPOSURE);
+  // In the HDR path exposure is applied by the tone-mapping pass each frame.
+  if (!HDR_OK) gl.uniform1f(u_exposure, EXPOSURE);
 
   // Quad corners (per-vertex, one instance per splat).
   var vertexBuffer = gl.createBuffer();
@@ -308,6 +427,7 @@
     return [stage.clientWidth || window.innerWidth, stage.clientHeight || window.innerHeight];
   }
   function resize() {
+    gl.useProgram(program); // the post pass may have been current
     var s = stageSize();
     var W = s[0];
     var H = s[1];
@@ -482,9 +602,30 @@
       }
       gl.uniformMatrix4fv(u_view, false, new Float32Array(view));
     }
+    // Composite the splats in linear light (float target), then tone-map to the
+    // screen. Without float support this draws straight to the canvas as before.
+    var useHdr = ensureHdr(canvas.width, canvas.height);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, useHdr ? hdrFbo : null);
+    gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT);
     if (textureReady && drawCount > 0) {
       gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, drawCount);
+    }
+    if (useHdr) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.disable(gl.BLEND); // this pass writes the finished image
+      gl.useProgram(postProgram);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, hdrTex);
+      gl.uniform1i(u_postTex, 1);
+      gl.uniform1f(u_postExposure, EXPOSURE);
+      gl.bindVertexArray(postVao);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.bindVertexArray(null);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.enable(gl.BLEND);
+      gl.useProgram(program);
     }
     requestAnimationFrame(frame);
   }
@@ -701,7 +842,10 @@
     var saveTimer = null;
     expEl.addEventListener('input', function () {
       EXPOSURE = parseFloat(expEl.value) || 1;
-      gl.uniform1f(u_exposure, EXPOSURE);
+      if (!HDR_OK) {
+        gl.useProgram(program);
+        gl.uniform1f(u_exposure, EXPOSURE);
+      }
       if (saveTimer) clearTimeout(saveTimer);
       saveTimer = setTimeout(function () {
         fetch('/admin/splats/' + encodeURIComponent(SPLAT_ID) + '/exposure', {
