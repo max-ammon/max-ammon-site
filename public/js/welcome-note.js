@@ -10,7 +10,7 @@
   var note = document.getElementById('welcomeNote');
   if (!note) return;
 
-  var HOLD_MS = 4000; // fade anyway after this long
+  var HOLD_MS = 10000; // fade anyway after this long
   var FADE_MS = 1700; // must cover the CSS transition before the node is removed
 
   // Sit just below the header, whatever height it currently is (it differs

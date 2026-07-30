@@ -293,12 +293,14 @@ nav a.nav-current { text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
   max-width: min(460px, calc(100vw - 32px));
   padding: 15px 19px;
   border-radius: 6px;
-  background: rgba(214, 58, 26, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(245, 166, 35, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.38);
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
-  color: #fff;
+  /* Dark text: white on this orange-yellow is barely legible (~1.8:1), whereas
+     this reads at roughly 9:1. */
+  color: #241a05;
   font-family: 'uni_regular', sans-serif;
   font-size: 1.35cap;
   line-height: 1.45;
