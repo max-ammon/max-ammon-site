@@ -127,9 +127,25 @@ button.project-link {
 .project-dl-menu .dl-size { opacity: 0.7; }
 
 /* --- Key to the card symbols (above the colour-info box) ------------------ */
+/* The line introducing the previews, matching the key beneath it exactly.
+   Scoped with #gallery so it outranks `#gallery p` in the site stylesheet, which
+   would otherwise make it bold, larger and dark like the section intro. */
+#gallery .symbol-key-lead {
+  margin: 18px auto 0;
+  padding: 0 5vw;
+  max-width: 1000px;
+  text-align: center;
+  color: var(--lightcolor);
+  font-family: 'uni_regular', sans-serif;
+  font-size: 1.15cap;
+  font-weight: normal;
+  line-height: 1.3;
+}
+
 .symbol-key {
   list-style: none;
-  margin: 18px auto 0;
+  /* Tightened, since .symbol-key-lead now sits directly above it. */
+  margin: 8px auto 0;
   padding: 0 5vw;
   max-width: 1000px;
   display: flex;
