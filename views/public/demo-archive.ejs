@@ -35,7 +35,8 @@
                      loading="lazy" decoding="async" alt="<%= it.title %>">
                 <% } %>
                 <img src="/assets/paths/demo_thumbnail_button.svg" alt="playbuttonsvg" class="playbutton-svg demo-play" style="width: 3.5%;">
-            </div>
+                <%# Swapped in for the play triangle once this video has run to the end. %>
+                <img src="/assets/paths/demo_replay_button.svg" alt="replaybuttonsvg" class="playbutton-svg demo-replay" loading="lazy">
         </div>
     </article>
     <% }); %>

@@ -64,11 +64,26 @@
   object-fit: cover;
 }
 
-.demo-embed .demo-play {
+.demo-embed .demo-play,
+.demo-embed .demo-replay {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+/* The replay glyph takes the play triangle's place once the video has been
+   watched right through — see /js/demo.js. It is square where the triangle is
+   tall, so it carries a slightly larger width to read at the same size. */
+.demo-embed .demo-replay {
+  display: none;
+  width: 4.4%;
+}
+.demo-embed.watched .demo-play {
+  display: none;
+}
+.demo-embed.watched .demo-replay {
+  display: block;
 }
 
 .demo-embed iframe {
@@ -80,7 +95,8 @@
 }
 
 .demo-embed.playing .demo-poster,
-.demo-embed.playing .demo-play {
+.demo-embed.playing .demo-play,
+.demo-embed.playing .demo-replay {
   display: none;
 }
 
