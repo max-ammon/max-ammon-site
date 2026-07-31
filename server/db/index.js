@@ -68,6 +68,11 @@ addColumnIfMissing('gallery_projects', 'link_splat_id', 'INTEGER');
 addColumnIfMissing('photos', 'date_text', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('photos', 'row_break', 'INTEGER NOT NULL DEFAULT 0');
 
+// The single floating welcome note was replaced by the two arrow hints
+// (hint.gallery / hint.welcome), so drop the block that no longer renders —
+// otherwise it lingers in Admin -> Text as a field that does nothing.
+db.prepare("DELETE FROM content_blocks WHERE block_key = 'welcome.note'").run();
+
 // Seed with today's exact content/colours on first run only.
 const seed = require('./seed');
 seed.seedIfEmpty(db);

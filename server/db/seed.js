@@ -103,11 +103,15 @@ const CONTENT = [
   ['gallery.journey.title', 'gallery', 'CG-journey bar — the label written down the bar (gallery timeline rail)', 'my cg journey', 'text'],
   ['gallery.journey.start_year', 'gallery', 'CG-journey bar — the year shown at the bottom of the bar', '2015', 'text'],
 
-  // The floating welcome note on the main page (fades away on the first scroll,
-  // or after a few seconds). Blank it to switch the note off entirely.
-  ['welcome.note', 'welcome', 'Welcome note — floats over the main page, then fades (HTML; blank = off)',
-    'Welcome! On this page you can watch my Demo, and learn about me and my skills,<br>to see what we could build together.' +
-    '<br><br>For individual projects and assets&mdash;including Gaussian splat scans and geometry, in an interactive 3D experience in your browser&mdash;you can visit my Project Gallery.',
+  // The two floating hints on the main page. Each is a box with an arrow: one
+  // points up at the Project Gallery button in the header, one points down into
+  // the page. They stay until the visitor moves the page, then fade. Blank
+  // either one to switch that hint off entirely.
+  ['hint.gallery', 'welcome', 'Header hint — points at the Project Gallery button (HTML; blank = off)',
+    'For individual projects and assets&mdash;including Gaussian splat scans and geometry, in an interactive 3D experience in your browser&mdash;click here!',
+    'html'],
+  ['hint.welcome', 'welcome', 'Page hint — points down into the main page (HTML; blank = off)',
+    'Welcome! On this page you can watch my Demo, and learn about me and my skills,<br>to see what we could build together.',
     'html'],
 
   // Photography page (a separate /photography page, reached from the gallery header).

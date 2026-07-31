@@ -7,11 +7,28 @@
 <body>
 <%- include('../partials/nav', { navVariant: 'main' }) %>
 
-<%# Floating welcome note: sits under the header on the left, over everything
-    else, and fades away on the first scroll or after a few seconds. Editable
-    under Admin -> Text; blank it there to switch it off. %>
-<% if (content['welcome.note']) { %>
-<div class="welcome-note" id="welcomeNote" role="status"><%- content['welcome.note'] %></div>
+<%# Two floating hints over everything else: one with an arrow up at the Project
+    Gallery button in the header, one with an arrow down into the page. They stay
+    put until the visitor moves the page, then fade. The script measures the
+    header and the button, so the arrows land correctly at any width. Editable
+    under Admin -> Text; blank either to switch that hint off. %>
+<% if (content['hint.gallery']) { %>
+<div class="site-hint site-hint-gallery" id="hintGallery" role="status">
+    <svg class="site-hint-arrow" viewBox="0 0 24 52" aria-hidden="true" focusable="false">
+        <path d="M12 50 V 8" />
+        <path d="M4 17 L12 4 L20 17" />
+    </svg>
+    <div class="site-hint-box"><%- content['hint.gallery'] %></div>
+</div>
+<% } %>
+<% if (content['hint.welcome']) { %>
+<div class="site-hint site-hint-welcome" id="hintWelcome" role="status">
+    <div class="site-hint-box"><%- content['hint.welcome'] %></div>
+    <svg class="site-hint-arrow" viewBox="0 0 24 52" aria-hidden="true" focusable="false">
+        <path d="M12 2 V 44" />
+        <path d="M4 35 L12 48 L20 35" />
+    </svg>
+</div>
 <% } %>
 
     <section id="demo">
@@ -231,7 +248,7 @@
     <script src="/js/pipeline.js"></script>
     <script src="/js/scrollspy.js"></script>
     <script src="/js/nav-scroll.js"></script>
-    <script src="/js/welcome-note.js"></script>
+    <script src="/js/site-hints.js"></script>
 
 </body>
 </html>

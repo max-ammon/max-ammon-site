@@ -277,46 +277,94 @@ nav a.nav-current { text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
   #contact .ci-value { min-width: 0; }
 }
 
-/* --- Floating welcome note (main page) -------------------------------------
-   Sits just under the header on the left, over everything else (the sticky nav
-   is z-index 1007). Deliberately warm/high-contrast against the site's greys so
-   it's noticed, and slightly translucent so it still reads as an overlay rather
-   than part of the page. pointer-events:none so it can never swallow a click on
-   whatever sits beneath it, and it fades out gently — see /js/welcome-note.js.
-   `top` is a sensible fallback; the script replaces it with the header's real
-   height so it tucks under the title at any width. */
-.welcome-note {
+/* --- Floating hints (main page) ---------------------------------------------
+   Two boxes with arrows, floating over everything else (the sticky nav is
+   z-index 1007): one pointing up at the Project Gallery button in the header,
+   one pointing down into the page. They hold until the visitor moves the page —
+   see /js/site-hints.js, which also measures the header and the button so the
+   arrows land correctly at any width. The `top` values here are sensible
+   fallbacks for that script.
+
+   Drawn in the site's own palette: light text, a light border and the same white
+   glow the header links carry when current or hovered, over the dark body-text
+   colour so the text keeps its contrast against whatever it happens to cover.
+   pointer-events:none so they can never swallow a click on what's beneath. */
+.site-hint {
   position: fixed;
-  top: 90px;
-  left: clamp(16px, 2.5vw, 48px);
   z-index: 2000;
-  max-width: min(460px, calc(100vw - 32px));
-  padding: 15px 19px;
-  border-radius: 6px;
-  background: rgba(245, 166, 35, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.38);
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
-  /* Dark text: white on this orange-yellow is barely legible (~1.8:1), whereas
-     this reads at roughly 9:1. */
-  color: #241a05;
-  font-family: 'uni_regular', sans-serif;
-  font-size: 1.35cap;
-  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
   pointer-events: none;
   transition: opacity 1.6s ease;
 }
 
+.site-hint-box {
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 15px 19px;
+  border-radius: 6px;
+  /* color-mix gives the slight translucency of an overlay; the plain colour
+     above it is the fallback where color-mix isn't supported, so the text is
+     never left sitting on bare page content. */
+  background: var(--secondarycolor);
+  background: color-mix(in srgb, var(--secondarycolor) 88%, transparent);
+  border: 2px solid var(--lightcolor);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.25), 0 12px 34px rgba(0, 0, 0, 0.38);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  color: var(--lightcolor);
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+  font-family: 'uni_regular', sans-serif;
+  font-size: 1.35cap;
+  line-height: 1.45;
+}
+
+.site-hint-arrow {
+  width: 22px;
+  height: 48px;
+  flex: none;
+  fill: none;
+  stroke: var(--lightcolor);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.55));
+}
+
+/* Points up at the header button: the arrow is absolute so the script can slide
+   it under the button, and the padding reserves the room it sits in. */
+.site-hint-gallery {
+  top: 76px;
+  right: clamp(16px, 2.5vw, 48px);
+  align-items: flex-end;
+  padding-top: 48px;
+}
+.site-hint-gallery .site-hint-arrow {
+  position: absolute;
+  top: 0;
+  left: 14px;
+}
+
+/* Points down into the page, where the old welcome note sat. */
+.site-hint-welcome {
+  top: 90px;
+  left: clamp(16px, 2.5vw, 48px);
+  align-items: flex-start;
+}
+.site-hint-welcome .site-hint-arrow {
+  margin: 6px 0 0 26px;
+}
+
 /* The fade-out state. */
-.welcome-note.is-out {
+.site-hint.is-out {
   opacity: 0;
 }
 
 @media (max-width: 700px) {
-  .welcome-note {
+  .site-hint {
     left: 10px;
     right: 10px;
+  }
+  .site-hint-box {
     max-width: none;
     padding: 12px 14px;
     font-size: 1.15cap;
@@ -325,5 +373,5 @@ nav a.nav-current { text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
 
 /* Someone who asked for less motion gets it removed rather than animated. */
 @media (prefers-reduced-motion: reduce) {
-  .welcome-note { transition: opacity 0.2s linear; }
+  .site-hint { transition: opacity 0.2s linear; }
 }
