@@ -21,6 +21,7 @@
 
   var FADE_MS = 1700; // must cover the CSS transition before the nodes are removed
   var GAP = 14; // breathing room under the header
+  var ARROW_GAP = 4; // clearance between the down arrow's tip and what follows
 
   var nav = document.querySelector('nav');
   // The header link the gallery hint points at.
@@ -58,7 +59,28 @@
         if (gr.left < wr.right && wr.left < gr.right) top = Math.max(top, gr.bottom + GAP);
       }
       welcome.style.top = Math.round(top) + 'px';
+      fitDownArrow();
     }
+  }
+
+  /*
+   * Keep the down arrow out of the demo where there's room to, so its tip stops
+   * cleanly at the poster's edge rather than trailing across the image. Where
+   * there isn't room — on a phone the box already sits over the poster — it
+   * keeps a minimum length and relies on the dark halo the stylesheet gives it
+   * to stay legible. A hint without its arrow is worse than a short one.
+   */
+  var MIN_ARROW = 14;
+  function fitDownArrow() {
+    var arrow = welcome && welcome.querySelector('.site-hint-arrow');
+    var below = document.querySelector('.demo-embed') || document.querySelector('.demobox');
+    if (!arrow || !below) return;
+    var box = welcome.querySelector('.site-hint-box');
+    if (!box) return;
+    arrow.style.height = ''; // measure the stylesheet's length, not the last fit
+    var full = arrow.getBoundingClientRect().height;
+    var room = below.getBoundingClientRect().top - box.getBoundingClientRect().bottom - ARROW_GAP;
+    arrow.style.height = Math.max(MIN_ARROW, Math.min(full, Math.floor(room))) + 'px';
   }
 
   place();
@@ -84,9 +106,16 @@
     }, FADE_MS);
   }
 
-  // "The page is moved" — any of these means the visitor has started looking
-  // around. Passive listeners so they never delay the scroll itself.
-  ['scroll', 'wheel', 'touchmove', 'keydown'].forEach(function (ev) {
-    window.addEventListener(ev, dismiss, { passive: true, once: true });
+  /*
+   * Anything that means the visitor has started using the page. pointerdown
+   * matters as much as scrolling: someone who lands here and goes straight for
+   * the demo's play button never moves the page at all, and used to be left
+   * watching the video with the hints still sitting over it.
+   *
+   * Capture phase, because the play button stops the event from bubbling any
+   * further, and passive so none of this can delay the scroll or the tap.
+   */
+  ['scroll', 'wheel', 'touchmove', 'keydown', 'pointerdown'].forEach(function (ev) {
+    window.addEventListener(ev, dismiss, { capture: true, passive: true, once: true });
   });
 })();

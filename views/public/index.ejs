@@ -24,9 +24,11 @@
 <% if (content['hint.welcome']) { %>
 <div class="site-hint site-hint-welcome" id="hintWelcome" role="status">
     <div class="site-hint-box"><%- content['hint.welcome'] %></div>
-    <svg class="site-hint-arrow" viewBox="0 0 24 52" aria-hidden="true" focusable="false">
-        <path d="M12 2 V 44" />
-        <path d="M4 35 L12 48 L20 35" />
+    <%# Short on purpose, and shortened further by the script if the demo starts
+        close underneath: a thin light stroke over the poster image is invisible. %>
+    <svg class="site-hint-arrow" viewBox="0 0 24 28" preserveAspectRatio="xMidYMax meet" aria-hidden="true" focusable="false">
+        <path d="M12 2 V 19" vector-effect="non-scaling-stroke" />
+        <path d="M5 15 L12 26 L19 15" vector-effect="non-scaling-stroke" />
     </svg>
 </div>
 <% } %>

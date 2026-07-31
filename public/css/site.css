@@ -327,7 +327,11 @@ nav a.nav-current { text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
   stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.55));
+  /* The dark halo first, then the glow. A thin light stroke on its own vanishes
+     against a bright backdrop — the arrows reach over the demo poster, so they
+     need to carry their own contrast rather than borrow the page's. */
+  filter: drop-shadow(0 0 3px var(--secondarycolor)) drop-shadow(0 0 2px var(--secondarycolor))
+    drop-shadow(0 0 9px rgba(255, 255, 255, 0.55));
 }
 
 /* Points up at the header button: the arrow is absolute so the script can slide
@@ -351,7 +355,8 @@ nav a.nav-current { text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
   align-items: flex-start;
 }
 .site-hint-welcome .site-hint-arrow {
-  margin: 6px 0 0 26px;
+  height: 30px; /* the script shortens this to whatever room there is */
+  margin: 4px 0 0 26px;
 }
 
 /* The fade-out state. */
