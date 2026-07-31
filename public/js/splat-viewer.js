@@ -433,23 +433,32 @@
     else if (cores >= 4) score += 1;
     if (mem >= 8) score += 2;
     else if (mem >= 4) score += 1;
-    // A clearly capable machine opens at full quality rather than easing up to
-    // it, so the first second already looks its best; if it can't hold the pace
-    // the measurements pull it back within one sampling window.
-    var frac = score >= 5 ? 1 : score >= 3 ? 0.65 : 0.5;
+    // Open near full quality even on a modest device: the first second should
+    // already look right, and one sampling window is enough to pull it back if
+    // the device can't hold the pace.
+    var frac = score >= 5 ? 1 : score >= 3 ? 0.85 : 0.7;
     return Math.max(MIN_SCALE, Math.min(MAX_SCALE, MAX_SCALE * frac));
   }
 
   var renderScale = startingScale(); // device pixels per CSS pixel
-  var moveFactor = IS_MOBILE ? 0.65 : 0.9; // extra reduction while the camera moves
+  var scaleCeiling = MAX_SCALE; // ratchets down past a resolution that proved too slow
+  var moveFactor = IS_MOBILE ? 0.85 : 1; // extra reduction while the camera moves
   var activeScale = 1; // 1 at rest, moveFactor while moving
   var idleTimer = null;
 
-  // Splat budget: how many of the (importance-ordered) splats we draw. Starts
-  // conservative on mobile and is raised or lowered by the same measurements.
+  // Splat budget: how many of the (importance-ordered) splats we draw. Every
+  // splat is drawn until the frame rate says otherwise — the tail of that order
+  // is the small, faint splats that fill the gaps between the big ones, so
+  // holding any back is what makes a capture look see-through.
   var MIN_SPLATS = 150000;
   var totalSplats = 0;
   var renderCount = 0;
+
+  // Never thin the cloud past this, however slow the device: below roughly
+  // two-thirds the gaps start to show, and a soft image beats a transparent one.
+  function splatFloor() {
+    return Math.max(Math.min(totalSplats, MIN_SPLATS), Math.round(totalSplats * 0.65));
+  }
 
   var focalX = 1000;
   var focalY = 1000;
@@ -495,17 +504,27 @@
   }
 
   /*
-   * Frame-rate feedback. Sampled over ~0.7s windows, with a gap between the
-   * "speed up" and "slow down" thresholds so it settles instead of oscillating.
-   * Resolution is traded first (cheap, reversible); only once it's already at the
-   * floor does the splat count come down, since that's the visible one.
+   * Frame-rate feedback, sampled over ~0.7s windows. Fidelity comes first here:
+   * quality is only given up once the frame rate falls below SLOW_FPS. Anything
+   * above that is left exactly as it is, even if it isn't a solid 60 — a splat
+   * that runs at 35fps and looks right beats one that runs at 60 and looks thin.
+   *
+   * When it does have to give, it gives in order of how little you'd notice:
+   * first the softening while you drag, then the still-frame resolution, and
+   * only at the floor of that the splat count. Recovery goes back the other way,
+   * so the most visible deficit is repaid first. FAST_FPS sits well clear of
+   * SLOW_FPS, and a resolution that measured slow is not tried again, so the
+   * loop settles instead of hunting.
    */
+  var SLOW_FPS = 27;
+  var FAST_FPS = 45;
+  var STALL_FPS = 20; // properly stalling — skip the polite first step
   var fpsFrames = 0;
   var fpsSince = 0;
   var lastFps = 0;
 
   function setScale(next) {
-    next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, next));
+    next = Math.max(MIN_SCALE, Math.min(scaleCeiling, next));
     if (Math.abs(next - renderScale) < 0.02) return false;
     renderScale = next;
     resize();
@@ -514,19 +533,27 @@
 
   function adapt(fps) {
     if (!textureReady || !drawCount) return; // nothing drawn yet — don't judge
-    if (fps >= 55) {
-      // Headroom: sharpen first, then draw more of the splats we're holding back.
-      if (!setScale(renderScale + 0.15) && renderCount < totalSplats) {
-        renderCount = Math.min(totalSplats, Math.round(renderCount * 1.25) + 50000);
+    if (fps < SLOW_FPS) {
+      var stalling = fps < STALL_FPS;
+      if (!stalling && moveFactor > 0.55) {
+        moveFactor = Math.max(0.55, moveFactor - 0.15);
+        return; // give the cheapest concession a window to show up
+      }
+      if (stalling) moveFactor = 0.55; // take the free one too, then keep going
+      // Don't climb back to a resolution that has already proved too slow.
+      scaleCeiling = Math.max(MIN_SCALE, renderScale - 0.1);
+      if (!setScale(renderScale - 0.2) && renderCount > splatFloor()) {
+        renderCount = Math.max(splatFloor(), Math.round(renderCount * 0.85));
         lastPosted = ''; // force a re-sort at the new budget
       }
-      if (fps >= 58 && renderScale >= MAX_SCALE - 0.01) moveFactor = 1;
-    } else if (fps < 40) {
-      if (!setScale(renderScale - 0.2) && renderCount > MIN_SPLATS) {
-        renderCount = Math.max(MIN_SPLATS, Math.round(renderCount * 0.75));
+    } else if (fps >= FAST_FPS) {
+      // Headroom: fill the cloud back in first, since that is the visible loss.
+      if (renderCount < totalSplats) {
+        renderCount = Math.min(totalSplats, Math.round(renderCount * 1.4) + 100000);
         lastPosted = '';
+      } else if (!setScale(renderScale + 0.15) && moveFactor < 1) {
+        moveFactor = Math.min(1, moveFactor + 0.1);
       }
-      moveFactor = IS_MOBILE ? 0.55 : 0.8;
     }
   }
 
@@ -575,10 +602,9 @@
       return;
     }
     if (d.bounds) {
-      // Start mobile on a subset of the (importance-ordered) splats and let the
-      // measurements raise it; desktop starts with everything.
+      // Every device starts with the whole cloud; only a measured stall thins it.
       totalSplats = d.vertexCount;
-      renderCount = IS_MOBILE ? Math.min(totalSplats, 700000) : totalSplats;
+      renderCount = totalSplats;
       initCamera(d.bounds);
     }
     if (d.texdata) uploadTexture(d);
