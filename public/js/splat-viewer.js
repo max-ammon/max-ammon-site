@@ -318,7 +318,23 @@
     gl.activeTexture(gl.TEXTURE0);
     hdrW = w;
     hdrH = h;
-    if (!hdrReady) HDR_OK = false; // never retry a target this GPU refused
+    if (!hdrReady) {
+      /*
+       * The GPU refused a target this size. Giving up on the float buffer
+       * altogether would cost the whole linear-light pipeline — the thing that
+       * keeps colour honest — so first try asking for less: halve the pixel
+       * budget and let the next frame come back with a size it will take. Only
+       * a refusal at an already-small size means this GPU simply can't.
+       */
+      if (w * h > 1e6) {
+        MAX_PIXELS = Math.max(1e6, Math.round(w * h * 0.5));
+        hdrW = 0;
+        hdrH = 0;
+        resize();
+      } else {
+        HDR_OK = false;
+      }
+    }
     return hdrReady;
   }
 
@@ -439,12 +455,38 @@
     return Math.max(MIN_SCALE, Math.min(MAX_SCALE, MAX_SCALE * (weak ? 0.7 : 1)));
   }
 
-  var renderScale = startingScale(); // device pixels per CSS pixel
-  var scaleCeiling = MAX_SCALE; // ratchets down past a resolution that proved too slow
-  var moveFactor = 1; // extra reduction while the camera moves, if it turns out to be needed
-  var activeScale = 1; // 1 at rest, moveFactor while moving
+  /*
+   * There are two qualities, not one. A still camera gets the best the screen
+   * can show — full pixel density, every splat — because a still frame is
+   * allowed to take as long as it likes; nobody can tell whether a picture that
+   * isn't changing took 8ms or 300ms to draw. Only while you're actually moving
+   * the camera does the frame rate matter, and only that moving resolution is
+   * what the measurements below adapt.
+   */
+  var renderScale = startingScale(); // device pixels per CSS pixel, while moving
+  var scaleCeiling = MAX_SCALE; // ratchets down past a moving resolution that proved too slow
+  var atRest = true; // still long enough to be worth the full-quality render
+  var REST_MS = 260; // how long the camera has to hold still before it sharpens
   var idleTimer = null;
   var movedSinceSample = false; // was the camera actually moving during this window?
+
+  // Keep the drawing buffer inside a sane budget however dense the screen is:
+  // past this the half-float target costs more memory than it is worth, and some
+  // GPUs refuse the allocation outright.
+  var MAX_PIXELS = 8e6;
+
+  /*
+   * Drawing is on demand. While the camera moves every frame is drawn; at rest
+   * the picture only changes when something says so, and redrawing an identical
+   * — and deliberately expensive — frame sixty times a second would cook the
+   * phone for nothing. Anything that changes what's on screen calls invalidate().
+   */
+  var pendingDraws = 1;
+  var lastDrawAt = 0;
+  var REST_HEARTBEAT_MS = 2000; // safety net: repaint occasionally even at rest
+  function invalidate() {
+    pendingDraws = 1;
+  }
 
   // Splat budget: how many of the (importance-ordered) splats we draw. Every
   // splat is drawn until the frame rate says otherwise — the tail of that order
@@ -472,7 +514,9 @@
     var s = stageSize();
     var W = s[0];
     var H = s[1];
-    var dpr = renderScale * activeScale;
+    // Full density at rest, the adapted moving resolution while the camera moves.
+    var dpr = atRest ? MAX_SCALE : renderScale;
+    dpr = Math.min(dpr, Math.max(MIN_SCALE, Math.sqrt(MAX_PIXELS / Math.max(1, W * H))));
     canvas.width = Math.max(1, Math.round(W * dpr));
     canvas.height = Math.max(1, Math.round(H * dpr));
     gl.viewport(0, 0, canvas.width, canvas.height);
@@ -482,41 +526,51 @@
     gl.uniform2fv(u_focal, new Float32Array([focalX, focalY]));
     gl.uniform2fv(u_viewport, new Float32Array([W, H]));
     gl.uniformMatrix4fv(u_projection, false, new Float32Array(projectionMatrix));
+    invalidate();
   }
   window.addEventListener('resize', resize);
   resize();
 
-  // Drop the render resolution while the camera is moving, then restore it ~0.2s
-  // after the last input — smooth while dragging, crisp at rest. moveFactor is 1
-  // until a drag actually measures slow, so on most devices this does nothing.
+  // Touching the camera drops to the moving resolution; letting go for a moment
+  // brings back full density and the whole cloud.
   function markInteracting() {
     movedSinceSample = true;
-    if (activeScale === 1 && moveFactor < 1) {
-      activeScale = moveFactor;
+    invalidate();
+    if (atRest) {
+      atRest = false;
       resize();
     }
     if (idleTimer) clearTimeout(idleTimer);
-    idleTimer = setTimeout(function () {
-      if (activeScale !== 1) {
-        activeScale = 1;
-        resize();
-      }
-    }, 220);
+    idleTimer = setTimeout(settleToRest, REST_MS);
+  }
+
+  function settleToRest() {
+    if (atRest) return;
+    atRest = true;
+    if (renderCount < totalSplats) {
+      renderCount = totalSplats; // whatever was held back, the still frame gets it
+      lastPosted = ''; // re-sort at the full count
+    }
+    resize();
+    invalidate();
+    showQuality();
   }
 
   /*
-   * Frame-rate feedback, sampled over ~0.7s windows. Fidelity comes first here:
-   * quality is only given up once the frame rate falls below SLOW_FPS. Anything
-   * above that is left exactly as it is, even if it isn't a solid 60 — a splat
-   * that runs at 35fps and looks right beats one that runs at 60 and looks thin.
+   * Frame-rate feedback for the moving resolution, sampled over ~0.7s windows.
+   * Only windows in which the camera actually moved are judged: a still frame is
+   * deliberately expensive now, and nothing this loop can change would make it
+   * cheaper without giving up the quality it exists to provide.
    *
-   * When it does have to give, it gives in order of how little you'd notice:
-   * first the softening while you drag, then the still-frame resolution, and
-   * only at the floor of that the splat count. Recovery goes back the other way,
-   * so the most visible deficit is repaid first. The band between the two
-   * thresholds is deliberately narrow — what keeps the loop from hunting isn't a
-   * wide dead zone but the rule that a resolution which measured slow is never
-   * climbed back into.
+   * Fidelity first — quality is only given up below SLOW_FPS, and resolution
+   * goes before the splat count, which is never thinned past its floor. What
+   * keeps this from hunting is the rule that a resolution which measured slow is
+   * never climbed back into: every failed attempt at the ceiling lowers it, so
+   * the loop can only converge. That ratchet is deliberately tied to being *at*
+   * the ceiling rather than to the size of the correction — on a device whose
+   * cost is dominated by the per-splat work rather than fill rate, every
+   * correction is large, and keying off that meant the ceiling never engaged and
+   * the loop cut and climbed forever.
    */
   var SLOW_FPS = 27;
   var FAST_FPS = 34;
@@ -544,31 +598,53 @@
     return true;
   }
 
-  function adapt(fps, moving) {
+  /*
+   * A real frame rate is noisy — thermal throttling, other apps, the compositor,
+   * and the scene itself getting cheaper or dearer as the camera moves. Acting on
+   * a single window means every stray reading moves the quality, which reads as
+   * the picture endlessly churning without ever getting better. So a change needs
+   * two windows in a row agreeing, and after one is made the next window is
+   * skipped: the resize itself costs frames, and judging that would be judging
+   * the correction rather than the result.
+   */
+  var slowRun = 0;
+  var fastRun = 0;
+  var cooldown = 0;
+
+  function adapt(fps) {
     if (!textureReady || !drawCount) return; // nothing drawn yet — don't judge
+    if (cooldown > 0) {
+      cooldown--;
+      slowRun = 0;
+      fastRun = 0;
+      return;
+    }
     if (fps < SLOW_FPS) {
-      // Softening the drag is only worth anything if the slow frames were drag
-      // frames; a still frame that can't keep up needs the resolution itself.
-      if (moving && moveFactor > 0.55) {
-        moveFactor = Math.max(0.55, moveFactor - 0.15);
-        return;
-      }
-      var next = seekScale(fps);
-      // A small correction means we're at the boundary: remember that this
-      // resolution was too slow so the loop can't climb straight back into it
-      // and start hunting. A big correction proves nothing about the scales in
-      // between, so it leaves the ceiling alone.
-      if (next > renderScale * 0.9) scaleCeiling = Math.max(MIN_SCALE, renderScale * 0.95);
-      if (!setScale(next) && renderCount > splatFloor()) {
+      fastRun = 0;
+      if (++slowRun < 2) return;
+    } else if (fps >= FAST_FPS) {
+      slowRun = 0;
+      if (++fastRun < 2) return;
+    } else {
+      slowRun = 0; // comfortably in the band — leave it alone
+      fastRun = 0;
+      return;
+    }
+    slowRun = 0;
+    fastRun = 0;
+    cooldown = 1;
+
+    if (fps < SLOW_FPS) {
+      // Slow while already at the ceiling means the ceiling itself is too high;
+      // slow well below it is a passing hiccup and proves nothing about it.
+      if (renderScale > scaleCeiling * 0.9) scaleCeiling = Math.max(MIN_SCALE, renderScale * 0.95);
+      if (!setScale(seekScale(fps)) && renderCount > splatFloor()) {
         renderCount = Math.max(splatFloor(), Math.round(renderCount * 0.85));
         lastPosted = ''; // force a re-sort at the new budget
       }
     } else if (fps >= FAST_FPS) {
-      // Repay the deficit you're looking at: the drag first if you're dragging,
-      // then the missing splats, then sharpness.
-      if (moving && moveFactor < 1) {
-        moveFactor = Math.min(1, moveFactor + 0.1);
-      } else if (renderCount < totalSplats) {
+      // Headroom: fill the cloud back in first, since that's the visible loss.
+      if (renderCount < totalSplats) {
         renderCount = Math.min(totalSplats, Math.round(renderCount * 1.4) + 100000);
         lastPosted = '';
       } else {
@@ -577,26 +653,42 @@
     }
   }
 
+  // Owner-only readout of where the two qualities currently sit.
+  function showQuality() {
+    if (!qualityEl) return;
+    var splats =
+      (renderCount >= 1e6 ? (renderCount / 1e6).toFixed(1) + 'M' : Math.round(renderCount / 1000) + 'k') +
+      (renderCount < totalSplats ? ' of ' + (totalSplats / 1e6).toFixed(1) + 'M' : '');
+    qualityEl.textContent = atRest
+      ? 'at rest: ' + MAX_SCALE + '× · ' + splats + ' splats'
+      : 'moving: ' + renderScale.toFixed(2) + '× of ' + MAX_SCALE + '× · ' + Math.round(lastFps) + ' fps · ' + splats + ' splats';
+    qualityEl.hidden = false;
+  }
+
   function sampleFps(now) {
+    // Only moving windows are measured; a still frame is meant to be expensive.
+    if (atRest) {
+      fpsSince = 0;
+      fpsFrames = 0;
+      return;
+    }
     if (!fpsSince) {
       fpsSince = now;
+      fpsFrames = 0;
+      movedSinceSample = false;
       return;
     }
     fpsFrames++;
     var elapsed = now - fpsSince;
     if (elapsed < 700) return;
+    var moved = movedSinceSample;
     lastFps = (fpsFrames * 1000) / elapsed;
     fpsFrames = 0;
     fpsSince = now;
-    adapt(lastFps, movedSinceSample);
     movedSinceSample = false;
-    if (qualityEl) {
-      qualityEl.textContent =
-        renderScale.toFixed(2) + '× of ' + MAX_SCALE + '× · ' + Math.round(lastFps) + ' fps · ' +
-        (renderCount >= 1e6 ? (renderCount / 1e6).toFixed(1) + 'M' : Math.round(renderCount / 1000) + 'k') +
-        (renderCount < totalSplats ? ' of ' + (totalSplats / 1e6).toFixed(1) + 'M' : '') + ' splats' +
-        (moveFactor < 1 ? ' · drag ' + moveFactor.toFixed(2) + '×' : '');
-      qualityEl.hidden = false;
+    if (moved) {
+      adapt(lastFps);
+      showQuality();
     }
   }
 
@@ -636,6 +728,7 @@
       drawCount = d.vertexCount;
       if (drawCount > 0) hideLoading();
     }
+    invalidate(); // new geometry, order or camera to show
   };
   worker.onerror = function () {
     fail('The splat viewer background worker failed to start.');
@@ -671,8 +764,7 @@
 
   // ---- render loop ----------------------------------------------------------
   var lastPosted = '';
-  function frame(now) {
-    sampleFps(now || performance.now());
+  function draw() {
     if (haveData) {
       var view = currentView();
       var key = view.join(',');
@@ -708,6 +800,16 @@
       gl.activeTexture(gl.TEXTURE0);
       gl.enable(gl.BLEND);
       gl.useProgram(program);
+    }
+  }
+
+  function frame(now) {
+    now = now || performance.now();
+    if (!atRest || pendingDraws > 0 || now - lastDrawAt > REST_HEARTBEAT_MS) {
+      if (pendingDraws > 0) pendingDraws--;
+      lastDrawAt = now;
+      draw();
+      sampleFps(now);
     }
     requestAnimationFrame(frame);
   }
@@ -850,6 +952,7 @@
       dist = initial.dist;
       yaw = initial.yaw;
       pitch = initial.pitch;
+      invalidate();
     });
   }
   if (fullBtn) {
@@ -928,6 +1031,7 @@
         gl.useProgram(program);
         gl.uniform1f(u_exposure, EXPOSURE);
       }
+      invalidate();
       if (saveTimer) clearTimeout(saveTimer);
       saveTimer = setTimeout(function () {
         fetch('/admin/splats/' + encodeURIComponent(SPLAT_ID) + '/exposure', {
@@ -968,6 +1072,7 @@
       TINT = parseFloat(tintEl.value) || 0;
       showGrade();
       applyGrade();
+      invalidate();
       if (gradeTimer) clearTimeout(gradeTimer);
       gradeTimer = setTimeout(function () {
         fetch('/admin/splats/' + encodeURIComponent(SPLAT_ID) + '/grade', {
