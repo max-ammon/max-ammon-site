@@ -419,32 +419,32 @@
   } catch (e) {}
 
   var DPR = window.devicePixelRatio || 1;
-  // Never render above the screen's own pixels (wasted work), and cap at 2 so a
-  // 3x phone screen doesn't ask for 9x the fragments.
-  var MAX_SCALE = Math.min(DPR, 2);
+  // Render at the screen's own pixels — on a 3x phone that's what "sharp" means,
+  // and anything less is visibly soft. Above the panel's density there is nothing
+  // left to resolve, and 3 is the ceiling for the rare 4x display.
+  var MAX_SCALE = Math.min(DPR, 3);
   var MIN_SCALE = IS_MOBILE ? 0.4 : 0.6;
 
-  // Opening guess only — the measured frame rate takes over within ~a second.
+  /*
+   * Opening guess only — the measured frame rate takes over within ~a second, so
+   * this errs high: start sharp and let a device that can't hold it say so.
+   * Only signals that actually say "weak" pull it down. A missing signal isn't
+   * one: Safari doesn't implement deviceMemory at all, and scoring that as low
+   * memory used to open every iPhone at less than half its panel resolution.
+   */
   function startingScale() {
     var cores = navigator.hardwareConcurrency || 0; // absent on some browsers
     var mem = navigator.deviceMemory || 0; // Chromium only
-    var score = IS_MOBILE ? 0 : 2;
-    if (cores >= 8) score += 2;
-    else if (cores >= 4) score += 1;
-    if (mem >= 8) score += 2;
-    else if (mem >= 4) score += 1;
-    // Open near full quality even on a modest device: the first second should
-    // already look right, and one sampling window is enough to pull it back if
-    // the device can't hold the pace.
-    var frac = score >= 5 ? 1 : score >= 3 ? 0.85 : 0.7;
-    return Math.max(MIN_SCALE, Math.min(MAX_SCALE, MAX_SCALE * frac));
+    var weak = (cores > 0 && cores <= 4) || (mem > 0 && mem <= 3);
+    return Math.max(MIN_SCALE, Math.min(MAX_SCALE, MAX_SCALE * (weak ? 0.7 : 1)));
   }
 
   var renderScale = startingScale(); // device pixels per CSS pixel
   var scaleCeiling = MAX_SCALE; // ratchets down past a resolution that proved too slow
-  var moveFactor = IS_MOBILE ? 0.85 : 1; // extra reduction while the camera moves
+  var moveFactor = 1; // extra reduction while the camera moves, if it turns out to be needed
   var activeScale = 1; // 1 at rest, moveFactor while moving
   var idleTimer = null;
+  var movedSinceSample = false; // was the camera actually moving during this window?
 
   // Splat budget: how many of the (importance-ordered) splats we draw. Every
   // splat is drawn until the frame rate says otherwise — the tail of that order
@@ -486,10 +486,11 @@
   window.addEventListener('resize', resize);
   resize();
 
-  // Drop the render resolution a little while the camera is moving, then restore
-  // it ~0.2s after the last input — smooth while dragging, crisp at rest. On a
-  // device that's comfortably fast, moveFactor becomes 1 and nothing is dropped.
+  // Drop the render resolution while the camera is moving, then restore it ~0.2s
+  // after the last input — smooth while dragging, crisp at rest. moveFactor is 1
+  // until a drag actually measures slow, so on most devices this does nothing.
   function markInteracting() {
+    movedSinceSample = true;
     if (activeScale === 1 && moveFactor < 1) {
       activeScale = moveFactor;
       resize();
@@ -512,16 +513,28 @@
    * When it does have to give, it gives in order of how little you'd notice:
    * first the softening while you drag, then the still-frame resolution, and
    * only at the floor of that the splat count. Recovery goes back the other way,
-   * so the most visible deficit is repaid first. FAST_FPS sits well clear of
-   * SLOW_FPS, and a resolution that measured slow is not tried again, so the
-   * loop settles instead of hunting.
+   * so the most visible deficit is repaid first. The band between the two
+   * thresholds is deliberately narrow — what keeps the loop from hunting isn't a
+   * wide dead zone but the rule that a resolution which measured slow is never
+   * climbed back into.
    */
   var SLOW_FPS = 27;
-  var FAST_FPS = 45;
-  var STALL_FPS = 20; // properly stalling — skip the polite first step
+  var FAST_FPS = 34;
+  var TARGET_FPS = 31; // aimed between the two, so one correction lands in the band
   var fpsFrames = 0;
   var fpsSince = 0;
   var lastFps = 0;
+
+  /*
+   * The scale that should land near TARGET_FPS. Fill cost goes with the square
+   * of the render scale, so the measured frame rate says directly how far off we
+   * are — one informed correction instead of a series of blind steps, which is
+   * the difference between a moment of adjustment on load and several seconds of
+   * it. Clamped, because if the bottleneck isn't fill rate the estimate is wrong.
+   */
+  function seekScale(fps) {
+    return renderScale * Math.min(1.3, Math.max(0.7, Math.sqrt(fps / TARGET_FPS)));
+  }
 
   function setScale(next) {
     next = Math.max(MIN_SCALE, Math.min(scaleCeiling, next));
@@ -531,28 +544,35 @@
     return true;
   }
 
-  function adapt(fps) {
+  function adapt(fps, moving) {
     if (!textureReady || !drawCount) return; // nothing drawn yet — don't judge
     if (fps < SLOW_FPS) {
-      var stalling = fps < STALL_FPS;
-      if (!stalling && moveFactor > 0.55) {
+      // Softening the drag is only worth anything if the slow frames were drag
+      // frames; a still frame that can't keep up needs the resolution itself.
+      if (moving && moveFactor > 0.55) {
         moveFactor = Math.max(0.55, moveFactor - 0.15);
-        return; // give the cheapest concession a window to show up
+        return;
       }
-      if (stalling) moveFactor = 0.55; // take the free one too, then keep going
-      // Don't climb back to a resolution that has already proved too slow.
-      scaleCeiling = Math.max(MIN_SCALE, renderScale - 0.1);
-      if (!setScale(renderScale - 0.2) && renderCount > splatFloor()) {
+      var next = seekScale(fps);
+      // A small correction means we're at the boundary: remember that this
+      // resolution was too slow so the loop can't climb straight back into it
+      // and start hunting. A big correction proves nothing about the scales in
+      // between, so it leaves the ceiling alone.
+      if (next > renderScale * 0.9) scaleCeiling = Math.max(MIN_SCALE, renderScale * 0.95);
+      if (!setScale(next) && renderCount > splatFloor()) {
         renderCount = Math.max(splatFloor(), Math.round(renderCount * 0.85));
         lastPosted = ''; // force a re-sort at the new budget
       }
     } else if (fps >= FAST_FPS) {
-      // Headroom: fill the cloud back in first, since that is the visible loss.
-      if (renderCount < totalSplats) {
+      // Repay the deficit you're looking at: the drag first if you're dragging,
+      // then the missing splats, then sharpness.
+      if (moving && moveFactor < 1) {
+        moveFactor = Math.min(1, moveFactor + 0.1);
+      } else if (renderCount < totalSplats) {
         renderCount = Math.min(totalSplats, Math.round(renderCount * 1.4) + 100000);
         lastPosted = '';
-      } else if (!setScale(renderScale + 0.15) && moveFactor < 1) {
-        moveFactor = Math.min(1, moveFactor + 0.1);
+      } else {
+        setScale(seekScale(fps));
       }
     }
   }
@@ -568,12 +588,14 @@
     lastFps = (fpsFrames * 1000) / elapsed;
     fpsFrames = 0;
     fpsSince = now;
-    adapt(lastFps);
+    adapt(lastFps, movedSinceSample);
+    movedSinceSample = false;
     if (qualityEl) {
       qualityEl.textContent =
-        renderScale.toFixed(2) + '× · ' + Math.round(lastFps) + ' fps · ' +
+        renderScale.toFixed(2) + '× of ' + MAX_SCALE + '× · ' + Math.round(lastFps) + ' fps · ' +
         (renderCount >= 1e6 ? (renderCount / 1e6).toFixed(1) + 'M' : Math.round(renderCount / 1000) + 'k') +
-        (renderCount < totalSplats ? ' of ' + (totalSplats / 1e6).toFixed(1) + 'M' : '') + ' splats';
+        (renderCount < totalSplats ? ' of ' + (totalSplats / 1e6).toFixed(1) + 'M' : '') + ' splats' +
+        (moveFactor < 1 ? ' · drag ' + moveFactor.toFixed(2) + '×' : '');
       qualityEl.hidden = false;
     }
   }
