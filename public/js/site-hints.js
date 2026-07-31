@@ -79,8 +79,13 @@
     if (!box) return;
     arrow.style.height = ''; // measure the stylesheet's length, not the last fit
     var full = arrow.getBoundingClientRect().height;
-    var room = below.getBoundingClientRect().top - box.getBoundingClientRect().bottom - ARROW_GAP;
-    arrow.style.height = Math.max(MIN_ARROW, Math.min(full, Math.floor(room))) + 'px';
+    var room = Math.floor(below.getBoundingClientRect().top - box.getBoundingClientRect().bottom - ARROW_GAP);
+    // Trimming is only worth anything when it buys a tip that stops at the
+    // demo's edge. Where there's no room to stop short of it — stacked under the
+    // other hint, or on a phone where the box already sits over the poster — a
+    // shortened arrow would overlap anyway and just be too small to see, so it
+    // keeps its full length and leans on its halo instead.
+    arrow.style.height = (room >= MIN_ARROW ? Math.min(full, room) : full) + 'px';
   }
 
   place();
