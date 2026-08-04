@@ -60,6 +60,8 @@ addColumnIfMissing('models', 'link_splat_id', 'INTEGER');
 addColumnIfMissing('splats', 'link_model_id', 'INTEGER');
 addColumnIfMissing('splats', 'white_balance', 'REAL NOT NULL DEFAULT 0');
 addColumnIfMissing('splats', 'tint', 'REAL NOT NULL DEFAULT 0');
+addColumnIfMissing('splats', 'background_path', "TEXT NOT NULL DEFAULT ''");
+addColumnIfMissing('splats', 'background_yaw', 'REAL NOT NULL DEFAULT 0');
 addColumnIfMissing('models', 'smooth_normals', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('models', 'metalness', 'REAL');
 addColumnIfMissing('models', 'roughness', 'REAL');

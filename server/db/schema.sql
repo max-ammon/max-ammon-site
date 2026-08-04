@@ -230,6 +230,8 @@ CREATE TABLE IF NOT EXISTS splats (
   exposure     REAL NOT NULL DEFAULT 1,        -- viewer brightness multiplier (owner-set)
   white_balance REAL NOT NULL DEFAULT 0,      -- -1 cool .. 0 neutral .. +1 warm
   tint          REAL NOT NULL DEFAULT 0,      -- -1 green .. 0 neutral .. +1 magenta
+  background_path TEXT NOT NULL DEFAULT '',   -- equirectangular 360 image behind the splat ('' = none)
+  background_yaw  REAL NOT NULL DEFAULT 0,    -- 0..1 turn of that panorama, to aim it
   default_view TEXT NOT NULL DEFAULT '',      -- owner-set starting camera (JSON: target/dist/yaw/pitch)
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );

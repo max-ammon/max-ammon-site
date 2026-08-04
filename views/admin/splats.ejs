@@ -63,6 +63,13 @@
                             <% if (s.splat_exists) { %>Current: <%= (s.splat_format || 'file').toUpperCase() %><% if (s.splat_size) { %> · <%= s.splat_size %><% } %><% } else { %>⚠ splat file missing<% } %>
                         </span>
                     </label>
+                    <label class="field grow">360&deg; backdrop <span class="muted">(equirectangular image)</span>
+                        <input type="file" name="background" accept="image/*">
+                        <span class="splat-meta"><% if (s.background_path) { %>Set &mdash; aim it with the Backdrop button in the viewer<% } else { %>None &mdash; the viewer stays dark<% } %></span>
+                    </label>
+                    <% if (s.background_path) { %>
+                    <label class="field pub"><input type="checkbox" name="remove_background"> Remove&nbsp;backdrop</label>
+                    <% } %>
                     <label class="field grow">Linked 3D model <span class="muted">(same subject)</span>
                         <select name="link_model_id">
                             <option value="">None</option>
@@ -95,6 +102,7 @@
                 <label>Description <span class="muted">(optional)</span> <textarea name="description" rows="3" placeholder="A short description of this capture."></textarea></label>
                 <label>Thumbnail image <span class="muted">(shown on the card)</span> <input type="file" name="thumb" accept="image/*" required></label>
                 <label>Splat file <span class="muted">(.ply, .splat or .spz)</span> <input type="file" name="splat" accept=".ply,.splat,.spz" required></label>
+                <label>360&deg; backdrop <span class="muted">(optional &mdash; an equirectangular JPG/PNG/WebP, as exported from an HDRI; browsers can't read .hdr or .exr)</span> <input type="file" name="background" accept="image/*"></label>
                 <label class="checkbox"><input type="checkbox" name="published" checked> Visible on the site</label>
                 <label class="checkbox"><input type="checkbox" name="flip_up"> Flip vertical <span class="muted">(turn on if the splat loads upside down — you can also change this later)</span></label>
                 <button class="btn" type="submit">Add splat</button>

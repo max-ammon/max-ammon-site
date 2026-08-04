@@ -17,6 +17,8 @@
   var FLIP_UP = SELF.getAttribute('data-flip') === '1';
   var EXPOSURE = parseFloat(SELF.getAttribute('data-exposure')) || 1;
   var SPLAT_ID = SELF.getAttribute('data-id') || '';
+  var BG_SRC = SELF.getAttribute('data-bg') || '';           // equirectangular 360 backdrop
+  var BG_YAW = parseFloat(SELF.getAttribute('data-bg-yaw')) || 0; // whole turns
   var WB = parseFloat(SELF.getAttribute('data-wb')) || 0;    // -1 cool .. +1 warm
   var TINT = parseFloat(SELF.getAttribute('data-tint')) || 0; // -1 green .. +1 magenta
   // Owner-set starting camera ({t:[x,y,z], d, y, p}); null = auto-frame the splat.
@@ -296,6 +298,150 @@
     }
   }
 
+  /*
+   * ---- 360 backdrop ----------------------------------------------------------
+   * An equirectangular panorama behind the splat. Rather than build a sphere,
+   * this is one fullscreen triangle: for each pixel the camera ray is rebuilt
+   * from the same focal length and viewport the splats are projected with, then
+   * turned into a latitude/longitude pair to look up. Nothing to tessellate, no
+   * geometry to sort against, and it can never intersect the capture.
+   *
+   * The panorama's own up axis follows the viewer's, so a splat flipped upright
+   * takes its backdrop with it rather than ending up on its head.
+   */
+  var bgProgram = null;
+  var bgTex = null;
+  var bgVao = null;
+  var bgReady = false;
+  var u_bgTex = null;
+  var u_bgViewport = null;
+  var u_bgFocal = null;
+  var u_bgPano = null;
+  var u_bgYaw = null;
+  var u_bgExposure = null;
+  var u_bgGrade = null;
+  var u_bgLinear = null;
+
+  var bgFs =
+    '#version 300 es\n' +
+    'precision highp float;\n' +
+    'uniform sampler2D bg;\n' +
+    'uniform vec2 viewport;\n' +
+    'uniform vec2 focal;\n' +
+    'uniform mat3 pano;\n' + // camera space -> panorama space
+    'uniform float yaw;\n' + // whole turns, so 0.25 is a quarter round
+    'uniform float exposure;\n' +
+    'uniform vec3 grade;\n' +
+    'uniform float toLinear;\n' + // the float buffer holds linear light, the canvas does not
+    'in vec2 vUv;\n' +
+    'out vec4 fragColor;\n' +
+    'void main () {\n' +
+    '    vec2 ndc = vUv * 2.0 - 1.0;\n' +
+    // The inverse of the projection the splats use, so the backdrop lines up
+    // with them exactly at any field of view or window shape.
+    '    vec3 d = normalize(pano * vec3(\n' +
+    '        ndc.x * viewport.x / (2.0 * focal.x),\n' +
+    '       -ndc.y * viewport.y / (2.0 * focal.y),\n' +
+    '        1.0));\n' +
+    '    float u = atan(d.x, d.z) * 0.15915494 + 0.5 + yaw;\n' + // 1/(2pi)
+    '    float v = acos(clamp(d.y, -1.0, 1.0)) * 0.31830989;\n' + // 1/pi
+    '    vec3 c = texture(bg, vec2(u, v)).rgb;\n' +
+    '    if (toLinear > 0.5) c = pow(c, vec3(2.2));\n' +
+    '    c *= exposure * grade;\n' +
+    // Opaque: under the blend above, this fills whatever light the splats left.
+    '    fragColor = vec4(c, 1.0);\n' +
+    '}\n';
+
+  function initBackdrop() {
+    if (!BG_SRC) return;
+    try {
+      bgProgram = gl.createProgram();
+      gl.attachShader(bgProgram, compile(gl.VERTEX_SHADER, postVs));
+      gl.attachShader(bgProgram, compile(gl.FRAGMENT_SHADER, bgFs));
+      gl.linkProgram(bgProgram);
+      if (!gl.getProgramParameter(bgProgram, gl.LINK_STATUS)) throw new Error('backdrop link failed');
+      u_bgTex = gl.getUniformLocation(bgProgram, 'bg');
+      u_bgViewport = gl.getUniformLocation(bgProgram, 'viewport');
+      u_bgFocal = gl.getUniformLocation(bgProgram, 'focal');
+      u_bgPano = gl.getUniformLocation(bgProgram, 'pano');
+      u_bgYaw = gl.getUniformLocation(bgProgram, 'yaw');
+      u_bgExposure = gl.getUniformLocation(bgProgram, 'exposure');
+      u_bgGrade = gl.getUniformLocation(bgProgram, 'grade');
+      u_bgLinear = gl.getUniformLocation(bgProgram, 'toLinear');
+      bgVao = gl.createVertexArray();
+      gl.useProgram(program);
+    } catch (e) {
+      bgProgram = null; // no backdrop is a perfectly good outcome
+      return;
+    }
+    var img = new Image();
+    img.onload = function () {
+      bgTex = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, bgTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      // Repeat sideways so turning the panorama wraps seamlessly; clamp top and
+      // bottom, where there is nothing beyond the poles to sample.
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.activeTexture(gl.TEXTURE0);
+      bgReady = true;
+      invalidate();
+    };
+    img.onerror = function () {
+      /* a missing backdrop just leaves the stage dark */
+    };
+    img.src = BG_SRC;
+  }
+
+  // The panorama's own frame: its up axis is the viewer's, with any two
+  // perpendicular axes making up the rest — which one faces "forward" only sets
+  // where a rotation of zero points, and the owner aims that with the slider.
+  function panoAxes() {
+    var up = normalize(UP);
+    var ref = Math.abs(up[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];
+    var right = normalize(cross(up, ref));
+    return { up: up, right: right, fwd: cross(right, up) };
+  }
+
+  function drawBackdrop(useHdr) {
+    if (!bgReady || !bgProgram) return;
+    var view = currentView();
+    // The camera's world-space axes are the rows of the view rotation.
+    var cx = [view[0], view[4], view[8]];
+    var cy = [view[1], view[5], view[9]];
+    var cz = [view[2], view[6], view[10]];
+    var a = panoAxes();
+    // Camera space -> world -> panorama, folded into one matrix (column-major).
+    var m = new Float32Array([
+      dot3(a.right, cx), dot3(a.up, cx), dot3(a.fwd, cx),
+      dot3(a.right, cy), dot3(a.up, cy), dot3(a.fwd, cy),
+      dot3(a.right, cz), dot3(a.up, cz), dot3(a.fwd, cz),
+    ]);
+    var s = stageSize();
+    gl.useProgram(bgProgram);
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, bgTex);
+    gl.uniform1i(u_bgTex, 2);
+    gl.uniform2f(u_bgViewport, s[0], s[1]);
+    gl.uniform2f(u_bgFocal, focalX, focalY);
+    gl.uniformMatrix3fv(u_bgPano, false, m);
+    gl.uniform1f(u_bgYaw, BG_YAW);
+    // In the float path the tone-mapping pass applies exposure and grade to the
+    // finished image, backdrop included, so they aren't applied twice here.
+    var g = useHdr ? [1, 1, 1] : gradeGain();
+    gl.uniform1f(u_bgExposure, useHdr ? 1 : EXPOSURE);
+    gl.uniform3f(u_bgGrade, g[0], g[1], g[2]);
+    gl.uniform1f(u_bgLinear, useHdr ? 1 : 0);
+    gl.bindVertexArray(bgVao);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindVertexArray(null);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.useProgram(program);
+  }
+
   // (Re)allocate the float colour buffer the splats composite into.
   function ensureHdr(w, h) {
     if (!HDR_OK || w < 1 || h < 1) return false;
@@ -372,6 +518,7 @@
   // In the HDR path exposure is applied by the tone-mapping pass each frame.
   if (!HDR_OK) gl.uniform1f(u_exposure, EXPOSURE);
   applyGrade(); // the fallback shader needs a gain before the first draw
+  initBackdrop();
 
   // Quad corners (per-vertex, one instance per splat).
   var vertexBuffer = gl.createBuffer();
@@ -783,6 +930,12 @@
     if (textureReady && drawCount > 0) {
       gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, drawCount);
     }
+    // The backdrop goes in last on purpose. Splats composite front-to-back with
+    // premultiplied "under" blending, which reads the destination alpha to know
+    // how much light still gets through — so anything already in the buffer when
+    // they draw would block them entirely. Drawn afterwards with that same
+    // blend, the panorama fills exactly the light the splats left unclaimed.
+    drawBackdrop(useHdr);
     if (useHdr) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       gl.viewport(0, 0, canvas.width, canvas.height);
@@ -1092,6 +1245,52 @@
         wbEl.value = 0;
         tintEl.value = 0;
         readGrade();
+      });
+    }
+  }
+
+  /*
+   * Owner-only backdrop aim. Same live-then-save shape as the other panels: the
+   * rotation is a uniform the next frame reads, so dragging is free, and the
+   * value is written back once the slider settles.
+   */
+  var bgYawEl = document.getElementById('splatBgYaw');
+  var backdropBtn = document.getElementById('splatBackdropBtn');
+  var backdropPanel = document.getElementById('splatBackdropPanel');
+  if (backdropBtn && backdropPanel) {
+    backdropBtn.addEventListener('click', function () {
+      backdropPanel.hidden = !backdropPanel.hidden;
+      backdropBtn.classList.toggle('is-on', !backdropPanel.hidden);
+      if (!backdropPanel.hidden && colourPanel && !colourPanel.hidden) {
+        colourPanel.hidden = true; // one panel at a time
+        if (colourBtn) colourBtn.classList.remove('is-on');
+      }
+    });
+  }
+  if (bgYawEl) {
+    var yawTimer = null;
+    var yawOut = document.getElementById('splatBgYawOut');
+    var readYaw = function () {
+      BG_YAW = parseFloat(bgYawEl.value) || 0;
+      if (yawOut) yawOut.textContent = Math.round(BG_YAW * 360) + '°';
+      invalidate();
+      if (yawTimer) clearTimeout(yawTimer);
+      yawTimer = setTimeout(function () {
+        fetch('/admin/splats/' + encodeURIComponent(SPLAT_ID) + '/backdrop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'background_yaw=' + encodeURIComponent(BG_YAW),
+          credentials: 'same-origin',
+        }).catch(function () {});
+      }, 500);
+    };
+    readYaw();
+    bgYawEl.addEventListener('input', readYaw);
+    var bgResetEl = document.getElementById('splatBgReset');
+    if (bgResetEl) {
+      bgResetEl.addEventListener('click', function () {
+        bgYawEl.value = 0;
+        readYaw();
       });
     }
   }

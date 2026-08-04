@@ -115,10 +115,11 @@ function referencedMap() {
     add(d.file_path, 'Gallery download: ' + (d.label || d.proj || 'file'));
   }
 
-  for (const s of db.prepare('SELECT title, thumb_path, splat_path FROM splats').all()) {
+  for (const s of db.prepare('SELECT title, thumb_path, splat_path, background_path FROM splats').all()) {
     const t = s.title || 'untitled';
     add(s.thumb_path, 'Splat: ' + t + ' (thumbnail)');
     add(s.splat_path, 'Splat: ' + t + ' (file)');
+    add(s.background_path, 'Splat: ' + t + ' (360 backdrop)');
   }
 
   for (const p of db.prepare('SELECT image_path, label FROM pipeline_markers').all()) {

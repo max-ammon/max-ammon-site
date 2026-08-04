@@ -142,6 +142,9 @@ const uploadSplat = multer({
   }),
   fileFilter: (req, file, cb) => {
     if (file.fieldname === 'thumb') return cb(null, isImage(file));
+    // The 360 backdrop is an ordinary image: browsers can't decode .hdr/.exr,
+    // so what gets uploaded here is an equirectangular JPG/PNG/WebP.
+    if (file.fieldname === 'background') return cb(null, isImage(file));
     if (file.fieldname === 'splat') return cb(null, isSplatFile(file));
     cb(null, false);
   },

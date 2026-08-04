@@ -9,6 +9,7 @@ const fs = require('fs');
 const db = require('../db');
 const mediaSvc = require('./media');
 const { formatBytes, slugify } = require('../lib/format');
+const { imgUrl } = require('../lib/images');
 
 const qAll = db.prepare('SELECT * FROM splats ORDER BY sort, id');
 const qPublished = db.prepare('SELECT * FROM splats WHERE published = 1 ORDER BY sort, id');
@@ -17,13 +18,13 @@ const qNextSort = db.prepare('SELECT COALESCE(MIN(sort), 1) - 1 AS s FROM splats
 const storage = require('./storage');
 
 const insSplat = db.prepare(`INSERT INTO splats
-  (title, year, description, thumb_path, aspect_ratio, splat_path, splat_format, sort, published, flip_up)
-  VALUES (@title, @year, @description, @thumb_path, @aspect_ratio, @splat_path, @splat_format, @sort, @published, @flip_up)`);
+  (title, year, description, thumb_path, aspect_ratio, splat_path, splat_format, sort, published, flip_up, background_path)
+  VALUES (@title, @year, @description, @thumb_path, @aspect_ratio, @splat_path, @splat_format, @sort, @published, @flip_up, @background_path)`);
 
 const updSplat = db.prepare(`UPDATE splats SET
   title=@title, year=@year, description=@description, thumb_path=@thumb_path,
   aspect_ratio=@aspect_ratio, splat_path=@splat_path, splat_format=@splat_format, published=@published, flip_up=@flip_up,
-  link_model_id=@link_model_id
+  link_model_id=@link_model_id, background_path=@background_path
   WHERE id=@id`);
 
 const delSplat = db.prepare('DELETE FROM splats WHERE id = ?');
@@ -31,6 +32,21 @@ const setSort = db.prepare('UPDATE splats SET sort = ? WHERE id = ?');
 const setExp = db.prepare('UPDATE splats SET exposure = ? WHERE id = ?');
 const setView = db.prepare('UPDATE splats SET default_view = ? WHERE id = ?');
 const setGradeStmt = db.prepare('UPDATE splats SET white_balance = ?, tint = ? WHERE id = ?');
+const setYawStmt = db.prepare('UPDATE splats SET background_yaw = ? WHERE id = ?');
+
+/*
+ * Which way the 360 backdrop faces, as a fraction of a full turn. A panorama
+ * arrives pointing wherever the camera happened to face when it was shot, which
+ * is rarely where it wants to be behind a given capture, so this turns it.
+ */
+function setBackdropYaw(id, value) {
+  let n = parseFloat(value);
+  if (!isFinite(n)) n = 0;
+  n = ((n % 1) + 1) % 1; // any input lands in 0..1
+  n = Math.round(n * 1000) / 1000;
+  setYawStmt.run(n, Number(id));
+  return n;
+}
 
 /*
  * Owner white balance / tint, applied in linear light by the viewer's
@@ -136,6 +152,9 @@ function decoratePublic(s) {
     links: splatLinks(s),
     ratio: s.aspect_ratio ? Number(s.aspect_ratio) : 1.5,
     splat_url: mediaSvc.versionedUrl(s.splat_path),
+    // Resized like any other image: an 8K equirect JPEG straight off a camera is
+    // far more than the backdrop needs, and it would hold up the whole viewer.
+    background_url: s.background_path ? imgUrl(s.background_path, 3200) || s.background_path : '',
     view_url: '/splats/' + s.id + '/' + slugify(s.title),
     view: parseView(s.default_view),
   };
@@ -179,6 +198,7 @@ function createSplat(data) {
     sort,
     published: data.published ? 1 : 0,
     flip_up: data.flip_up ? 1 : 0,
+    background_path: data.background_path || '',
   });
   return info.lastInsertRowid;
 }
@@ -193,6 +213,9 @@ function updateSplat(id, data) {
   const nextRatio = data.thumb_path ? (data.aspect_ratio != null ? data.aspect_ratio : null) : cur.aspect_ratio;
   const nextSplat = data.splat_path ? data.splat_path : cur.splat_path;
   const nextFormat = data.splat_path ? data.splat_format || '' : cur.splat_format;
+  // An upload replaces the backdrop, remove_background clears it, and neither
+  // leaves it alone — the same rule the thumbnail and the splat file follow.
+  const nextBackground = data.remove_background ? '' : data.background_path || cur.background_path;
   updSplat.run({
     id: Number(id),
     title: data.title != null ? data.title : cur.title,
@@ -205,9 +228,11 @@ function updateSplat(id, data) {
     published: data.published ? 1 : 0,
     flip_up: data.flip_up ? 1 : 0,
     link_model_id: data.link_model_id ? Number(data.link_model_id) : null,
+    background_path: nextBackground,
   });
   if (nextThumb !== cur.thumb_path) removeFileIfUnused(cur.thumb_path);
   if (nextSplat !== cur.splat_path) removeFileIfUnused(cur.splat_path);
+  if (nextBackground !== cur.background_path) removeFileIfUnused(cur.background_path);
 }
 
 function deleteSplat(id) {
@@ -216,6 +241,7 @@ function deleteSplat(id) {
   delSplat.run(Number(id));
   removeFileIfUnused(s.thumb_path);
   removeFileIfUnused(s.splat_path);
+  removeFileIfUnused(s.background_path);
 }
 
 // Swap sort with the neighbour in the given direction (-1 up, +1 down).
@@ -243,6 +269,7 @@ module.exports = {
   moveSplat,
   setExposure,
   setGrade,
+  setBackdropYaw,
   setDefaultView,
   clearDefaultView,
 };

@@ -626,7 +626,7 @@ router.post('/downloads/:id/delete', (req, res) => {
 // The add/edit forms post two files at once: a `thumb` image and the `splat`
 // file itself. multer's filters drop anything off the allow-list, so a missing
 // splat on create is reported rather than saved as a broken entry.
-const splatFields = uploadSplat.fields([{ name: 'thumb', maxCount: 1 }, { name: 'splat', maxCount: 1 }]);
+const splatFields = uploadSplat.fields([{ name: 'thumb', maxCount: 1 }, { name: 'splat', maxCount: 1 }, { name: 'background', maxCount: 1 }]);
 
 async function thumbInfo(file) {
   const out = { thumb_path: toPublicPath(file.path), aspect_ratio: null };
@@ -652,6 +652,7 @@ router.get('/splats', (req, res) => {
 router.post('/splats', splatFields, async (req, res) => {
   const thumb = req.files && req.files.thumb && req.files.thumb[0];
   const splat = req.files && req.files.splat && req.files.splat[0];
+  const background = req.files && req.files.background && req.files.background[0];
   if (!splat) return res.redirect('/admin/splats?err=nosplat');
   const data = {
     title: req.body.title,
@@ -661,6 +662,7 @@ router.post('/splats', splatFields, async (req, res) => {
     splat_format: splatExt(splat),
     published: req.body.published === 'on',
     flip_up: req.body.flip_up === 'on',
+    background_path: background ? toPublicPath(background.path) : '',
   };
   if (thumb) Object.assign(data, await thumbInfo(thumb));
   splatsSvc.createSplat(data);
@@ -670,6 +672,7 @@ router.post('/splats', splatFields, async (req, res) => {
 router.post('/splats/:id', splatFields, async (req, res) => {
   const thumb = req.files && req.files.thumb && req.files.thumb[0];
   const splat = req.files && req.files.splat && req.files.splat[0];
+  const background = req.files && req.files.background && req.files.background[0];
   const data = {
     title: req.body.title,
     year: req.body.year,
@@ -677,8 +680,10 @@ router.post('/splats/:id', splatFields, async (req, res) => {
     published: req.body.published === 'on',
     flip_up: req.body.flip_up === 'on',
     link_model_id: req.body.link_model_id,
+    remove_background: req.body.remove_background === 'on',
   };
   // A new upload replaces that file; omitting it keeps the current one.
+  if (background) data.background_path = toPublicPath(background.path);
   if (thumb) Object.assign(data, await thumbInfo(thumb));
   if (splat) {
     data.splat_path = toPublicPath(splat.path);
@@ -712,6 +717,11 @@ router.post('/splats/:id/grade', (req, res) => {
 
 // Owner-only, called by the viewer's "Set default view" / "Clear" buttons: saves
 // the camera the visitor starts at (and that Reset returns to).
+// Owner-only backdrop rotation, saved live from the viewer's Backdrop panel.
+router.post('/splats/:id/backdrop', (req, res) => {
+  res.json({ ok: true, background_yaw: splatsSvc.setBackdropYaw(Number(req.params.id), req.body.background_yaw) });
+});
+
 router.post('/splats/:id/view', (req, res) => {
   if (req.body.clear) {
     splatsSvc.clearDefaultView(Number(req.params.id));
