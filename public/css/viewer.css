@@ -92,6 +92,9 @@ iframe.viewer-media {
   display: block;
   max-width: 100%;
   max-height: calc(80vh - 46px);
+  /* The frames are drawn into a canvas sized to the source; these cap how big it
+     is presented, and a replaced element scales inside them keeping its ratio. */
+  height: auto;
   object-fit: contain;
   background: #000;
   /* It's draggable, so say so — and don't let a drag select or pan the page. */

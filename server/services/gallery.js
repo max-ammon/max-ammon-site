@@ -81,9 +81,14 @@ function toViewerItem(m) {
     // before scrubbing is smooth, so this is the one place where holding the
     // full 3200px would actually be felt. The width must be one /img allows;
     // anything else is a 400 and the whole sequence renders blank.
-    const frames = framePaths(m.id).map((p) => imgUrl(p, 1600) || p);
+    const raw = framePaths(m.id);
+    const frames = raw.map((p) => imgUrl(p, 1600) || p);
+    // A smaller set for small screens. Every frame is held decoded so scrubbing
+    // costs nothing, and decoded pixels are the memory here — a phone showing an
+    // 800px-wide picture would otherwise hold four times what it can display.
+    const framesSmall = raw.map((p) => imgUrl(p, 800) || p);
     return frames.length
-      ? { type: 'turntable', frames, alt: m.alt_text || '' }
+      ? { type: 'turntable', frames, framesSmall, alt: m.alt_text || '' }
       : { type: 'turntable', src: mediaSvc.versionedUrl(m.full_path), poster: m.poster_path || '' };
   }
   // Stills go through the resizer: 3200px covers a 4K screen at full size and is

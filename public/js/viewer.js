@@ -26,18 +26,34 @@
    * the slider — that's how you expect to turn an object — and the whole width
    * of the picture maps to the whole sequence, so one swipe covers the lot.
    *
-   * Frames are preloaded before scrubbing is allowed. Swapping to a frame the
-   * browser hasn't fetched yet shows a blank, which reads as broken, and the
-   * wait is the honest cost of an instant response afterwards.
+   * Frames are drawn to a canvas from <img> elements that are kept alive and
+   * decoded up front, which is the difference between scrubbing and slideshow:
+   * measured on a 36-frame sequence, assigning a new src costs ~22ms a frame
+   * (median; 45ms at worst) because the browser re-decodes each time, so at
+   * 60fps every single step misses its frame and a fast drag falls behind.
+   * Blitting an already-decoded image is ~0.5ms at worst. ImageBitmaps were
+   * measured too — slower to draw AND ~200MB of extra memory, so plain <img>
+   * wins on both counts.
+   *
+   * Nothing can be scrubbed until every frame has decoded: landing on one that
+   * hasn't shows a blank, which reads as broken.
    */
   function buildTurntable(it) {
     var wrap = document.createElement('div');
     wrap.className = 'viewer-turntable viewer-media';
 
-    var frames = it.frames || [];
+    // Decoded pixels are what this costs, so a small screen takes the small set
+    // rather than holding four times what it can actually show.
+    var wide = it.frames || [];
+    var narrow = it.framesSmall || wide;
+    var want = Math.max(window.innerWidth, window.innerHeight) * (window.devicePixelRatio || 1);
+    var frames = want <= 1100 ? narrow : wide;
+
     var isVideo = !frames.length && it.src;
     var last = -1;
     var media;
+    var ctx = null;
+    var sheets = []; // the decoded frames, held so they can't be collected
 
     if (isVideo) {
       media = document.createElement('video');
@@ -47,9 +63,10 @@
       media.playsInline = true;
       if (it.poster) media.poster = it.poster;
     } else {
-      media = document.createElement('img');
-      media.alt = it.alt || '';
-      media.src = frames[0];
+      media = document.createElement('canvas');
+      media.setAttribute('role', 'img');
+      if (it.alt) media.setAttribute('aria-label', it.alt);
+      ctx = media.getContext('2d');
     }
     media.className = 'tt-media';
     media.draggable = false;
@@ -84,8 +101,8 @@
         return;
       }
       var i = Math.max(0, Math.min(frames.length - 1, Math.round(v)));
-      if (i !== last) {
-        media.src = frames[i];
+      if (i !== last && sheets[i] && sheets[i].naturalWidth) {
+        ctx.drawImage(sheets[i], 0, 0, media.width, media.height);
         last = i;
       }
       readout.textContent = i + 1 + ' / ' + frames.length;
@@ -130,17 +147,29 @@
     } else if (frames.length) {
       var done = 0;
       loading.textContent = 'Loading 0 / ' + frames.length;
-      frames.forEach(function (src) {
+      frames.forEach(function (src, i) {
         var pre = new Image();
+        sheets[i] = pre; // kept in the array: an unreferenced Image is collectable,
+        // and once it's collected the next draw pays the full decode again.
         var tick = function () {
           done++;
           loading.textContent = 'Loading ' + done + ' / ' + frames.length;
-          if (done === frames.length) {
-            wrap.classList.add('is-ready');
-            show(0);
+          if (done !== frames.length) return;
+          // Size the canvas to the frames themselves; CSS scales it to fit.
+          var first = sheets.filter(function (s) { return s && s.naturalWidth; })[0];
+          if (first) {
+            media.width = first.naturalWidth;
+            media.height = first.naturalHeight;
           }
+          wrap.classList.add('is-ready');
+          show(0);
         };
-        pre.onload = tick;
+        // decode() resolves once the pixels are ready, not merely downloaded —
+        // waiting for that is what makes the first scrub as quick as the rest.
+        pre.onload = function () {
+          if (pre.decode) pre.decode().then(tick, tick);
+          else tick();
+        };
         pre.onerror = tick; // a missing frame shouldn't hold the whole sequence
         pre.src = src;
       });
