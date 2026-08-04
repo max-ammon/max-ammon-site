@@ -222,7 +222,17 @@ function attachSiteContext(req, res, next) {
   // req.protocol reflect the real https scheme).
   res.locals.baseUrl = req.protocol + '://' + req.get('host');
   res.locals.currentPath = req.path;
+  // Whether the owner is logged in. Set here rather than per route so shared
+  // partials (the header) can show them what a visitor isn't seeing.
+  res.locals.isOwner = !!(req.session && req.session.userId);
   next();
+}
+
+// A section can be switched off in the dashboard while it's being worked on.
+// Hidden means hidden from visitors only — the owner still sees it, otherwise
+// there'd be no way to finish it.
+function sectionVisible(res, key) {
+  return String(res.locals.settings[key]) !== '0' || res.locals.isOwner;
 }
 
 /*
@@ -268,8 +278,12 @@ app.get('/gallery', attachSiteContext, (req, res) => {
   res.render('public/gallery', { title: owner + "'s Gallery", rows: getPublicRows(), currentYear: new Date().getFullYear() });
 });
 
-// Photography — a separate page of photos (reached from the gallery/splats headers).
-app.get('/photography', attachSiteContext, (req, res) => {
+// Photography — a separate page of photos (reached from the gallery/splats
+// headers). Switched off in the dashboard it behaves as though it isn't there:
+// no header link, and the URL falls through to the same 404 as any other
+// unknown path, so a stale link or bookmark can't reach it either.
+app.get('/photography', attachSiteContext, (req, res, next) => {
+  if (!sectionVisible(res, 'photography_visible')) return next();
   const owner = res.locals.settings.site_title || 'Max Ammon';
   const cols = photography.columnsFrom(res.locals.settings);
   res.locals.og = pageOg(res.locals.settings, 'photography');
@@ -277,6 +291,7 @@ app.get('/photography', attachSiteContext, (req, res) => {
     title: owner + ' — Photography',
     rows: photography.toRows(photography.getPublicPhotos(), cols),
     cols,
+    hidden: String(res.locals.settings.photography_visible) === '0',
   });
 });
 

@@ -92,3 +92,18 @@
     display: none;
   }
 }
+
+/* Shown on a section the owner has switched off — they're the only one who can
+   reach it, so this is a reminder rather than a public notice. Deliberately
+   plain: it is not part of the page's design, it is scaffolding. */
+.section-hidden-note {
+  margin: 0;
+  padding: 10px 5vw;
+  background: var(--headercolor);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--lightcolor);
+  font-family: 'uni_regular', sans-serif;
+  font-size: 1.1cap;
+  text-align: center;
+}
+.section-hidden-note a { color: var(--lightcolor); }

@@ -8,6 +8,11 @@
 <%- include('../partials/nav', { navVariant: 'photography' }) %>
 
 <section id="photography">
+    <%# Only the owner ever gets here while the section is off — a visitor is
+        404'd by the route — so this is a reminder, not a public notice. %>
+    <% if (typeof hidden !== 'undefined' && hidden) { %>
+    <div class="section-hidden-note">This page is hidden. Only you can see it — switch it back on under <a href="/admin/photography">Photography</a> in the dashboard.</div>
+    <% } %>
     <div style="padding-top: 50px; text-align: center;">
         <h2><%= content['photography.heading'] || 'Photography' %></h2>
         <% if (content['photography.intro']) { %>

@@ -14,6 +14,14 @@
        { key: 'splats', href: '/splats', label: 'Gaussian Splats' },
        { key: 'photography', href: '/photography', label: 'Photography' },
      ];
+     // A section switched off in the dashboard drops out of the header. The
+     // owner keeps the link so the page can still be worked on, marked so it's
+     // never in doubt that visitors aren't seeing it.
+     var owner = typeof isOwner !== 'undefined' && isOwner;
+     if (String(settings.photography_visible) === '0') {
+       if (owner) showcase[3].label += ' (hidden)';
+       else showcase = showcase.filter(function (s) { return s.key !== 'photography'; });
+     }
 %>
         <ul style="font-size:2cap;max-width: max-content;" class="headerbox nopadding nav-showcase">
             <% showcase.forEach(function (s) { var here = s.key === variant; %>

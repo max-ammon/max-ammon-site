@@ -33,6 +33,16 @@
         <% if (err === 'upload') { %><div class="alert error">Something went wrong while saving those images. Please try again.</div><% } %>
 
         <div class="card-inset">
+            <h3>Visibility</h3>
+            <p class="muted" style="margin-top:-4px;">Switched off, the Photography button disappears from every header and the page itself returns a “not found” to visitors, so an old link or a search result can't reach it either. You stay able to open and edit it — the header keeps the button, marked <em>(hidden)</em>.</p>
+            <form method="post" action="/admin/photography/visibility" class="cols-form">
+                <label class="checkbox" style="margin:0;"><input type="checkbox" name="visible"<%= visible ? ' checked' : '' %>> Show Photography on the site</label>
+                <button class="btn" type="submit">Save</button>
+            </form>
+            <% if (!visible) { %><p class="muted" style="margin:10px 0 0;color:#e0a33c;">Currently hidden from visitors.</p><% } %>
+        </div>
+
+        <div class="card-inset">
             <h3>Add photos</h3>
             <form method="post" action="/admin/photography" enctype="multipart/form-data">
                 <label>Images <span class="muted">(you can select several at once)</span>

@@ -30,6 +30,11 @@ const SETTINGS = {
   social_preview_bots: '1',
   // Photography page: how many images sit in each row (1-4).
   photography_columns: '3',
+  // '0' takes the Photography page off the site: the header link goes and the
+  // page itself 404s for visitors, while the owner keeps both so it can be
+  // worked on in place. Better than shipping a half-finished section with a
+  // notice on it.
+  photography_visible: '1',
   demo_youtube_id:   'CL1Xj0JybFY',
   demo_aspect_w:     '3840',
   demo_aspect_h:     '1646',

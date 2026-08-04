@@ -250,6 +250,7 @@ router.get('/photography', (req, res) => {
     photos: photography.listPhotos(),
     columns: photography.columnsFrom(settings),
     maxColumns: photography.MAX_COLUMNS,
+    visible: String(settings.photography_visible) !== '0',
     saved: req.query.saved === '1',
     err: req.query.err || '',
   });
@@ -270,6 +271,14 @@ router.post('/photography', uploadPhoto.array('photos', 40), async (req, res) =>
     console.error('photo upload error:', e.message);
     return res.redirect('/admin/photography?err=upload');
   }
+  res.redirect('/admin/photography?saved=1');
+});
+
+// Take the whole Photography page off the site (or put it back). Hidden means
+// hidden from visitors: the owner keeps the header link and the page itself, or
+// there'd be no way to work on it.
+router.post('/photography/visibility', (req, res) => {
+  updateSettings({ photography_visible: req.body.visible === 'on' ? '1' : '0' });
   res.redirect('/admin/photography?saved=1');
 });
 
