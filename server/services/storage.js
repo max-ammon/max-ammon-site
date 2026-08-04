@@ -93,6 +93,19 @@ function referencedMap() {
     if (m.poster_path) add(m.poster_path, where + ' (poster)');
   }
 
+  // Turntable frames. Nothing else references these, so without this every
+  // frame past the first would be reported unused — and deletable.
+  for (const f of db
+    .prepare(
+      `SELECT f.file_path, COALESCE(g.title,'') AS proj
+       FROM media_frames f
+       JOIN media_items m ON m.id = f.media_id
+       LEFT JOIN gallery_projects g ON g.id = m.project_id`
+    )
+    .all()) {
+    add(f.file_path, 'Gallery: ' + (f.proj || 'project') + ' (turntable frame)');
+  }
+
   for (const d of db
     .prepare(
       `SELECT d.file_path, d.label, COALESCE(g.title,'') AS proj

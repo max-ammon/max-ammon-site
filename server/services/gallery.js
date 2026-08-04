@@ -17,6 +17,31 @@ const qMedia = db.prepare('SELECT * FROM media_items WHERE id = ?');
 const qDownloadsByProject = db.prepare('SELECT * FROM media_downloads WHERE project_id = ? ORDER BY sort, id');
 
 /*
+ * Turntable frames. A 'turntable' media item is an ordered image sequence the
+ * visitor scrubs with a slider — a 360 spin, a WIP progression, a lighting
+ * study. Built from a video instead, it has no frame rows and the viewer seeks
+ * the video; either way the item behaves like any other piece of media in the
+ * project (it sorts, it can be the thumbnail, it deletes with the project).
+ */
+const qFrames = db.prepare('SELECT * FROM media_frames WHERE media_id = ? ORDER BY sort, id');
+const insFrame = db.prepare('INSERT INTO media_frames (media_id, file_path, sort) VALUES (?, ?, ?)');
+const nextFrameSort = db.prepare('SELECT COALESCE(MAX(sort), 0) + 1 AS s FROM media_frames WHERE media_id = ?');
+const delFramesFor = db.prepare('DELETE FROM media_frames WHERE media_id = ?');
+
+function framePaths(mediaId) {
+  return qFrames.all(mediaId).map((f) => f.file_path);
+}
+
+// Append frames to a turntable, keeping the order they were chosen in.
+function addFrames(mediaId, paths) {
+  const start = nextFrameSort.get(mediaId).s;
+  db.transaction(() => {
+    paths.forEach((p, i) => insFrame.run(Number(mediaId), p, start + i));
+  })();
+  return framePaths(mediaId);
+}
+
+/*
  * Optional cross-links from a project to the 3D Geometry model or Gaussian
  * splat it belongs to. Queried straight from those tables (rather than through
  * their services) to keep this module dependency-free, and only while the
@@ -50,6 +75,17 @@ function toViewerItem(m) {
     // The viewer plays the real file; only the gallery card uses the small clip.
     return { type: 'video', src: mediaSvc.versionedUrl(m.full_path), poster: m.poster_path || '' };
   }
+  if (m.type === 'turntable') {
+    // Frames go through the resizer at a size that still fills a large window
+    // but keeps a long sequence to a sane total — every frame has to arrive
+    // before scrubbing is smooth, so this is the one place where holding the
+    // full 3200px would actually be felt. The width must be one /img allows;
+    // anything else is a 400 and the whole sequence renders blank.
+    const frames = framePaths(m.id).map((p) => imgUrl(p, 1600) || p);
+    return frames.length
+      ? { type: 'turntable', frames, alt: m.alt_text || '' }
+      : { type: 'turntable', src: mediaSvc.versionedUrl(m.full_path), poster: m.poster_path || '' };
+  }
   // Stills go through the resizer: 3200px covers a 4K screen at full size and is
   // visually identical to the original while being ~20x smaller. The genuine
   // uncompressed files stay available via the per-project download links.
@@ -77,8 +113,10 @@ function decorateProject(p) {
         hasVideoPreview: !!thumbRow.preview_path && /\.(mp4|webm|mov|m4v|ogv)$/i.test(thumbRow.preview_path),
       }
     : null;
-  // Counts for the little badge on each gallery card. Embeds are videos too.
-  const imageCount = media.filter((m) => m.type === 'image').length;
+  // Counts for the little badge on each gallery card. Embeds are videos too, and
+  // a turntable counts once however many frames it holds — it is one thing to
+  // look at, and "48 images" would read as 48 separate pictures.
+  const imageCount = media.filter((m) => m.type === 'image' || m.type === 'turntable').length;
   const videoCount = media.filter((m) => m.type === 'video' || m.type === 'embed').length;
   return { ...p, media, downloads, thumb, imageCount, videoCount, links: projectLinks(p), viewerMedia: media.map(toViewerItem) };
 }
@@ -145,6 +183,12 @@ function describeMediaFiles(m) {
   const hasSeparatePreview = !!m.preview_path && m.preview_path !== m.full_path;
   const full = mediaSvc.fileInfo(m.full_path);
   const preview = hasSeparatePreview ? mediaSvc.fileInfo(m.preview_path) : null;
+  // A turntable's weight is the whole sequence, not its first frame, so report
+  // the frame count and their combined size — that total is what a visitor has
+  // to download before scrubbing feels right.
+  const frames = m.type === 'turntable' ? qFrames.all(m.id) : [];
+  const frameInfo = frames.map((f) => ({ path: f.file_path, ...mediaSvc.fileInfo(f.file_path) }));
+  const frameBytes = frameInfo.reduce((n, f) => n + (f.bytes || 0), 0);
   return {
     ...m,
     files: {
@@ -153,6 +197,10 @@ function describeMediaFiles(m) {
       preview: preview
         ? { path: m.preview_path, exists: preview.exists, bytes: preview.bytes, label: formatBytes(preview.bytes) }
         : null,
+      frames: frameInfo,
+      frameCount: frameInfo.length,
+      frameMissing: frameInfo.filter((f) => !f.exists).length,
+      frameLabel: formatBytes(frameBytes),
     },
   };
 }
@@ -260,14 +308,18 @@ function removeUploadIfUnused(publicPath) {
 }
 
 function deleteProject(id) {
-  // Collect file paths before the rows cascade away.
+  // Collect file paths before the rows cascade away. Turntable frames cascade
+  // too (media_frames -> media_items -> gallery_projects), so their paths have
+  // to be read here or the files are left behind with nothing pointing at them.
   const media = qMediaByProject.all(id);
+  const frames = media.flatMap((m) => (m.type === 'turntable' ? framePaths(m.id) : []));
   const downloads = qDownloadsByProject.all(id);
   delProject.run(id);
   media.forEach((m) => {
     removeUploadIfUnused(m.full_path);
     removeUploadIfUnused(m.preview_path);
   });
+  frames.forEach(removeUploadIfUnused);
   downloads.forEach((d) => removeUploadIfUnused(d.file_path));
 }
 
@@ -399,9 +451,14 @@ function deleteMedia(id) {
     const next = qMediaByProject.all(m.project_id).find((x) => x.id !== m.id);
     setProjectThumb.run(next ? next.id : null, m.project_id);
   }
+  // Frame rows go with the item (ON DELETE CASCADE), but their files don't —
+  // collect the paths first, then clean them up like any other upload.
+  const frames = framePaths(id);
+  delFramesFor.run(Number(id));
   delMedia.run(id);
   removeUploadIfUnused(m.full_path);
   removeUploadIfUnused(m.preview_path);
+  frames.forEach(removeUploadIfUnused);
 }
 
 function reorderMedia(projectId, orderedIds) {
@@ -455,6 +512,8 @@ module.exports = {
   setThumbnail,
   moveProject,
   addMedia,
+  addFrames,
+  framePaths,
   updateMedia,
   setPreview,
   setEmbedPreviewShape,

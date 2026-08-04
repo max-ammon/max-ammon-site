@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS gallery_projects (
 CREATE TABLE IF NOT EXISTS media_items (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   project_id     INTEGER NOT NULL REFERENCES gallery_projects(id) ON DELETE CASCADE,
-  type           TEXT NOT NULL DEFAULT 'image',  -- 'image' | 'video' | 'embed'
+  type           TEXT NOT NULL DEFAULT 'image',  -- 'image' | 'video' | 'embed' | 'turntable'
   title          TEXT NOT NULL DEFAULT '',
   year           TEXT NOT NULL DEFAULT '',
   description    TEXT NOT NULL DEFAULT '',
@@ -73,6 +73,17 @@ CREATE TABLE IF NOT EXISTS media_items (
   alt_text       TEXT NOT NULL DEFAULT '',
   sort           INTEGER NOT NULL DEFAULT 0
 );
+
+-- Frames of a 'turntable' media item: an ordered image sequence the visitor
+-- scrubs through with a slider. A turntable built from a video file has no rows
+-- here — the video itself is the sequence, and the slider seeks it instead.
+CREATE TABLE IF NOT EXISTS media_frames (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  media_id  INTEGER NOT NULL REFERENCES media_items(id) ON DELETE CASCADE,
+  file_path TEXT NOT NULL DEFAULT '',
+  sort      INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_media_frames_media ON media_frames (media_id, sort);
 
 -- Per-project downloadable colour variants (rec2020 / p3d65 / srgb).
 CREATE TABLE IF NOT EXISTS media_downloads (

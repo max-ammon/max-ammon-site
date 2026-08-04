@@ -446,7 +446,11 @@ router.post('/gallery/:id/thumbnail', (req, res) => {
 // Add media: file upload (image/video) or a YouTube embed.
 router.post(
   '/gallery/:id/media',
-  uploadMedia.fields([{ name: 'file', maxCount: 1 }, { name: 'preview', maxCount: 1 }]),
+  uploadMedia.fields([
+    { name: 'file', maxCount: 1 },
+    { name: 'preview', maxCount: 1 },
+    { name: 'frames', maxCount: 600 }, // a turntable's image sequence
+  ]),
   async (req, res) => {
     const pid = Number(req.params.id);
     const type = req.body.media_type;
@@ -459,6 +463,41 @@ router.post(
         const embedId = parseYouTubeId(req.body.embed_url);
         if (!embedId) return res.redirect('/admin/gallery/' + pid + '?err=embed');
         gallery.addMedia(pid, { ...common, type: 'embed', embed_provider: 'youtube', embed_id: embedId, aspect_ratio: 16 / 9 });
+      } else if (type === 'turntable') {
+        /*
+         * A turntable is either an image sequence or a single video the slider
+         * scrubs. Only the first frame gets a generated preview — it is the one
+         * the gallery card shows, and the rest are resized on demand by /img, so
+         * a 200-frame sequence doesn't leave 200 unused preview files behind.
+         */
+        const frames = (req.files && req.files.frames) || [];
+        const video = req.files && req.files.file && req.files.file[0];
+        if (!frames.length && !video) return res.redirect('/admin/gallery/' + pid + '?err=nofile');
+
+        if (frames.length) {
+          const first = await mediaSvc.processImage(frames[0]);
+          const id = gallery.addMedia(pid, {
+            ...common,
+            type: 'turntable',
+            full_path: first.full_path,
+            preview_path: first.preview_path,
+            width: first.width,
+            height: first.height,
+          });
+          gallery.addFrames(id, frames.map((f) => toPublicPath(f.path)));
+        } else {
+          const info = await mediaSvc.processVideo(video);
+          if (!info.width) info.width = Number(req.body.media_width) || null;
+          if (!info.height) info.height = Number(req.body.media_height) || null;
+          gallery.addMedia(pid, {
+            ...common,
+            type: 'turntable',
+            full_path: info.full_path,
+            preview_path: info.preview_path,
+            width: info.width,
+            height: info.height,
+          });
+        }
       } else {
         const file = req.files && req.files.file && req.files.file[0];
         // multer's filter drops unsupported files silently — tell the owner
@@ -522,6 +561,18 @@ router.post('/gallery/:id/media/:mediaId/preview/remove', (req, res) => {
   gallery.setPreview(m.id, m.full_path);
   // Back to the 16:9 of the static YouTube thumbnail now shown in the clip's place.
   if (m.type === 'embed') gallery.setEmbedPreviewShape(m.id, null, null);
+  res.redirect('/admin/gallery/' + pid);
+});
+
+// Append frames to an existing turntable, so a sequence can be extended (or
+// uploaded in batches) without rebuilding the item.
+router.post('/gallery/:id/media/:mediaId/frames', uploadMedia.array('frames', 600), (req, res) => {
+  const pid = Number(req.params.id);
+  const m = gallery.getMedia(Number(req.params.mediaId));
+  if (!m || m.project_id !== pid || m.type !== 'turntable') return res.redirect('/admin/gallery/' + pid);
+  const files = req.files || [];
+  if (!files.length) return res.redirect('/admin/gallery/' + pid + '?err=nofile');
+  gallery.addFrames(m.id, files.map((f) => toPublicPath(f.path)));
   res.redirect('/admin/gallery/' + pid);
 });
 

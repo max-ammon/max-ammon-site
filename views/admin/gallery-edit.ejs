@@ -97,6 +97,31 @@
                                     <% } %>
                                 </div>
                                 <p class="muted" style="font-size:0.78rem;margin:6px 0 0;">Upload a short clip (from your own footage) to play a muted, looping preview on the gallery card. Clicking the card still opens the YouTube video.</p>
+                            <% } else if (m.type === 'turntable') { %>
+                                <% if (m.files.frameCount) { %>
+                                <div class="file-row">
+                                    <span class="file-label">Frames</span>
+                                    <span class="media-path muted"><%= m.files.frameCount %> image<%= m.files.frameCount === 1 ? '' : 's' %>, scrubbed with a slider</span>
+                                    <span class="file-size"><%= m.files.frameLabel %> total</span>
+                                    <% if (m.files.frameMissing) { %><span class="file-missing"><%= m.files.frameMissing %> missing</span><% } %>
+                                </div>
+                                <div class="file-row preview-actions">
+                                    <span class="file-label"></span>
+                                    <form method="post" action="/admin/gallery/<%= project.id %>/media/<%= m.id %>/frames" enctype="multipart/form-data" class="inline preview-form">
+                                        <input type="file" name="frames" accept="image/*" multiple required>
+                                        <button type="submit" class="btn-link btn-sm">Add frames</button>
+                                    </form>
+                                </div>
+                                <p class="muted" style="font-size:0.78rem;margin:6px 0 0;">Frames play in the order they were uploaded. Adding more appends them to the end.</p>
+                                <% } else { %>
+                                <div class="file-row">
+                                    <span class="file-label">Video</span>
+                                    <span class="media-path muted" title="<%= m.files.full.path %>"><%= m.files.full.path %></span>
+                                    <% if (m.files.full.exists) { %><span class="file-size"><%= m.files.full.label %></span>
+                                    <% } else { %><span class="file-missing">file missing</span><% } %>
+                                </div>
+                                <p class="muted" style="font-size:0.78rem;margin:6px 0 0;">Scrubbed with a slider instead of played — there are no play controls.</p>
+                                <% } %>
                             <% } else { %>
                                 <div class="file-row">
                                     <span class="file-label">Full</span>
@@ -147,14 +172,20 @@
                         <select name="media_type" id="mediaType">
                             <option value="image">Image (upload)</option>
                             <option value="video">Video (upload)</option>
+                            <option value="turntable">Turntable (slide through frames)</option>
                             <option value="embed">YouTube embed</option>
                         </select>
                     </label>
-                    <div data-when="image,video">
+                    <div data-when="image,video,turntable">
                         <label>File <input type="file" name="file" accept="image/*,video/*"></label>
                     </div>
                     <div data-when="video">
                         <label>Preview clip <span class="muted">(optional small looping mp4)</span> <input type="file" name="preview" accept="video/*"></label>
+                    </div>
+                    <div data-when="turntable">
+                        <label>Frames <span class="muted">(select the whole image sequence at once — they play in filename order)</span>
+                            <input type="file" name="frames" accept="image/*" multiple></label>
+                        <p class="muted" style="font-size:0.8rem;margin:-4px 0 12px;">Or leave that empty and pick a <strong>video</strong> in the File box above instead — the slider will scrub through it rather than playing it. A video is far smaller than a long image sequence; images give exact, instant frame steps.</p>
                     </div>
                     <div data-when="embed">
                         <label>YouTube URL <input type="text" name="embed_url" placeholder="https://www.youtube.com/watch?v=..."></label>

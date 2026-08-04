@@ -77,3 +77,78 @@ iframe.viewer-media {
 }
 .vidmodal-content:fullscreen .viewer-media { max-width: 100vw; max-height: 100vh; }
 .vidmodal-content:fullscreen iframe.viewer-media { width: min(100vw, calc(100vh * 16 / 9)); }
+
+/* --- Turntable: an image sequence (or a video) scrubbed rather than played ---
+   The wrapper takes the place of the media element, so it carries the same size
+   caps; the picture inside gets what's left after the control strip. */
+.viewer-turntable {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.viewer-turntable .tt-media {
+  display: block;
+  max-width: 100%;
+  max-height: calc(80vh - 46px);
+  object-fit: contain;
+  background: #000;
+  /* It's draggable, so say so — and don't let a drag select or pan the page. */
+  cursor: ew-resize;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.viewer-turntable .tt-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(560px, 100%);
+  /* Hidden until every frame is in — scrubbing before then shows blanks. */
+  visibility: hidden;
+}
+.viewer-turntable.is-ready .tt-bar { visibility: visible; }
+
+.viewer-turntable .tt-slider {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  accent-color: #d7d9dc;
+  cursor: pointer;
+}
+.viewer-turntable .tt-readout {
+  flex: none;
+  min-width: 66px;
+  text-align: right;
+  color: #cfd2d6;
+  font-family: 'uni_regular', sans-serif;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Frame-loading progress, centred over the picture and gone once it's ready. */
+.viewer-turntable .tt-loading {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(10, 12, 16, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #dfe2e6;
+  font-family: 'uni_regular', sans-serif;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.viewer-turntable.is-ready .tt-loading { display: none; }
+
+.vidmodal-content:fullscreen .viewer-turntable .tt-media { max-height: calc(100vh - 56px); }
+
+@media (max-width: 600px) {
+  .viewer-turntable .tt-readout { min-width: 58px; font-size: 0.76rem; }
+}

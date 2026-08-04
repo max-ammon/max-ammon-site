@@ -20,11 +20,149 @@
       '?autoplay=1&rel=0&modestbranding=1&playsinline=1';
   }
 
+  /*
+   * A turntable: an ordered image sequence (or a single video) the visitor
+   * scrubs rather than plays. Dragging on the picture itself works as well as
+   * the slider — that's how you expect to turn an object — and the whole width
+   * of the picture maps to the whole sequence, so one swipe covers the lot.
+   *
+   * Frames are preloaded before scrubbing is allowed. Swapping to a frame the
+   * browser hasn't fetched yet shows a blank, which reads as broken, and the
+   * wait is the honest cost of an instant response afterwards.
+   */
+  function buildTurntable(it) {
+    var wrap = document.createElement('div');
+    wrap.className = 'viewer-turntable viewer-media';
+
+    var frames = it.frames || [];
+    var isVideo = !frames.length && it.src;
+    var last = -1;
+    var media;
+
+    if (isVideo) {
+      media = document.createElement('video');
+      media.src = it.src;
+      media.preload = 'auto';
+      media.muted = true;
+      media.playsInline = true;
+      if (it.poster) media.poster = it.poster;
+    } else {
+      media = document.createElement('img');
+      media.alt = it.alt || '';
+      media.src = frames[0];
+    }
+    media.className = 'tt-media';
+    media.draggable = false;
+    wrap.appendChild(media);
+
+    var bar = document.createElement('div');
+    bar.className = 'tt-bar';
+    var slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = 0;
+    slider.step = isVideo ? 0.001 : 1;
+    slider.max = isVideo ? 1 : Math.max(0, frames.length - 1);
+    slider.value = 0;
+    slider.className = 'tt-slider';
+    slider.setAttribute('aria-label', 'Scrub through this sequence');
+    var readout = document.createElement('span');
+    readout.className = 'tt-readout';
+    bar.appendChild(slider);
+    bar.appendChild(readout);
+    wrap.appendChild(bar);
+
+    var loading = document.createElement('div');
+    loading.className = 'tt-loading';
+    wrap.appendChild(loading);
+
+    function show(v) {
+      if (isVideo) {
+        if (media.readyState >= 1 && isFinite(media.duration)) {
+          media.currentTime = Math.max(0, Math.min(media.duration - 0.001, v * media.duration));
+        }
+        readout.textContent = Math.round(v * 100) + '%';
+        return;
+      }
+      var i = Math.max(0, Math.min(frames.length - 1, Math.round(v)));
+      if (i !== last) {
+        media.src = frames[i];
+        last = i;
+      }
+      readout.textContent = i + 1 + ' / ' + frames.length;
+    }
+
+    slider.addEventListener('input', function () {
+      show(parseFloat(slider.value));
+    });
+
+    // Drag anywhere on the picture. Pointer events cover mouse, touch and pen,
+    // and capture keeps the drag alive if the pointer leaves the frame.
+    var dragging = false;
+    media.addEventListener('pointerdown', function (ev) {
+      dragging = true;
+      if (media.setPointerCapture) {
+        try { media.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+      }
+      ev.preventDefault();
+    });
+    media.addEventListener('pointermove', function (ev) {
+      if (!dragging) return;
+      var r = media.getBoundingClientRect();
+      if (!r.width) return;
+      var frac = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width));
+      slider.value = isVideo ? frac : Math.round(frac * (frames.length - 1));
+      show(parseFloat(slider.value));
+      ev.preventDefault();
+    });
+    ['pointerup', 'pointercancel'].forEach(function (e) {
+      media.addEventListener(e, function () { dragging = false; });
+    });
+
+    if (isVideo) {
+      // Seeking only works once enough is buffered to seek into.
+      media.addEventListener('loadeddata', function () {
+        wrap.classList.add('is-ready');
+        show(0);
+      });
+      media.addEventListener('error', function () {
+        loading.textContent = 'This sequence could not be loaded.';
+      });
+    } else if (frames.length) {
+      var done = 0;
+      loading.textContent = 'Loading 0 / ' + frames.length;
+      frames.forEach(function (src) {
+        var pre = new Image();
+        var tick = function () {
+          done++;
+          loading.textContent = 'Loading ' + done + ' / ' + frames.length;
+          if (done === frames.length) {
+            wrap.classList.add('is-ready');
+            show(0);
+          }
+        };
+        pre.onload = tick;
+        pre.onerror = tick; // a missing frame shouldn't hold the whole sequence
+        pre.src = src;
+      });
+    }
+
+    return wrap;
+  }
+
   function render() {
     stage.innerHTML = '';
     var it = items[index];
     if (!it) return;
     var el = null;
+
+    if (it.type === 'turntable') {
+      stage.appendChild(buildTurntable(it));
+      if (note) note.hidden = true;
+      var multiT = items.length > 1;
+      btnPrev.style.display = multiT ? '' : 'none';
+      btnNext.style.display = multiT ? '' : 'none';
+      return;
+    }
 
     if (it.type === 'image') {
       el = document.createElement('img');
