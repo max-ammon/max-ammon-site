@@ -31,6 +31,8 @@ const DIR_LABELS = {
   site: 'Profile, banner & share images',
   pipeline: 'Pipeline icons',
   splats: 'Gaussian splats',
+  photography: 'Photography',
+  models: '3D Geometry',
 };
 
 function walk(dir) {
@@ -58,6 +60,43 @@ function normalizePath(p) {
     /* keep as-is */
   }
   return s;
+}
+
+/*
+ * A last sweep for /uploads paths anywhere in the database, whatever table or
+ * column they sit in.
+ *
+ * The named queries below give each file a readable "used by" label, which is
+ * the point of the dashboard — but they have to be extended by hand every time
+ * a feature adds a table, and forgetting is silent and expensive: a file no
+ * query mentions is reported unused and offered for deletion, with the row
+ * still pointing at it. That is exactly what happened to Photography, 3D
+ * Geometry and the demo-archive posters. So this runs afterwards over
+ * everything: a missed table now costs a vague label rather than the file.
+ */
+const SWEEP_SKIP = new Set(['analytics_events', 'sessions', 'contact_messages']);
+function sweepEverything(extract) {
+  const tables = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+    .all()
+    .map((t) => t.name)
+    .filter((n) => !SWEEP_SKIP.has(n)); // request paths and message bodies, not files
+  for (const table of tables) {
+    const cols = db
+      .prepare(`PRAGMA table_info(${table})`)
+      .all()
+      .filter((c) => !c.type || /CHAR|CLOB|TEXT/i.test(c.type))
+      .map((c) => c.name);
+    for (const col of cols) {
+      let rows;
+      try {
+        rows = db.prepare(`SELECT DISTINCT "${col}" AS v FROM "${table}" WHERE "${col}" LIKE '%/uploads/%'`).all();
+      } catch (e) {
+        continue; // an odd column type is not worth failing the whole scan over
+      }
+      for (const r of rows) extract(r.v, table + '.' + col);
+    }
+  }
 }
 
 /*
@@ -122,6 +161,20 @@ function referencedMap() {
     add(s.background_path, 'Splat: ' + t + ' (360 backdrop)');
   }
 
+  for (const m of db.prepare('SELECT title, thumb_path, model_path FROM models').all()) {
+    const t = m.title || 'untitled';
+    add(m.thumb_path, '3D Geometry: ' + t + ' (thumbnail)');
+    add(m.model_path, '3D Geometry: ' + t + ' (model)');
+  }
+
+  for (const p of db.prepare('SELECT title, image_path FROM photos').all()) {
+    add(p.image_path, 'Photography' + (p.title ? ': ' + p.title : ''));
+  }
+
+  for (const d of db.prepare('SELECT title, poster_path FROM demo_archive').all()) {
+    add(d.poster_path, 'Demo archive: ' + (d.title || 'reel') + ' (poster)');
+  }
+
   for (const p of db.prepare('SELECT image_path, label FROM pipeline_markers').all()) {
     add(p.image_path, 'Pipeline icon' + (p.label ? ': ' + p.label : ''));
   }
@@ -132,6 +185,18 @@ function referencedMap() {
   for (const c of db.prepare('SELECT block_key, label, value FROM content_blocks').all()) {
     extract(c.value, 'Text: ' + (c.label || c.block_key));
   }
+
+  // Anything the named queries above didn't account for. Runs last and only
+  // speaks up about paths nothing else claimed, so a file that already has a
+  // readable label keeps just that one.
+  sweepEverything((text, label) => {
+    const re = /\/uploads\/[A-Za-z0-9_\-./]+/g;
+    let m;
+    while ((m = re.exec(String(text || '')))) {
+      const n = normalizePath(m[0]);
+      if (n && !map.has(n)) add(n, label);
+    }
+  });
 
   return map;
 }
