@@ -20,6 +20,20 @@
   .ph-tools { display: flex; gap: 4px; }
   .ph-tools button { min-width: 28px; }
   .danger { color: #d9534f; }
+  /* Bulk-move toolbar. Sticks to the top so it stays reachable while you scroll
+     a long grid picking photos. */
+  .ph-bulk { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+             margin: 0 0 12px; padding: 9px 12px; background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 8px; }
+  .ph-bulk[hidden] { display: none; }
+  .ph-bulk-count { font-size: 0.85rem; min-width: 8.5em; }
+  .ph-bulk-steps { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 0.85rem; color: var(--a-muted); }
+  .ph-bulk-steps input { width: 62px; margin: 0; }
+  .ph-bulk-sep { flex: 1; }
+  .ph-bulk-hint { font-size: 0.78rem; }
+  .ph-bulk button[disabled] { opacity: 0.4; cursor: default; }
+  .ph-pick { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: 0.78rem; color: var(--a-muted); cursor: pointer; }
+  .ph-pick input { margin: 0; width: auto; }
+  .ph-card.is-picked { outline: 2px solid #6ea8fe; outline-offset: 1px; }
 </style>
 </head>
 <body class="admin">
@@ -27,7 +41,7 @@
     <main class="admin-main">
         <p class="muted"><a href="/admin">← Dashboard</a></p>
         <h1>Photography</h1>
-        <p class="muted">The photos on your <a href="/photography" target="_blank" rel="noopener">Photography page ↗</a>, reached from the “Photography” button in the Gallery and Gaussian Splats headers. They're laid out in rows that fill the page width — mixed portrait and landscape shots sit together at a matching height, never cropped. Newest uploads go to the top; use the arrows to reorder.</p>
+        <p class="muted">The photos on your <a href="/photography" target="_blank" rel="noopener">Photography page ↗</a>, reached from the “Photography” button in the Gallery and Gaussian Splats headers. They're laid out in rows that fill the page width — mixed portrait and landscape shots sit together at a matching height, never cropped. Newest uploads go to the top. Reorder one photo with its &uarr;&darr; arrows, or tick several and move them together with the bar above the grid.</p>
         <% if (saved) { %><div class="alert ok">Saved. <a href="/photography" target="_blank" rel="noopener">View page ↗</a></div><% } %>
         <% if (err === 'nofile') { %><div class="alert error">No images were added. Choose one or more image files.</div><% } %>
         <% if (err === 'upload') { %><div class="alert error">Something went wrong while saving those images. Please try again.</div><% } %>
@@ -69,9 +83,28 @@
         </div>
 
         <h3 style="margin-top:26px;"><%= photos.length %> photo<%= photos.length === 1 ? '' : 's' %></h3>
+
+        <%# Bulk reorder. Each card already contains its own forms, and forms
+            cannot nest, so the tickboxes live in the cards but belong to this
+            one through their form attribute. %>
+        <form method="post" action="/admin/photography/move-selection" id="photoBulk" class="ph-bulk" hidden>
+            <span class="ph-bulk-count" id="phCount">Nothing selected</span>
+            <button class="btn-link btn-sm" type="submit" name="dir" value="up" data-needs-selection>Move up</button>
+            <button class="btn-link btn-sm" type="submit" name="dir" value="down" data-needs-selection>Move down</button>
+            <label class="ph-bulk-steps">by <input type="number" name="steps" value="1" min="1" max="999" aria-label="How many places to move"> place(s)</label>
+            <span class="ph-bulk-sep"></span>
+            <button class="btn-link btn-sm" type="button" id="phAll">Select all</button>
+            <button class="btn-link btn-sm" type="button" id="phNone" data-needs-selection>Clear</button>
+            <span class="muted ph-bulk-hint">Tick photos below &middot; shift-click for a run</span>
+        </form>
+
         <ul class="ph-grid">
             <% photos.forEach(function (p) { %>
             <li class="ph-card<%= p.published ? '' : ' hidden-photo' %>">
+                <label class="ph-pick" title="Select for moving several at once">
+                    <input type="checkbox" name="ids" value="<%= p.id %>" form="photoBulk"<%= selected.indexOf(p.id) >= 0 ? ' checked' : '' %>>
+                    <span>Select</span>
+                </label>
                 <div class="ph-pic"><img src="<%= p.image_path %>" alt="<%= p.title %>" loading="lazy"></div>
                 <div class="ph-meta"><%= p.width && p.height ? p.width + ' × ' + p.height : 'size unknown' %></div>
                 <form method="post" action="/admin/photography/<%= p.id %>">
@@ -97,5 +130,6 @@
             <% if (!photos.length) { %><li class="muted">No photos yet — upload your first above.</li><% } %>
         </ul>
     </main>
+    <script src="/js/admin-photography.js"></script>
 </body>
 </html>

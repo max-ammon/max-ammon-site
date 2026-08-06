@@ -251,6 +251,10 @@ router.get('/photography', (req, res) => {
     columns: photography.columnsFrom(settings),
     maxColumns: photography.MAX_COLUMNS,
     visible: String(settings.photography_visible) !== '0',
+    selected: String(req.query.sel || '')
+      .split(',')
+      .map(Number)
+      .filter((n) => Number.isFinite(n) && n > 0),
     saved: req.query.saved === '1',
     err: req.query.err || '',
   });
@@ -280,6 +284,16 @@ router.post('/photography', uploadPhoto.array('photos', 40), async (req, res) =>
 router.post('/photography/visibility', (req, res) => {
   updateSettings({ photography_visible: req.body.visible === 'on' ? '1' : '0' });
   res.redirect('/admin/photography?saved=1');
+});
+
+// Move several photos at once, by however many places. The ids that moved come
+// back in the redirect so the page can tick them again — reselecting a dozen
+// photos after every nudge would make the feature not worth using.
+router.post('/photography/move-selection', (req, res) => {
+  const moved = photography.moveSelection(req.body.ids || [], req.body.dir === 'up' ? -1 : 1, req.body.steps);
+  // Keep the URL sane: past a certain size the selection is not worth echoing.
+  const sel = moved.length && moved.length <= 100 ? '&sel=' + moved.join(',') : '';
+  res.redirect('/admin/photography?saved=1' + sel);
 });
 
 router.post('/photography/columns', (req, res) => {

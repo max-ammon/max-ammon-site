@@ -98,6 +98,53 @@ function deletePhoto(id) {
 }
 
 // Swap sort with the neighbour in the given direction (-1 up, +1 down).
+/*
+ * Move a whole selection one place, in the same unit as the single arrows.
+ *
+ * Each selected photo swaps with its unselected neighbour, walked from the edge
+ * the selection is heading towards. Two consequences fall out of that and both
+ * are what you would want: a run of selected photos travels together as a
+ * block rather than shuffling through itself, and one that reaches the end
+ * simply stops while the rest keep going, instead of the whole move being
+ * refused.
+ */
+function shiftOnce(items, up) {
+  if (up) {
+    for (let i = 1; i < items.length; i++) {
+      if (items[i].sel && !items[i - 1].sel) {
+        const t = items[i - 1];
+        items[i - 1] = items[i];
+        items[i] = t;
+      }
+    }
+  } else {
+    for (let i = items.length - 2; i >= 0; i--) {
+      if (items[i].sel && !items[i + 1].sel) {
+        const t = items[i + 1];
+        items[i + 1] = items[i];
+        items[i] = t;
+      }
+    }
+  }
+}
+
+// Returns the ids that were actually selected, so the page can tick them again
+// and you can keep nudging without reselecting everything.
+function moveSelection(ids, dir, steps) {
+  const wanted = new Set((Array.isArray(ids) ? ids : [ids]).map(Number).filter((n) => Number.isFinite(n)));
+  if (!wanted.size) return [];
+  const items = qAll.all().map((p) => ({ id: p.id, sel: wanted.has(p.id) }));
+  if (!items.some((i) => i.sel)) return [];
+  let n = parseInt(steps, 10);
+  if (!isFinite(n) || n < 1) n = 1;
+  n = Math.min(n, items.length); // more than the list is long is just "to the end"
+  for (let k = 0; k < n; k++) shiftOnce(items, dir < 0);
+  db.transaction(() => {
+    items.forEach((it, i) => setSort.run(i + 1, it.id));
+  })();
+  return items.filter((i) => i.sel).map((i) => i.id);
+}
+
 function movePhoto(id, dir) {
   const list = qAll.all();
   const idx = list.findIndex((x) => x.id === Number(id));
@@ -156,6 +203,7 @@ module.exports = {
   updatePhoto,
   deletePhoto,
   movePhoto,
+  moveSelection,
   columnsFrom,
   toRows,
   DEFAULT_RATIO,
