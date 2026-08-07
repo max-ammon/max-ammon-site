@@ -26,6 +26,10 @@ const SETTINGS = {
   // own <title>; empty image falls back to the About banner.
   share_title:         '',
   share_description:   'Portfolio of Max Ammon, 3D artist based in Cologne, Germany.',
+  // Shared link to ONE splat. Its own title and thumbnail already say which
+  // capture it is, so the description says what the link actually does. Blank
+  // this to go back to using each splat's own description text instead.
+  share_splat_description: 'Interactive 3D capture - [3D Art, VFX & Visual Development]',
   share_image:         '',
   social_preview_bots: '1',
   // Photography page: how many images sit in each row (1-4).

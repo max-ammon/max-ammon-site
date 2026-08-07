@@ -101,6 +101,30 @@
             </section>
             <% }); %>
 
+            <%# Individual splats aren't SHARE_PAGES entries — each previews
+                itself from its own title and thumbnail — so only the one shared
+                line is editable here. %>
+            <section class="share-block">
+                <h2>A single Gaussian Splat <span class="sub">&mdash; max-ammon.com/splats/&hellip;</span></h2>
+                <p class="blurb">The line under the title when you share <em>one</em> splat. Its own title and thumbnail already say which capture it is, so this says what the link opens. Leave it blank to use each splat's own description instead.</p>
+                <div class="share-grid">
+                    <div class="share-fields">
+                        <label>Description <textarea name="share_splat_description" placeholder="Blank uses each splat's own description."><%= settings.share_splat_description || '' %></textarea></label>
+                    </div>
+                    <aside class="share-preview">
+                        <p class="prev-label">Live preview</p>
+                        <div class="share-card">
+                            <span class="img">the splat's thumbnail</span>
+                            <div class="meta">
+                                <div class="dom">max-ammon.com/splats/1/&hellip;</div>
+                                <div class="t">the splat's title</div>
+                                <div class="d"><%= settings.share_splat_description || "the splat&apos;s own description" %></div>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
             <div class="checkbox-row">
                 <input type="checkbox" name="social_preview_bots" value="1" id="shareBots" <%= settings.social_preview_bots !== '0' ? 'checked' : '' %>>
                 <label for="shareBots" style="margin:0;color:var(--a-text);">

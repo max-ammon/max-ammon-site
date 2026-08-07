@@ -341,7 +341,11 @@ app.get(['/splats/:id', '/splats/:id/:slug'], attachSiteContext, (req, res) => {
   const owner = res.locals.settings.site_title || 'Max Ammon';
   res.locals.og = {
     title: splat.title || owner + ' — Gaussian Splat',
-    description: ogText(splat.description),
+    // One line for every splat, set under Social preview. The card already
+    // carries this splat's title and thumbnail, so the description is better
+    // spent saying what the link opens than repeating the caption. Blank it
+    // there and each splat falls back to its own description.
+    description: (res.locals.settings.share_splat_description || '').trim() || ogText(splat.description),
     image: splat.thumb_path || '',
     url: splat.view_url,
   };

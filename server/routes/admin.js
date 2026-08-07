@@ -392,6 +392,7 @@ router.post('/social', uploadSiteImage.any(), (req, res) => {
   const updates = {
     share_title: (req.body.share_title || '').trim(),
     share_description: (req.body.share_description || '').trim(),
+    share_splat_description: (req.body.share_splat_description || '').trim(),
     // An unchecked checkbox isn't submitted, so its absence means "off".
     social_preview_bots: req.body.social_preview_bots ? '1' : '0',
   };
