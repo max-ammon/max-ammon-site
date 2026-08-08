@@ -269,11 +269,10 @@ nav a.nav-current { text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
     text-align: center;
   }
 
-  /* Contact: the form and details stack (via flex-wrap); tighten the gap
-     between labels and values and let long URLs wrap within the screen. */
+  /* Contact: the details row has less width to play with, so it wraps to more
+     lines — tighten its gaps and let a long URL break inside the screen. */
   #contact .contact-columns { gap: 24px; }
-  #contact .contact-info { column-gap: 20px; max-width: 92vw; }
-  #contact .ci-label { text-align: right; }
+  #contact .contact-info { gap: 8px 22px; max-width: 92vw; }
   #contact .ci-value { min-width: 0; }
 }
 

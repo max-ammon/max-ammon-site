@@ -210,12 +210,16 @@
                       text = val.replace(/^www\./i, '').replace(/\/+$/, '');
                     }
                 %>
-                <span class="ci-label lighttitle"><%= item.label %></span>
-                <% if (href) { %>
-                <a class="ci-value secondarytitle" href="<%= href %>"<% if (external) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= text %></a>
-                <% } else { %>
-                <span class="ci-value secondarytitle"><%= val %></span>
-                <% } %>
+                <%# Label and value are one unit now that the details sit in a
+                    horizontal strip: they must wrap to the next line together. %>
+                <span class="ci-item">
+                    <span class="ci-label lighttitle"><%= item.label %></span>
+                    <% if (href) { %>
+                    <a class="ci-value secondarytitle" href="<%= href %>"<% if (external) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= text %></a>
+                    <% } else { %>
+                    <span class="ci-value secondarytitle"><%= val %></span>
+                    <% } %>
+                </span>
                 <% }); %>
             </div>
         </div>

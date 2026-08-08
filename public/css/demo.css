@@ -257,31 +257,33 @@
 
 /* Contact form (main page) — styled with the theme variables so it follows
    colour changes made in the admin. */
-/* Message form and contact details sit side by side, wrapping to stacked when
-   there isn't room for both. */
+/* The message form is centred on the page, with the contact details in a
+   horizontal strip beneath it rather than a column beside it. */
 .contact-columns {
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 50px;
+  flex-direction: column;
+  align-items: center;
+  gap: 34px;
   padding: 25px 20px 50px;
 }
-.contact-form-wrap { display: flex; justify-content: center; flex: 0 1 560px; }
+.contact-form-wrap { display: flex; justify-content: center; width: 100%; }
 .contact-form { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 560px; }
-/* Label/value pairs as a 2-column grid: same look as the original two columns,
-   but each label stays glued to its own value when a long URL wraps. */
+/* The details as a centred, wrapping row. Each label/value pair is one item, so
+   a pair never splits across two lines and long URLs carry their label with
+   them when the row wraps. */
 .contact-info {
-  display: grid;
-  grid-template-columns: auto auto;
-  column-gap: 20px;
-  row-gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: baseline;
-  flex: 0 1 auto;
+  gap: 10px 34px;
+  /* Wide enough for all five details on one line on a large screen (measured:
+     they need ~1490px together), and a cap rather than a width so a narrower
+     window simply wraps them onto a second line instead of overflowing. */
+  max-width: 1500px;
 }
-/* Right-aligned labels form a clean gutter against the values, which are now
-   clickable links (tidied to drop the scheme / www / trailing slash). */
-.ci-label { text-align: right; margin: 0; white-space: nowrap; }
+.ci-item { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ci-label { margin: 0; white-space: nowrap; }
 .ci-value { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 a.ci-value { color: var(--secondarycolor); text-decoration: none; }
 a.ci-value:hover { text-decoration: underline; }
