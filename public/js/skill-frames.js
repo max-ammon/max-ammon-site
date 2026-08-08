@@ -26,6 +26,20 @@
   var FAR = 0.18;
   var TINT_MAX = 0.45; // strength of the aqua on the current frame
 
+  /*
+   * Dead zones at either end of the pass, as a fraction of it: the first frame
+   * holds while the section is arriving and the last one holds as it leaves,
+   * so both are on screen properly rather than only being touched in passing.
+   *
+   * These two and the speed of the handover are the same dial. The section only
+   * travels so far, so every bit held at the ends is scroll the moving part no
+   * longer has — raise them and the frames change over more quickly. At 0.15
+   * each the handover runs across 70% of the pass, so it is about 1.4x brisker
+   * than with no holds at all.
+   */
+  var HOLD_IN = 0.15;
+  var HOLD_OUT = 0.15;
+
   // Opacity as a function of distance from the current frame. Continuous, and
   // flat past two frames out so a long sequence keeps a readable floor.
   function opacityFor(d) {
@@ -47,6 +61,12 @@
      */
     var span = vh + r.height;
     var p = span > 0 ? (vh - r.top) / span : 0;
+    if (p < 0) p = 0;
+    else if (p > 1) p = 1;
+
+    // Spend the ends holding, and fit the whole handover into what's left.
+    var moving = 1 - HOLD_IN - HOLD_OUT;
+    p = moving > 0 ? (p - HOLD_IN) / moving : 0;
     if (p < 0) p = 0;
     else if (p > 1) p = 1;
 
