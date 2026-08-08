@@ -127,7 +127,10 @@
                 <% if (animFrames.length > 1) { %>
                 <span class="animationimage anim-frames" data-anim-frames>
                     <% animFrames.forEach(function (frame, i) { %>
-                    <span class="af<%= i === 0 ? ' af-base' : '' %>">
+                    <%# --frame-src masks the tint with this frame's own alpha; 800px
+                        is plenty for a mask edge and is usually the very file the
+                        <img> below already picked from its srcset. %>
+                    <span class="af<%= i === 0 ? ' af-base' : '' %>" style="--frame-src: url('<%= imgUrl(frame, 800) %>')">
                         <img src="<%= imgUrl(frame, 1200) %>"
                              srcset="<%= imgSrcset(frame, [480, 800, 1200, 1600]) %>"
                              sizes="50vw" loading="lazy" decoding="async" alt="">

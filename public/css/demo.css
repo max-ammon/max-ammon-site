@@ -358,7 +358,14 @@ a.ci-value:hover { text-decoration: underline; }
 /* The tint. mix-blend-mode:color shifts hue and saturation while leaving the
    picture's brightness alone, so it reads as a colour grade rather than a
    coloured sheet laid over the top. Strength comes from --tint, which the
-   script moves from frame to frame. */
+   script moves from frame to frame.
+
+   The mask is not optional. These pictures have an alpha channel, and blending
+   against a transparent backdrop returns the source colour unchanged — so
+   without it the overlay paints a flat aqua rectangle across everything the
+   picture leaves empty, framing the subject in a cyan box. Masking with the
+   frame's own image confines the tint to the pixels that picture actually
+   draws. */
 .anim-frames .af::after {
   content: '';
   position: absolute;
@@ -367,4 +374,10 @@ a.ci-value:hover { text-decoration: underline; }
   mix-blend-mode: color;
   opacity: var(--tint, 0);
   pointer-events: none;
+  -webkit-mask-image: var(--frame-src);
+  mask-image: var(--frame-src);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
