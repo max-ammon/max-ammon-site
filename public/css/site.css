@@ -257,6 +257,12 @@ nav a.nav-current { text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
     margin: 12px auto 0 !important;
     padding: 0 !important;
   }
+  /* The animation frames stack wears .animationimage, so it takes the sizing
+     above — but it must stay a positioning context, or its layered frames have
+     nothing to position against and escape the box entirely. Relative with no
+     offsets moves nothing, so this only restores the containing block. It has to
+     come after that rule: same specificity, both important, so order decides. */
+  #skills .anim-frames { position: relative !important; }
   /* Compositing & grading: its image sits to the LEFT on desktop, so in source
      order the image comes before the text. Stacking it as-is on mobile would put
      the image on top; a reversed flex column drops the image below the text

@@ -115,9 +115,30 @@
                     <h3><%= content['skills.animation.title'] %></h3>
                     <%- paragraphs(content['skills.animation.body']) %>
                 </div>
+                <%# Animation: one picture, or a stack of frames that cross-fade
+                    as the section scrolls past (see /js/skill-frames.js). With
+                    no extra frames configured this renders the plain <img> it
+                    always was, so the layout has nothing new to get wrong. %>
+                <%
+                  var animFrames = [settings.skills_animation_img, settings.skills_animation_img2, settings.skills_animation_img3]
+                    .map(function (v) { return String(v || '').trim(); })
+                    .filter(Boolean);
+                %>
+                <% if (animFrames.length > 1) { %>
+                <span class="animationimage anim-frames" data-anim-frames>
+                    <% animFrames.forEach(function (frame, i) { %>
+                    <span class="af<%= i === 0 ? ' af-base' : '' %>">
+                        <img src="<%= imgUrl(frame, 1200) %>"
+                             srcset="<%= imgSrcset(frame, [480, 800, 1200, 1600]) %>"
+                             sizes="50vw" loading="lazy" decoding="async" alt="">
+                    </span>
+                    <% }); %>
+                </span>
+                <% } else { %>
                 <img class="animationimage" src="<%= imgUrl(settings.skills_animation_img, 1200) %>"
                      srcset="<%= imgSrcset(settings.skills_animation_img, [480, 800, 1200, 1600]) %>"
                      sizes="50vw" loading="lazy" decoding="async" alt="">
+                <% } %>
             </div>
         </div>
 
@@ -257,6 +278,7 @@
     <script src="/js/scrollspy.js"></script>
     <script src="/js/nav-scroll.js"></script>
     <script src="/js/site-hints.js"></script>
+    <script src="/js/skill-frames.js"></script>
 
 </body>
 </html>

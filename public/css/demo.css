@@ -320,3 +320,51 @@ a.ci-value:hover { text-decoration: underline; }
 .contact-flash.ok { color: #2e7d32; }
 .contact-flash.err { color: #c0392b; }
 
+/* --- Animation skill: scroll-played frames -----------------------------------
+   A stack of frames in the box the single picture used to fill, cross-faded by
+   scroll position (see /js/skill-frames.js). The stack carries .animationimage
+   itself, so every rule that sized and placed the old <img> — the 50% width,
+   the relative position, the mobile overrides — applies to it unchanged.
+
+   inline-block, because the <img> it stands in for was an inline replaced
+   element: that keeps it on the same line box, baseline-aligned, so the section
+   measures exactly as it did before. */
+.anim-frames {
+  display: inline-block;
+  vertical-align: baseline;
+}
+/* The first frame stays in normal flow and gives the stack its height; the rest
+   are laid over it. isolation:isolate keeps each frame's tint blending with
+   that frame's own picture rather than with the ones showing through behind. */
+.anim-frames .af {
+  display: block;
+  position: relative;
+  isolation: isolate;
+  /* Before the script has had a frame to run — and if it never does — only the
+     first frame shows, which is exactly the single picture this replaces. */
+  opacity: 0;
+}
+.anim-frames .af-base { opacity: 1; }
+.anim-frames .af:not(.af-base) {
+  position: absolute;
+  inset: 0;
+}
+.anim-frames .af img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.anim-frames .af-base img { height: auto; }
+/* The tint. mix-blend-mode:color shifts hue and saturation while leaving the
+   picture's brightness alone, so it reads as a colour grade rather than a
+   coloured sheet laid over the top. Strength comes from --tint, which the
+   script moves from frame to frame. */
+.anim-frames .af::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--anim-tint, #45d6e6);
+  mix-blend-mode: color;
+  opacity: var(--tint, 0);
+  pointer-events: none;
+}
