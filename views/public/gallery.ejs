@@ -66,7 +66,10 @@
         <% rows.forEach(function (row) { %>
         <div class="<%= row.layout %>">
             <% row.projects.forEach(function (p) { %>
-            <div class="project" data-project-id="<%= p.id %>">
+            <%# id + data-project-id: the id is what a splat's or model's "see it in
+                the gallery" link targets, which both scrolls here and lights the
+                card up (see #projects .project:target in gallery.css). %>
+            <div class="project" id="project-<%= p.id %>" data-project-id="<%= p.id %>">
                 <div class="project-media">
                 <% if (p.thumb) { %>
                     <% /* Uniform height (--thumb-h); width derives from each item's own ratio. */ %>

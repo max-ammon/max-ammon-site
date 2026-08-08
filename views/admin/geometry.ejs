@@ -78,6 +78,14 @@
                             <% if (m.model_exists) { %>Current: <%= (m.model_format || 'file').toUpperCase() %><% if (m.model_size) { %> · <%= m.model_size %><% } %><% if (m.default_view) { %> · camera set<% } %><% } else { %>⚠ model file missing<% } %>
                         </span>
                     </label>
+                    <label class="field grow">Linked gallery project <span class="muted">(jumps to it and lights it up)</span>
+                        <select name="link_project_id">
+                            <option value="">None</option>
+                            <% linkProjects.forEach(function (lp) { %>
+                            <option value="<%= lp.id %>"<%= m.link_project_id === lp.id ? ' selected' : '' %>><%= lp.title %><%= lp.published ? '' : ' (hidden)' %></option>
+                            <% }); %>
+                        </select>
+                    </label>
                     <label class="field grow">Linked Gaussian splat <span class="muted">(same subject)</span>
                         <select name="link_splat_id">
                             <option value="">None</option>

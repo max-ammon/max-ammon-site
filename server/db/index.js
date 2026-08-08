@@ -62,6 +62,10 @@ addColumnIfMissing('splats', 'white_balance', 'REAL NOT NULL DEFAULT 0');
 addColumnIfMissing('splats', 'tint', 'REAL NOT NULL DEFAULT 0');
 addColumnIfMissing('splats', 'background_path', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('splats', 'background_yaw', 'REAL NOT NULL DEFAULT 0');
+// The third leg of the cross-links: a splat or model can point back at the
+// gallery project it belongs to, so the circle closes in both directions.
+addColumnIfMissing('splats', 'link_project_id', 'INTEGER');
+addColumnIfMissing('models', 'link_project_id', 'INTEGER');
 addColumnIfMissing('models', 'smooth_normals', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('models', 'metalness', 'REAL');
 addColumnIfMissing('models', 'roughness', 'REAL');

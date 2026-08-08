@@ -24,7 +24,7 @@ const insSplat = db.prepare(`INSERT INTO splats
 const updSplat = db.prepare(`UPDATE splats SET
   title=@title, year=@year, description=@description, thumb_path=@thumb_path,
   aspect_ratio=@aspect_ratio, splat_path=@splat_path, splat_format=@splat_format, published=@published, flip_up=@flip_up,
-  link_model_id=@link_model_id, background_path=@background_path
+  link_model_id=@link_model_id, link_project_id=@link_project_id, background_path=@background_path
   WHERE id=@id`);
 
 const delSplat = db.prepare('DELETE FROM splats WHERE id = ?');
@@ -137,11 +137,21 @@ function removeFileIfUnused(publicPath) {
  * model viewer's back link returns to this listing.
  */
 const qLinkModel = db.prepare('SELECT id, title FROM models WHERE id = ? AND published = 1');
+const qLinkProject = db.prepare('SELECT id, title FROM gallery_projects WHERE id = ? AND published = 1');
 function splatLinks(s) {
-  if (!s.link_model_id) return [];
-  const m = qLinkModel.get(s.link_model_id);
-  if (!m) return [];
-  return [{ kind: 'model', href: '/geometry/' + m.id + '/' + slugify(m.title) + '?from=splats', title: m.title || 'this model' }];
+  const links = [];
+  if (s.link_model_id) {
+    const m = qLinkModel.get(s.link_model_id);
+    if (m) links.push({ kind: 'model', href: '/geometry/' + m.id + '/' + slugify(m.title) + '?from=splats', title: m.title || 'this model' });
+  }
+  // Back to the gallery project this capture belongs to. The #project-<id>
+  // fragment is what the gallery uses to scroll to it and light it up, so the
+  // visitor lands on the project rather than at the top of a long page.
+  if (s.link_project_id) {
+    const p = qLinkProject.get(s.link_project_id);
+    if (p) links.push({ kind: 'project', href: '/gallery#project-' + p.id, title: p.title || 'this project' });
+  }
+  return links;
 }
 
 // Shape a row for the public listing: a usable aspect ratio, a cache-busting URL
@@ -228,6 +238,7 @@ function updateSplat(id, data) {
     published: data.published ? 1 : 0,
     flip_up: data.flip_up ? 1 : 0,
     link_model_id: data.link_model_id ? Number(data.link_model_id) : null,
+    link_project_id: data.link_project_id ? Number(data.link_project_id) : null,
     background_path: nextBackground,
   });
   if (nextThumb !== cur.thumb_path) removeFileIfUnused(cur.thumb_path);

@@ -2,8 +2,9 @@
 /*
  * The little pill row in the bottom-right corner of a card.
  *
- *   links     — [{ kind: 'model' | 'splat', href, title }]  cross-links to the
- *               same subject's 3D model / Gaussian splat
+ *   links     — [{ kind: 'model' | 'splat' | 'project', href, title }] cross-links
+ *               to the same subject's 3D model / Gaussian splat, or back to the
+ *               gallery project it belongs to
  *   downloads — optional [{ file_path, label, sizeLabel, kindLabel }], rendered
  *               as a menu behind a download pill (gallery cards only)
  *
@@ -12,15 +13,19 @@
  */
 var _links = (typeof links !== 'undefined' && links) ? links : [];
 var _dls = (typeof downloads !== 'undefined' && downloads) ? downloads : [];
-var _label = function (l) {
-  return (l.kind === 'model' ? 'View the 3D model: ' : 'View the Gaussian splat: ') + l.title;
+var _kinds = {
+  model: { icon: 'cube', verb: 'View the 3D model: ' },
+  splat: { icon: 'points', verb: 'View the Gaussian splat: ' },
+  project: { icon: 'gallery', verb: 'See it in the Project Gallery: ' },
 };
+var _kind = function (l) { return _kinds[l.kind] || _kinds.splat; };
+var _label = function (l) { return _kind(l).verb + l.title; };
 %>
 <% if (_links.length || _dls.length) { %>
 <div class="project-links">
     <% _links.forEach(function (l) { %>
     <a class="project-link" href="<%= l.href %>" title="<%= _label(l) %>" aria-label="<%= _label(l) %>">
-        <%- include('icon', { name: l.kind === 'model' ? 'cube' : 'points' }) %>
+        <%- include('icon', { name: _kind(l).icon }) %>
         <%- include('icon', { name: 'cursor' }) %>
     </a>
     <% }); %>

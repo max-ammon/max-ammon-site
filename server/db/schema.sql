@@ -135,6 +135,7 @@ CREATE TABLE IF NOT EXISTS models (
   auto_rotate   INTEGER NOT NULL DEFAULT 0,   -- 1 = gentle turntable on load
   wireframe_ok  INTEGER NOT NULL DEFAULT 1,   -- 1 = offer the wireframe toggle
   link_splat_id  INTEGER,                     -- optional: the same subject captured as a Gaussian splat
+  link_project_id INTEGER,                    -- optional: the gallery project this model belongs to
   -- Owner overrides for exports whose material didn't come across well.
   -- NULL metalness/roughness = use whatever the file says.
   smooth_normals INTEGER NOT NULL DEFAULT 0,  -- 1 = recompute smooth vertex normals
@@ -224,6 +225,7 @@ CREATE TABLE IF NOT EXISTS splats (
   splat_path   TEXT NOT NULL DEFAULT '',     -- the splat file (.ply/.splat/.ksplat/.spz)
   splat_format TEXT NOT NULL DEFAULT '',     -- lowercase extension, for the viewer
   link_model_id INTEGER,                      -- optional: the same subject as a 3D Geometry model
+  link_project_id INTEGER,                    -- optional: the gallery project this capture belongs to
   sort         INTEGER NOT NULL DEFAULT 0,
   published    INTEGER NOT NULL DEFAULT 1,
   flip_up      INTEGER NOT NULL DEFAULT 0,    -- 1 = flip the up axis (fixes upside-down captures)

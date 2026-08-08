@@ -70,6 +70,14 @@
                     <% if (s.background_path) { %>
                     <label class="field pub"><input type="checkbox" name="remove_background"> Remove&nbsp;backdrop</label>
                     <% } %>
+                    <label class="field grow">Linked gallery project <span class="muted">(jumps to it and lights it up)</span>
+                        <select name="link_project_id">
+                            <option value="">None</option>
+                            <% linkProjects.forEach(function (lp) { %>
+                            <option value="<%= lp.id %>"<%= s.link_project_id === lp.id ? ' selected' : '' %>><%= lp.title %><%= lp.published ? '' : ' (hidden)' %></option>
+                            <% }); %>
+                        </select>
+                    </label>
                     <label class="field grow">Linked 3D model <span class="muted">(same subject)</span>
                         <select name="link_model_id">
                             <option value="">None</option>
