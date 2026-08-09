@@ -175,12 +175,25 @@
 
   /*
    * How far through its wipes the sequence is: nought while the picture is
-   * arriving, one by the time it is centred. rawPass is 0.5 exactly when the
-   * element is centred, so that is where the last frame lands — and since it is
-   * clamped, everything below the middle of the section holds it.
+   * arriving, one by WIPE_END — and clamped, so from there down the last frame
+   * simply stays.
+   *
+   * rawPass is 0.5 exactly where the picture is centred, so 0.42 lands the last
+   * frame a little above that: settled and being looked at by the time the
+   * picture reaches the middle, rather than only arriving there.
+   *
+   * The two ends move together on purpose. Pulling only the finish up would
+   * leave the same number of wipes to run across less scroll and hurry every one
+   * of them; starting the first wipe as much earlier keeps them at the pace they
+   * had (0.32 of the pass against 0.35) and moves the whole sequence up the
+   * screen instead. What that spends is the opening hold on the first frame,
+   * which is the one frame this sequence is not about.
    */
+  var WIPE_IN = 0.1;
+  var WIPE_END = 0.42;
+
   function wipeProgress(el) {
-    return clamp01((rawPass(el) - HOLD_IN) / (0.5 - HOLD_IN));
+    return clamp01((rawPass(el) - WIPE_IN) / (WIPE_END - WIPE_IN));
   }
 
   function setMask(f, m) {
