@@ -97,6 +97,33 @@ nav { padding-inline: clamp(24px, 2.5vw, 48px); }
   nav ul.nav-showcase li { padding-left: clamp(1.1rem, 1.7vw, 3rem); }
 }
 
+/* --- Header size ------------------------------------------------------------
+   The header used to jump between two states a moment after you scrolled. It is
+   now a continuous size, driven by how far the page has scrolled toward the
+   demo — see /js/nav-shrink.js, which sets --nav-shrink from 0 (full size) to 1
+   (smallest) and nothing else.
+
+   The two ends are exactly the sizes it had before: 1em is what it rendered at
+   unscrolled, 0.7cap is what nav.scrolled gave it. Both resolve against the
+   parent, so there is no circularity in sizing the element by its own font.
+
+   nav:hover in stylesheet.css sets the full size outright and outranks this, so
+   hover still lifts a shrunken header and still does nothing to one that is
+   already up — the behaviour that was worth keeping. */
+nav {
+  --nav-shrink: 0;
+  font-size: calc(1em - var(--nav-shrink) * (1em - 0.7cap));
+}
+/* While the scroll is driving it, the size IS the scroll position — easing
+   towards it would only put the header where the page no longer is. The script
+   drops this class shortly after scrolling stops, which hands hover back its
+   transition. */
+nav.nav-tracking { transition: none; }
+/* The heavier weight the small header always had. It cannot tween between
+   separate font files, so it arrives with the smallest state rather than
+   snapping partway through the trip. */
+nav.nav-small { font-weight: bolder; }
+
 /* Scrollspy: glow the header link whose section is currently in view (driven by
    /js/scrollspy.js), using the same text-shadow the links get on hover, so a
    visitor can see where they are on the page. The short fade also gives the
