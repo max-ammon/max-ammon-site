@@ -322,7 +322,7 @@ a.ci-value:hover { text-decoration: underline; }
 
 /* --- Animation skill: scroll-played frames -----------------------------------
    A stack of frames in the box the single picture used to fill, cross-faded by
-   scroll position (see /js/skill-frames.js). The stack carries .animationimage
+   scroll position (see /js/skill-scroll.js). The stack carries .animationimage
    itself, so every rule that sized and placed the old <img> — the 50% width,
    the relative position, the mobile overrides — applies to it unchanged.
 

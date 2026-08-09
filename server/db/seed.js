@@ -52,7 +52,7 @@ const SETTINGS = {
   skills_animation_img:  '/assets/images/skills_animation.png',
   // Extra frames for the Animation image. Empty by default, so the section
   // renders exactly the single picture it always has; fill them in and the
-  // frames cross-fade as the section scrolls past (see /js/skill-frames.js).
+  // frames cross-fade as the section scrolls past (see /js/skill-scroll.js).
   skills_animation_img2: '',
   skills_animation_img3: '',
   skills_grading_img:    '/assets/images/skills_grading1.png',

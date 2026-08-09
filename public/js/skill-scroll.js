@@ -2,7 +2,16 @@
   'use strict';
 
   /*
-   * The Animation skill's picture, played by scrolling.
+   * The Skills section's scroll-driven pictures. Two effects, one pass:
+   *
+   *   [data-anim-frames]  the Animation picture, played frame by frame
+   *   [data-scroll-scale] the Modeling pair, largest as the section passes
+   *
+   * Both read the same notion of how far through its pass an element is, and
+   * both run off one listener and one animation frame, so they can never drift
+   * apart or cost twice the work.
+   *
+   * ---- the Animation picture --------------------------------------------
    *
    * Its frames are stacked in one box — the same box the single image used to
    * occupy — and scroll position picks which one is "current". The current
@@ -19,7 +28,8 @@
    * movement rather than any change at all.
    */
   var stacks = Array.prototype.slice.call(document.querySelectorAll('[data-anim-frames]'));
-  if (!stacks.length) return;
+  var scalers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-scale]'));
+  if (!stacks.length && !scalers.length) return;
 
   // How far back a frame sits at one and at two frames from the current one.
   var NEAR = 0.45;
@@ -40,6 +50,26 @@
   var HOLD_IN = 0.15;
   var HOLD_OUT = 0.15;
 
+  /*
+   * How far an element is through its pass across the screen: 0 as its top
+   * reaches the bottom of the screen, 1 once its bottom has left the top —
+   * which puts 0.5 exactly where it is centred, so "the middle of the section"
+   * is genuinely the middle. The ends are spent holding (see above), and the
+   * whole 0..1 is fitted into what is left.
+   */
+  function clamp01(v) {
+    return v < 0 ? 0 : v > 1 ? 1 : v;
+  }
+
+  function passProgress(el) {
+    var r = el.getBoundingClientRect();
+    var vh = window.innerHeight || document.documentElement.clientHeight;
+    var span = vh + r.height;
+    var p = clamp01(span > 0 ? (vh - r.top) / span : 0);
+    var moving = 1 - HOLD_IN - HOLD_OUT;
+    return clamp01(moving > 0 ? (p - HOLD_IN) / moving : 0);
+  }
+
   // Opacity as a function of distance from the current frame. Continuous, and
   // flat past two frames out so a long sequence keeps a readable floor.
   function opacityFor(d) {
@@ -51,26 +81,7 @@
   function update(stack) {
     var frames = stack.__frames;
     if (!frames || frames.length < 2) return;
-    var r = stack.getBoundingClientRect();
-    var vh = window.innerHeight || document.documentElement.clientHeight;
-    /*
-     * 0 as the picture's top reaches the bottom of the screen (it is arriving),
-     * 1 once its bottom has passed the top (it is gone) — which puts 0.5
-     * exactly where the picture is centred on screen, so "the middle of the
-     * section" is the middle frame rather than something that only looks close.
-     */
-    var span = vh + r.height;
-    var p = span > 0 ? (vh - r.top) / span : 0;
-    if (p < 0) p = 0;
-    else if (p > 1) p = 1;
-
-    // Spend the ends holding, and fit the whole handover into what's left.
-    var moving = 1 - HOLD_IN - HOLD_OUT;
-    p = moving > 0 ? (p - HOLD_IN) / moving : 0;
-    if (p < 0) p = 0;
-    else if (p > 1) p = 1;
-
-    var current = p * (frames.length - 1);
+    var current = passProgress(stack) * (frames.length - 1);
     for (var i = 0; i < frames.length; i++) {
       var d = Math.abs(i - current);
       var op = opacityFor(d);
@@ -84,6 +95,24 @@
   }
 
   /*
+   * ---- the Modeling pair ---------------------------------------------------
+   * Smallest as the section arrives and as it leaves, at its natural size when
+   * the section is centred. transform never touches layout, so the pictures
+   * only ever appear to change size — nothing around them moves, and scaling
+   * the pair as one keeps the gap between them in proportion.
+   *
+   * A sine gives the shape for free: nought at both ends, one in the middle,
+   * and flat where it peaks, so it settles at full size rather than snapping
+   * through it. It never goes above 1, so "largest" is the size it has today.
+   */
+  var SCALE_MIN = 0.9;
+
+  function updateScale(el) {
+    var s = SCALE_MIN + (1 - SCALE_MIN) * Math.sin(Math.PI * passProgress(el));
+    el.style.transform = 'scale(' + s.toFixed(4) + ')';
+  }
+
+  /*
    * Coalesce to one update per frame by replacing the pending request rather
    * than latching a flag: a flag that is only cleared inside the callback
    * freezes the whole effect for good if that callback is ever dropped.
@@ -94,8 +123,17 @@
     pending = window.requestAnimationFrame(function () {
       pending = 0;
       for (var i = 0; i < stacks.length; i++) update(stacks[i]);
+      for (var j = 0; j < scalers.length; j++) updateScale(scalers[j]);
     });
   }
+
+  // The pair's box only settles once its pictures have loaded, and they are
+  // lazy — so recompute as each arrives, exactly as the frames do.
+  scalers.forEach(function (el) {
+    Array.prototype.slice.call(el.querySelectorAll('img')).forEach(function (img) {
+      if (!img.complete) img.addEventListener('load', schedule, { once: true });
+    });
+  });
 
   stacks.forEach(function (stack) {
     stack.__frames = Array.prototype.slice.call(stack.querySelectorAll('.af'));
