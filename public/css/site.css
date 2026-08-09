@@ -124,6 +124,20 @@ nav.nav-tracking { transition: none; }
    snapping partway through the trip. */
 nav.nav-small { font-weight: bolder; }
 
+/* The header is sticky and sits in normal flow, so its height is part of where
+   everything below it starts. Now that the height follows the scroll position,
+   the browser's habit of nudging the scroll position to hold your place when
+   something above it resizes turns that into a circle: the header shrinks, the
+   page under it moves, the browser corrects the scroll, which resizes the
+   header again. On a phone, where the row of links re-wraps near the end of the
+   trip and the height moves 14px at once, that correction is large enough to
+   push the size back over the changeover and set it flickering. The header's own
+   size is not something the visitor's place on the page should be measured
+   against, so that correction is switched off. Everything the page draws
+   reserves its space before it loads, so there is nothing else here it was
+   holding still for. */
+body { overflow-anchor: none; }
+
 /* Scrollspy: glow the header link whose section is currently in view (driven by
    /js/scrollspy.js), using the same text-shadow the links get on hover, so a
    visitor can see where they are on the page. The short fade also gives the
