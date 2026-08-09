@@ -108,14 +108,9 @@
    * The Animation picture's onion skins are wrong here. They are made for three
    * frames, where a ghost either side reads as an animator's drawing; across
    * sixteen it would leave four or five stills piled up at once and the picture
-   * would never be a picture. So this shows one frame, cross-fading only into
-   * the next as it hands over.
-   *
-   * The cross-fade leans on the stack: the outgoing frame stays fully opaque and
-   * the incoming one fades in above it. Fading both at once would be the obvious
-   * way and the wrong one — two half-transparent frames let the page background
-   * through the middle of the blend, and the picture would go pale every time it
-   * changed.
+   * would never be a picture. So exactly one frame is ever visible: the handover
+   * is a hard cut, the way a sequence of stills is meant to run, and no two
+   * frames are ever on screen together to blend into one another.
    */
   function frameReady(f) {
     var img = f.__img;
@@ -125,10 +120,8 @@
   function updateScrub(el) {
     var frames = el.__frames;
     if (!frames || frames.length < 2) return;
-    var pos = passProgress(el) * (frames.length - 1);
-    var i = Math.floor(pos);
+    var i = Math.floor(passProgress(el) * (frames.length - 1));
     if (i > frames.length - 1) i = frames.length - 1;
-    var frac = pos - i;
 
     /*
      * Only ever show a frame that has actually arrived. The frames past the
@@ -141,15 +134,8 @@
     while (cur >= 0 && !frameReady(frames[cur])) cur--;
     if (cur < 0) return; // nothing decoded yet — leave the stack as the CSS has it
 
-    var nextIdx = -1;
-    var blend = 0;
-    if (cur === i && i + 1 < frames.length && frameReady(frames[i + 1])) {
-      nextIdx = i + 1;
-      blend = frac;
-    }
     for (var k = 0; k < frames.length; k++) {
-      var op = k === cur ? 1 : k === nextIdx ? blend : 0;
-      frames[k].style.opacity = op.toFixed(3);
+      frames[k].style.opacity = k === cur ? '1' : '0';
     }
   }
 
