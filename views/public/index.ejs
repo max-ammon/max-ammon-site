@@ -44,12 +44,15 @@
             </div>
             <p><%= content['demo.year'] %></p>
                 <div class="demobox">
-                    <div class="demo-embed" data-youtube="<%= settings.demo_youtube_id %>" style="aspect-ratio: <%= settings.demo_aspect_w %> / <%= settings.demo_aspect_h %>;">
+                    <%# data-scroll-shrink: the play button is full size while the
+                        demo is what you are looking at, and shrinks away as you
+                        scroll on past it (see /js/skill-scroll.js). %>
+                    <div class="demo-embed" data-scroll-shrink data-youtube="<%= settings.demo_youtube_id %>" style="aspect-ratio: <%= settings.demo_aspect_w %> / <%= settings.demo_aspect_h %>;">
                         <%# The hero image: loaded eagerly and prioritised — everything below is lazy. %>
                         <img class="demo-poster" src="<%= imgUrl(settings.demo_poster, 1600) %>"
                              srcset="<%= imgSrcset(settings.demo_poster, [800, 1200, 1600, 2400, 3200]) %>"
                              sizes="100vw" fetchpriority="high" decoding="async" alt="demothumbnail">
-                        <img src="/assets/paths/demo_thumbnail_button.svg" alt="playbuttonsvg" class="playbutton-svg demo-play" style="width: 3.5%;">
+                        <img src="/assets/paths/demo_thumbnail_button.svg" alt="playbuttonsvg" class="playbutton-svg demo-play" style="width: 7%;">
                         <%# Swapped in for the play triangle once the video has run to the end. %>
                         <img src="/assets/paths/demo_replay_button.svg" alt="replaybuttonsvg" class="playbutton-svg demo-replay">
                     </div>

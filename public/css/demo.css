@@ -69,8 +69,17 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  /* --shrink is set on the embed by /js/skill-scroll.js and inherited down to
+     here, so the scroll effect composes with the centring rather than fighting
+     it. Absent (the Demo Archive, or no script) it is 1 and nothing changes. */
+  transform: translate(-50%, -50%) scale(var(--shrink, 1));
 }
+
+/* The main page's demo carries a larger button than the archive's stacked ones:
+   it is the first thing on the site and the only invitation to press play. The
+   replay glyph keeps the same ratio to it, since it is the same button in its
+   other state and a mismatch on the swap would read as a fault. */
+#demo .demo-replay { width: 8.8%; }
 
 /* The replay glyph takes the play triangle's place once the video has been
    watched right through — see /js/demo.js. It is square where the triangle is
@@ -332,6 +341,14 @@ a.ci-value:hover { text-decoration: underline; }
 .anim-frames {
   display: inline-block;
   vertical-align: baseline;
+}
+
+/* The modelling pair's scroll scale, composed here for the same reason as
+   --shrink above: the script sets a number, the stylesheet decides what it
+   means. Without the script it is 1, i.e. the size the pictures have always
+   had, so nothing depends on the effect running. */
+[data-scroll-scale] {
+  transform: scale(var(--scale, 1));
 }
 /* The first frame stays in normal flow and gives the stack its height; the rest
    are laid over it. isolation:isolate keeps each frame's tint blending with

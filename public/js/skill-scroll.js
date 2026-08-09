@@ -4,8 +4,9 @@
   /*
    * The Skills section's scroll-driven pictures. Two effects, one pass:
    *
-   *   [data-anim-frames]  the Animation picture, played frame by frame
-   *   [data-scroll-scale] the Modeling pair, largest as the section passes
+   *   [data-anim-frames]   the Animation picture, played frame by frame
+   *   [data-scroll-scale]  the Modeling pair, largest as the section passes
+   *   [data-scroll-shrink] the demo's play button, shrinking as you leave it
    *
    * Both read the same notion of how far through its pass an element is, and
    * both run off one listener and one animation frame, so they can never drift
@@ -29,7 +30,8 @@
    */
   var stacks = Array.prototype.slice.call(document.querySelectorAll('[data-anim-frames]'));
   var scalers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-scale]'));
-  if (!stacks.length && !scalers.length) return;
+  var shrinkers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-shrink]'));
+  if (!stacks.length && !scalers.length && !shrinkers.length) return;
 
   // How far back a frame sits at one and at two frames from the current one.
   var NEAR = 0.45;
@@ -109,7 +111,29 @@
 
   function updateScale(el) {
     var s = SCALE_MIN + (1 - SCALE_MIN) * Math.sin(Math.PI * passProgress(el));
-    el.style.transform = 'scale(' + s.toFixed(4) + ')';
+    // A variable rather than the transform itself, so the stylesheet decides how
+    // it composes — the play button, for one, is already centred by a translate.
+    el.style.setProperty('--scale', s.toFixed(4));
+  }
+
+  /*
+   * ---- leaving something behind --------------------------------------------
+   * One-sided: full size for as long as the thing is still on its way to the
+   * middle, then shrinking away as it carries on past and off the top. Used for
+   * the demo's play button, which should be at its full size while you are
+   * looking at the demo and get out of the way once you have moved on.
+   *
+   * The variable is set on the element measured, and custom properties inherit,
+   * so the buttons inside it pick it up without being measured themselves —
+   * which matters, because a hidden button has no box to measure.
+   */
+  var SHRINK_MIN = 0.5;
+
+  function updateShrink(el) {
+    var p = passProgress(el);
+    var t = p <= 0.5 ? 0 : (p - 0.5) / 0.5;
+    var s = 1 - (1 - SHRINK_MIN) * Math.sin((t * Math.PI) / 2);
+    el.style.setProperty('--shrink', s.toFixed(4));
   }
 
   /*
@@ -124,12 +148,13 @@
       pending = 0;
       for (var i = 0; i < stacks.length; i++) update(stacks[i]);
       for (var j = 0; j < scalers.length; j++) updateScale(scalers[j]);
+      for (var k = 0; k < shrinkers.length; k++) updateShrink(shrinkers[k]);
     });
   }
 
   // The pair's box only settles once its pictures have loaded, and they are
   // lazy — so recompute as each arrives, exactly as the frames do.
-  scalers.forEach(function (el) {
+  scalers.concat(shrinkers).forEach(function (el) {
     Array.prototype.slice.call(el.querySelectorAll('img')).forEach(function (img) {
       if (!img.complete) img.addEventListener('load', schedule, { once: true });
     });
