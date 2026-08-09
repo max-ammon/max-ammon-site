@@ -113,7 +113,7 @@
                 <%# Texturing: one picture, or a sequence scrubbed by scroll position
                     (see /js/skill-scroll.js). With fewer than two frames configured
                     this renders the plain <img> it always was, so the layout has
-                    nothing new to get wrong. The frames stop at 1600px rather than
+                    nothing new to get wrong. The frames stop at 2000px rather than
                     the 3200 the single picture offers: a whole sequence is
                     downloaded to play it, and sixteen of the largest size is a lot
                     of picture for something no single frame is dwelt on. %>
@@ -121,8 +121,8 @@
                 <span class="texturingimage scrub-frames" data-scrub-frames>
                     <% texturingFrames.forEach(function (frame, i) { %>
                     <span class="sf<%= i === 0 ? ' sf-base' : '' %>">
-                        <img src="<%= imgUrl(frame, 1600) %>"
-                             srcset="<%= imgSrcset(frame, [800, 1200, 1600]) %>"
+                        <img src="<%= imgUrl(frame, 2000) %>"
+                             srcset="<%= imgSrcset(frame, [800, 1200, 1600, 2000]) %>"
                              <%# The first frame is what the section shows before the
                                  sequence starts, so it is not deferred; the rest are. %>
                              sizes="100vw" loading="<%= i === 0 ? 'eager' : 'lazy' %>" decoding="async" alt="">

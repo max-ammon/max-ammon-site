@@ -35,7 +35,10 @@ fs.mkdirSync(CACHE_DIR, { recursive: true });
 // 1.5x display a 1905px-wide slot wants ~2857 real pixels, so 2400 would render
 // slightly soft. The sources are 3840px, and the re-encode is small enough that
 // the extra step costs little.
-const ALLOWED_WIDTHS = [480, 800, 1200, 1600, 2400, 3200];
+// 2000 is the top size the Texturing sequence asks for: a whole sequence is
+// downloaded to play it, so it stops short of the sizes a single picture can
+// afford, but 1600 was visibly soft across a slot that wide.
+const ALLOWED_WIDTHS = [480, 800, 1200, 1600, 2000, 2400, 3200];
 const RASTER = /\.(png|jpe?g|webp|avif|tiff?)$/i;
 
 const router = express.Router();

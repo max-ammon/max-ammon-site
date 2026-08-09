@@ -229,6 +229,27 @@ nav a.nav-current { text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
   .skills-software span { font-size: 0.82rem; line-height: 1.2; }
 }
 
+/* Skills: hold the Texturing picture off the left edge the way the Animation
+   picture below it is held off.
+
+   Nothing in the layout put it there. The Animation file carries 107px of
+   transparent margin down its left side — 5.35% of its 2000px width — and it is
+   drawn at half the column, so its picture starts 2.7% of the column in while
+   the Texturing one, which has no such margin, starts at 0. Left flush against
+   the window edge, it read as the odd one out.
+
+   So the margin the Animation picture keeps in its file, this one is given in
+   CSS: the same 2.7% in from the left, and that much narrower so its right edge
+   stays where it was. A sequence in this slot wears .texturingimage too, so it
+   is inset by the same amount and its frames, laid out against it, come with it.
+
+   Below 1200px the rule further down centres these pictures at 90vw and this no
+   longer applies, which is what that layout wants. */
+#skills .texturingimage {
+  width: 97.3%;
+  margin-left: 2.7%;
+}
+
 /* Everything below is scoped to small screens, so desktop is unchanged. Makes
    the sticky header responsive (the original had a fixed 200px gap that
    overflowed phones). */
