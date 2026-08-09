@@ -435,3 +435,46 @@ a.ci-value:hover { text-decoration: underline; }
   height: 100%;
 }
 .scrub-frames .sf-base img { height: auto; }
+
+/* The Grading sequence, each frame wiped in from the left as the section comes
+   up (see /js/skill-scroll.js). Same stack as the two above, and it wears
+   .gradingimage itself so the rules that sized and placed the old <img> apply
+   to it unchanged — that class is already relative, so the laid-over frames
+   have their containing block without anything being added here.
+
+   Its one addition is the mask the script drives. Everything but the size and
+   the no-repeat is set per frame from the script, since which frame is being
+   revealed and which is being covered changes with the scroll position. Sized
+   to the box rather than left to tile: a gradient the script has run off the
+   edge of the picture must simply be off it, not wrapped around. */
+.wipe-frames {
+  display: inline-block;
+  vertical-align: baseline;
+  /* A flex item, unlike the other two stacks. Its width is given, so the frame
+     inside cannot stretch the box — but min-content is what a flex item refuses
+     to shrink below, and for a box holding a picture that is the picture's own
+     width, which would push the text beside it around on a narrow desktop. */
+  min-width: 0;
+}
+.wipe-frames .wf {
+  display: block;
+  position: relative;
+  /* Before the script has had a frame to run — and if it never does — only the
+     first frame shows, which is exactly the single picture this replaces. */
+  opacity: 0;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+.wipe-frames .wf-base { opacity: 1; }
+.wipe-frames .wf:not(.wf-base) {
+  position: absolute;
+  inset: 0;
+}
+.wipe-frames .wf img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.wipe-frames .wf-base img { height: auto; }

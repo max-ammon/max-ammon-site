@@ -2,10 +2,11 @@
   'use strict';
 
   /*
-   * The Skills section's scroll-driven pictures. Four effects, one pass:
+   * The Skills section's scroll-driven pictures. Five effects, one pass:
    *
    *   [data-anim-frames]   the Animation picture, played frame by frame
    *   [data-scrub-frames]  the Texturing picture, a sequence scrubbed by scroll
+   *   [data-wipe-frames]   the Grading picture, each frame wiped in from the left
    *   [data-scroll-scale]  the Modeling pair, largest as the section passes
    *   [data-scroll-shrink] the demo's play button, shrinking as you leave it
    *
@@ -31,9 +32,10 @@
    */
   var stacks = Array.prototype.slice.call(document.querySelectorAll('[data-anim-frames]'));
   var scrubs = Array.prototype.slice.call(document.querySelectorAll('[data-scrub-frames]'));
+  var wipes = Array.prototype.slice.call(document.querySelectorAll('[data-wipe-frames]'));
   var scalers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-scale]'));
   var shrinkers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-shrink]'));
-  if (!stacks.length && !scrubs.length && !scalers.length && !shrinkers.length) return;
+  if (!stacks.length && !scrubs.length && !wipes.length && !scalers.length && !shrinkers.length) return;
 
   // How far back a frame sits at one and at two frames from the current one.
   var NEAR = 0.45;
@@ -65,13 +67,16 @@
     return v < 0 ? 0 : v > 1 ? 1 : v;
   }
 
-  function passProgress(el) {
+  function rawPass(el) {
     var r = el.getBoundingClientRect();
     var vh = window.innerHeight || document.documentElement.clientHeight;
     var span = vh + r.height;
-    var p = clamp01(span > 0 ? (vh - r.top) / span : 0);
+    return clamp01(span > 0 ? (vh - r.top) / span : 0);
+  }
+
+  function passProgress(el) {
     var moving = 1 - HOLD_IN - HOLD_OUT;
-    return clamp01(moving > 0 ? (p - HOLD_IN) / moving : 0);
+    return clamp01(moving > 0 ? (rawPass(el) - HOLD_IN) / moving : 0);
   }
 
   // Opacity as a function of distance from the current frame. Continuous, and
@@ -140,6 +145,98 @@
   }
 
   /*
+   * ---- the Grading sequence ------------------------------------------------
+   *
+   * Each frame is wiped in over the one before it by an edge that travels left
+   * to right across the picture, so a frame arrives the way a grade is revealed
+   * across a shot rather than by fading up in place.
+   *
+   * The whole sequence is over by the time the picture is centred, and the last
+   * frame then holds for the rest of the pass and every scroll position below
+   * it. That frame is the finished grade — the point of the sequence — so it is
+   * the one you get to sit with, rather than the one that flicks past as the
+   * section leaves. Scrolling back up runs the wipes in reverse.
+   *
+   * Respecting what the frames themselves let through is the whole trick here,
+   * and it is why the outgoing frame is masked rather than simply left in place
+   * underneath. Where the wipe has passed, the new frame is alone: it is the
+   * only thing painted there, so wherever it is transparent you see the page,
+   * not a leftover of the frame before. The two only ever overlap inside the
+   * seam itself, and there the outgoing frame is solid beneath the incoming
+   * one's fade, so the blend is between the two pictures and never lets the
+   * background up through the middle of it — the same reason the Texturing
+   * sequence never faded two frames at once.
+   */
+
+  // Width of the soft edge of the wipe, as a percentage of the picture. Wide
+  // enough to read as a blend rather than a line sweeping past, narrow enough
+  // that what you are looking at is a frame and not a permanent smear.
+  var SEAM = 7;
+
+  /*
+   * How far through its wipes the sequence is: nought while the picture is
+   * arriving, one by the time it is centred. rawPass is 0.5 exactly when the
+   * element is centred, so that is where the last frame lands — and since it is
+   * clamped, everything below the middle of the section holds it.
+   */
+  function wipeProgress(el) {
+    return clamp01((rawPass(el) - HOLD_IN) / (0.5 - HOLD_IN));
+  }
+
+  function setMask(f, m) {
+    // Mask strings cost more to parse than a number, and most animation frames
+    // leave the hidden ones exactly as they were, so only write what changed.
+    if (f.__mask === m) return;
+    f.__mask = m;
+    f.style.webkitMaskImage = m;
+    f.style.maskImage = m;
+  }
+
+  function updateWipe(el) {
+    var frames = el.__frames;
+    if (!frames || frames.length < 2) return;
+    var pos = wipeProgress(el) * (frames.length - 1);
+    var i = Math.floor(pos);
+    if (i > frames.length - 1) i = frames.length - 1;
+    var frac = pos - i;
+
+    // Frames that have not decoded are held back exactly as in the Texturing
+    // sequence: show the last one that did rather than wiping to nothing.
+    var cur = i;
+    while (cur >= 0 && !frameReady(frames[cur])) cur--;
+    if (cur < 0) return; // nothing decoded yet — leave the stack as the CSS has it
+
+    var nextIdx = cur === i && i + 1 < frames.length && frameReady(frames[i + 1]) ? i + 1 : -1;
+
+    /*
+     * The seam runs from one width off the left edge to one width past the
+     * right, so at the start of a wipe nothing is revealed yet and at the end
+     * the last column is. `lead` is where the new frame has taken over
+     * completely; `edge` is where it has not begun.
+     */
+    var edge = frac * (100 + SEAM);
+    var lead = edge - SEAM;
+
+    for (var k = 0; k < frames.length; k++) {
+      var f = frames[k];
+      if (k === nextIdx) {
+        f.style.opacity = '1';
+        setMask(f, 'linear-gradient(to right, #000 ' + lead.toFixed(2) + '%, transparent ' + edge.toFixed(2) + '%)');
+      } else if (k === cur) {
+        f.style.opacity = '1';
+        // Cut off flush with the seam, not faded out across it: past `lead` the
+        // incoming frame is fully opaque and covers this one anyway, and before
+        // it this one has to be gone or it shows through wherever the new frame
+        // is transparent.
+        setMask(f, nextIdx < 0 ? 'none'
+          : 'linear-gradient(to right, transparent ' + lead.toFixed(2) + '%, #000 ' + lead.toFixed(2) + '%)');
+      } else {
+        f.style.opacity = '0';
+      }
+    }
+  }
+
+  /*
    * ---- the Modeling pair ---------------------------------------------------
    * Smallest as the section arrives and as it leaves, at its natural size when
    * the section is centred. transform never touches layout, so the pictures
@@ -191,6 +288,7 @@
       pending = 0;
       for (var i = 0; i < stacks.length; i++) update(stacks[i]);
       for (var s = 0; s < scrubs.length; s++) updateScrub(scrubs[s]);
+      for (var w = 0; w < wipes.length; w++) updateWipe(wipes[w]);
       for (var j = 0; j < scalers.length; j++) updateScale(scalers[j]);
       for (var k = 0; k < shrinkers.length; k++) updateShrink(shrinkers[k]);
     });
@@ -214,12 +312,13 @@
     });
   });
 
-  scrubs.forEach(function (el) {
-    el.__frames = Array.prototype.slice.call(el.querySelectorAll('.sf'));
+  // Both sequences hold at the last frame that decoded, so both have to be told
+  // when another one arrives; the frame each is on is a property read rather
+  // than a query, and a frame that failed to load is never mistaken for one that
+  // simply has not arrived yet.
+  scrubs.concat(wipes).forEach(function (el) {
+    el.__frames = Array.prototype.slice.call(el.querySelectorAll('.sf, .wf'));
     el.__frames.forEach(function (f) {
-      // Kept on the frame so the every-frame check is a property read rather
-      // than a query, and so a frame that fails to load is never mistaken for
-      // one that simply has not arrived yet.
       f.__img = f.querySelector('img');
       if (f.__img && !f.__img.complete) {
         f.__img.addEventListener('load', schedule, { once: true });

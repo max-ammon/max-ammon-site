@@ -24,9 +24,7 @@
         <p class="muted"><a href="/admin">← Dashboard</a></p>
         <h1><%= title %></h1>
         <p class="muted">
-          Give the <strong><%= slot.section %></strong> picture a sequence of frames and it plays as that part of the
-          Skills section scrolls past — scrolling down runs it forwards, scrolling back up runs it in reverse.
-          The first frame holds as the section arrives and the last one holds as it leaves, so both are properly seen.
+          Give the <strong><%= slot.section %></strong> picture a sequence of frames and it <%= slot.plays %>
           With fewer than two frames here the section shows its single picture exactly as it does today, so removing
           them all is a safe way back.
         </p>
@@ -79,7 +77,7 @@
                 <p class="muted" style="margin-top:6px;">
                     Choose the whole sequence at once — they are sorted by filename, so <code>frame_02</code> lands before
                     <code>frame_10</code>. New frames are added after the ones already here. Every frame is downloaded when a
-                    visitor reaches the section, so keep them a sensible size: they are served at up to 1600px wide, and
+                    visitor reaches the section, so keep them a sensible size: they are served at up to 2000px wide, and
                     sixteen large stills add up.
                 </p>
                 <button class="btn" type="submit">Add frames</button>

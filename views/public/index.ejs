@@ -173,9 +173,30 @@
         </div>
 
         <div style="padding-top: 100px;display: inline-flex; padding-bottom: 100px;">
+            <%# Compositing & grading: one picture, or a sequence whose frames are
+                wiped in from the left, finishing on the last one as the picture
+                reaches the middle of the screen (see /js/skill-scroll.js). With
+                fewer than two frames this renders the plain <img> it always was.
+                Same sizes as the Texturing sequence and for the same reason: the
+                whole thing is downloaded to play it, so it stops short of what a
+                single picture can afford. %>
+            <% if (gradingFrames && gradingFrames.length > 1) { %>
+            <span class="gradingimage wipe-frames" data-wipe-frames>
+                <% gradingFrames.forEach(function (frame, i) { %>
+                <span class="wf<%= i === 0 ? ' wf-base' : '' %>">
+                    <img src="<%= imgUrl(frame, 2000) %>"
+                         srcset="<%= imgSrcset(frame, [480, 800, 1200, 1600, 2000]) %>"
+                         <%# The first frame is what the section shows before the
+                             sequence starts, so it is not deferred; the rest are. %>
+                         sizes="45vw" loading="<%= i === 0 ? 'eager' : 'lazy' %>" decoding="async" alt="">
+                </span>
+                <% }); %>
+            </span>
+            <% } else { %>
             <img class="gradingimage" src="<%= imgUrl(settings.skills_grading_img, 1200) %>"
                  srcset="<%= imgSrcset(settings.skills_grading_img, [480, 800, 1200, 1600]) %>"
                  sizes="45vw" loading="lazy" decoding="async" alt="">
+            <% } %>
             <div class="gradingtext">
                 <h3><%= content['skills.grading.title'] %></h3>
                 <%- paragraphs(content['skills.grading.body']) %>

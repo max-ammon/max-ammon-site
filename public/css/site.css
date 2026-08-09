@@ -250,6 +250,17 @@ nav a.nav-current { text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
   margin-left: 2.7%;
 }
 
+/* Skills: the Grading sequence stands where its single picture stood, and that
+   picture was placed with padding-left. A stack cannot be: its laid-over frames
+   position against the padding box, so 3% of padding would start every frame
+   past the first 3% to the left of the one in flow and leave it that much too
+   wide. The same 3% as a margin puts the box in exactly the same place and
+   leaves nothing inside it for the frames to be offset by. */
+#skills .wipe-frames {
+  padding-left: 0;
+  margin-left: 3%;
+}
+
 /* Everything below is scoped to small screens, so desktop is unchanged. Makes
    the sticky header responsive (the original had a fixed 200px gap that
    overflowed phones). */
@@ -325,7 +336,8 @@ nav a.nav-current { text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
      offsets moves nothing, so this only restores the containing block. It has to
      come after that rule: same specificity, both important, so order decides. */
   #skills .anim-frames,
-  #skills .scrub-frames { position: relative !important; }
+  #skills .scrub-frames,
+  #skills .wipe-frames { position: relative !important; }
   /* Compositing & grading: its image sits to the LEFT on desktop, so in source
      order the image comes before the text. Stacking it as-is on mobile would put
      the image on top; a reversed flex column drops the image below the text

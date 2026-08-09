@@ -49,6 +49,7 @@ const SECTIONS = [
   { href: '/admin/images/skills', title: 'Skills images', desc: 'Swap the images shown with your four skill categories.' },
   { href: '/admin/pipeline', title: 'Pipeline software', desc: 'Place software logos along the production-pipeline bar in Skills.' },
   { href: '/admin/skill-frames/texturing', title: 'Texturing frames', desc: 'Give the Texturing & Lighting picture a sequence of frames that plays as the section scrolls past.' },
+  { href: '/admin/skill-frames/grading', title: 'Grading frames', desc: 'Give the Compositing & Grading picture a sequence of frames, each wiped in from the left as the section comes up.' },
   { href: '/admin/demo', title: 'Demo video', desc: 'Set the YouTube video and shape of the Demo embed.' },
   { href: '/admin/demo-archive', title: 'Demo archive', desc: 'Collect your older demo reels on their own page, linked from the Demo section.' },
   { href: '/admin/social', title: 'Social preview', desc: 'The image, title and text shown when your link is shared (LinkedIn, Discord, …).' },
@@ -233,11 +234,24 @@ router.post('/pipeline/:id/delete', (req, res) => {
 // Keyed by slot so a second picture can be given frames without new routes. The
 // setting each slot falls back to is what the section shows with fewer than two
 // frames, which is also what it showed before any of this existed.
+// `plays` is how that slot's sequence behaves, since the two are not the same
+// effect and the page that manages them should say which one it is describing.
 const FRAME_SLOTS = {
   texturing: {
     title: 'Texturing frames',
     section: 'Texturing & Lighting',
     imageKey: 'skills_texturing_img',
+    plays: 'plays as that part of the Skills section scrolls past — scrolling down runs it forwards, '
+      + 'scrolling back up runs it in reverse. The first frame holds as the section arrives and the last '
+      + 'one holds as it leaves, so both are properly seen.',
+  },
+  grading: {
+    title: 'Grading frames',
+    section: 'Compositing & Grading',
+    imageKey: 'skills_grading_img',
+    plays: 'plays as that part of the Skills section comes up, each frame wiped in over the one before it '
+      + 'by an edge travelling from left to right. It is finished by the time the picture reaches the middle '
+      + 'of the screen, and the last frame — the finished grade — then holds for the whole way down.',
   },
 };
 
