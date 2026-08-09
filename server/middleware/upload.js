@@ -96,6 +96,18 @@ const uploadPipeline = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
 });
 
+// Frames of a scroll-driven Skills picture. Their own folder so a sequence is
+// easy to spot in the storage manager, and many at once: a sixteen-frame
+// sequence is chosen as sixteen files in one go, not one upload at a time.
+const uploadSkillFrame = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, ensureDir(path.join(UPLOADS_DIR, 'skills'))),
+    filename: (req, file, cb) => cb(null, crypto.randomUUID() + safeExt(file.originalname)),
+  }),
+  fileFilter: (req, file, cb) => cb(null, isImage(file)),
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB per frame
+});
+
 // 3D geometry. Like the splat uploader, one instance handles the two files the
 // admin form posts together: a `thumb` image and the `model` itself (.glb/.gltf,
 // allow-listed by extension since 3D formats have no dependable mime type).
@@ -157,4 +169,4 @@ function toPublicPath(diskPath) {
   return '/uploads/' + rel;
 }
 
-module.exports = { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, uploadPhoto, uploadModel, toPublicPath, UPLOADS_DIR, IMAGE_MIMES, VIDEO_MIMES };
+module.exports = { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSkillFrame, uploadSplat, uploadPhoto, uploadModel, toPublicPath, UPLOADS_DIR, IMAGE_MIMES, VIDEO_MIMES };

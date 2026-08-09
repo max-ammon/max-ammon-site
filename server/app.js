@@ -11,6 +11,7 @@ const { loadPublicContext } = require('./services/content');
 const { getPublicRows } = require('./services/gallery');
 const { getPublicSplats, getPublicSplat } = require('./services/splats');
 const { getMarkers } = require('./services/pipeline');
+const { framePaths } = require('./services/skillframes');
 const { getPublicItems: getDemoArchive } = require('./services/demoarchive');
 const photography = require('./services/photography');
 const geometry = require('./services/geometry');
@@ -262,7 +263,14 @@ function ogText(s) {
 
 app.get('/', attachSiteContext, (req, res) => {
   const owner = res.locals.settings.site_title || 'Max Ammon';
-  res.render('public/index', { title: owner, contactStatus: req.query.contact || '', markers: getMarkers() });
+  res.render('public/index', {
+    title: owner,
+    contactStatus: req.query.contact || '',
+    markers: getMarkers(),
+    // Frames of the Skills pictures that play as the section scrolls past. Only
+    // the main page has them, so they are a local here rather than site context.
+    texturingFrames: framePaths('texturing'),
+  });
 });
 
 // Demo Archive — past demo reels on their own page (linked from the Demo section).

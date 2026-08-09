@@ -20,8 +20,9 @@ const geometry = require('../services/geometry');
 const messages = require('../services/messages');
 const mediaSvc = require('../services/media');
 const pipeline = require('../services/pipeline');
+const skillFrames = require('../services/skillframes');
 const analytics = require('../services/analytics');
-const { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSplat, uploadPhoto, uploadModel, toPublicPath } = require('../middleware/upload');
+const { uploadMedia, uploadDownload, uploadSiteImage, uploadPipeline, uploadSkillFrame, uploadSplat, uploadPhoto, uploadModel, toPublicPath } = require('../middleware/upload');
 const { parseYouTubeId, formatBytes } = require('../lib/format');
 const { SHARE_PAGES } = require('../lib/share-pages');
 const { DOWNLOAD_KINDS } = require('../lib/download-kinds');
@@ -47,6 +48,7 @@ const SECTIONS = [
   { href: '/admin/images/about', title: 'Profile & banner', desc: 'Change your profile picture and the About banner image.' },
   { href: '/admin/images/skills', title: 'Skills images', desc: 'Swap the images shown with your four skill categories.' },
   { href: '/admin/pipeline', title: 'Pipeline software', desc: 'Place software logos along the production-pipeline bar in Skills.' },
+  { href: '/admin/skill-frames/texturing', title: 'Texturing frames', desc: 'Give the Texturing & Lighting picture a sequence of frames that plays as the section scrolls past.' },
   { href: '/admin/demo', title: 'Demo video', desc: 'Set the YouTube video and shape of the Demo embed.' },
   { href: '/admin/demo-archive', title: 'Demo archive', desc: 'Collect your older demo reels on their own page, linked from the Demo section.' },
   { href: '/admin/social', title: 'Social preview', desc: 'The image, title and text shown when your link is shared (LinkedIn, Discord, …).' },
@@ -154,7 +156,7 @@ const IMAGE_GROUPS = {
     fields: [
       { key: 'skills_modeling_img1', label: 'Modeling & Simulations — left image', shape: 'wide' },
       { key: 'skills_modeling_img2', label: 'Modeling & Simulations — right image', shape: 'wide' },
-      { key: 'skills_texturing_img', label: 'Texturing & Lighting', shape: 'wide', hint: 'The text sits on top of this one, so keep it wide.' },
+      { key: 'skills_texturing_img', label: 'Texturing & Lighting', shape: 'wide', hint: 'The text sits on top of this one, so keep it wide. To play a sequence here instead of a single picture, add frames under “Texturing frames” on the dashboard — this image is what shows whenever there are none.' },
       { key: 'skills_animation_img', label: 'Animation — frame 1', shape: 'wide', hint: 'Add frame 2 (and 3) below to make this image respond to scrolling: the frames cross-fade as the section passes, the current one picking up a slight aqua tint. Leave them empty for a single, static picture.' },
       { key: 'skills_animation_img2', label: 'Animation — frame 2 (optional)', shape: 'wide' },
       { key: 'skills_animation_img3', label: 'Animation — frame 3 (optional)', shape: 'wide' },
@@ -225,6 +227,69 @@ router.post('/pipeline/:id', uploadPipeline.single('image'), (req, res) => {
 router.post('/pipeline/:id/delete', (req, res) => {
   pipeline.deleteMarker(Number(req.params.id));
   res.redirect('/admin/pipeline?saved=1');
+});
+
+// --- Frames of a scroll-driven Skills picture --------------------------------
+// Keyed by slot so a second picture can be given frames without new routes. The
+// setting each slot falls back to is what the section shows with fewer than two
+// frames, which is also what it showed before any of this existed.
+const FRAME_SLOTS = {
+  texturing: {
+    title: 'Texturing frames',
+    section: 'Texturing & Lighting',
+    imageKey: 'skills_texturing_img',
+  },
+};
+
+router.get('/skill-frames/:slot', (req, res) => {
+  const slot = FRAME_SLOTS[req.params.slot];
+  if (!slot) return res.redirect('/admin');
+  res.render('admin/skill-frames', {
+    title: slot.title,
+    slug: req.params.slot,
+    slot,
+    frames: skillFrames.getFrames(req.params.slot),
+    fallback: getSetting(slot.imageKey) || '',
+    saved: req.query.saved === '1',
+    err: req.query.err || '',
+  });
+});
+
+router.post('/skill-frames/:slot', uploadSkillFrame.array('frames', 400), (req, res) => {
+  if (!FRAME_SLOTS[req.params.slot]) return res.redirect('/admin');
+  const files = req.files || [];
+  // multer's filter drops anything that is not an image without a word, so an
+  // empty list means nothing usable was chosen rather than nothing was sent.
+  if (!files.length) return res.redirect('/admin/skill-frames/' + req.params.slot + '?err=nofile');
+  /*
+   * Browsers hand over a multiple-file selection in the order the operating
+   * system listed it, which is not dependably the numbering on the files. Sort
+   * by name so frame_2 lands before frame_10, which picking a numbered sequence
+   * out of a folder otherwise gets wrong.
+   */
+  const sorted = files.slice().sort((a, b) =>
+    String(a.originalname).localeCompare(String(b.originalname), undefined, { numeric: true, sensitivity: 'base' })
+  );
+  skillFrames.addFrames(req.params.slot, sorted.map((f) => toPublicPath(f.path)));
+  res.redirect('/admin/skill-frames/' + req.params.slot + '?saved=1');
+});
+
+router.post('/skill-frames/:slot/:id/delete', (req, res) => {
+  if (!FRAME_SLOTS[req.params.slot]) return res.redirect('/admin');
+  skillFrames.deleteFrame(Number(req.params.id));
+  res.redirect('/admin/skill-frames/' + req.params.slot + '?saved=1');
+});
+
+router.post('/skill-frames/:slot/:id/move', (req, res) => {
+  if (!FRAME_SLOTS[req.params.slot]) return res.redirect('/admin');
+  skillFrames.moveFrame(Number(req.params.id), req.body.dir === 'up' ? 'up' : 'down');
+  res.redirect('/admin/skill-frames/' + req.params.slot + '?saved=1');
+});
+
+router.post('/skill-frames/:slot/clear', (req, res) => {
+  if (!FRAME_SLOTS[req.params.slot]) return res.redirect('/admin');
+  skillFrames.clearSlot(req.params.slot);
+  res.redirect('/admin/skill-frames/' + req.params.slot + '?saved=1');
 });
 
 // --- Demo video ------------------------------------------------------------

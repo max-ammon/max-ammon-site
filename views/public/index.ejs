@@ -110,9 +110,30 @@
                 <%- paragraphs(content['skills.texturing.body']) %>
             </div>
             <div style="padding-top: 1%">
+                <%# Texturing: one picture, or a sequence scrubbed by scroll position
+                    (see /js/skill-scroll.js). With fewer than two frames configured
+                    this renders the plain <img> it always was, so the layout has
+                    nothing new to get wrong. The frames stop at 1600px rather than
+                    the 3200 the single picture offers: a whole sequence is
+                    downloaded to play it, and sixteen of the largest size is a lot
+                    of picture for something no single frame is dwelt on. %>
+                <% if (texturingFrames && texturingFrames.length > 1) { %>
+                <span class="texturingimage scrub-frames" data-scrub-frames>
+                    <% texturingFrames.forEach(function (frame, i) { %>
+                    <span class="sf<%= i === 0 ? ' sf-base' : '' %>">
+                        <img src="<%= imgUrl(frame, 1600) %>"
+                             srcset="<%= imgSrcset(frame, [800, 1200, 1600]) %>"
+                             <%# The first frame is what the section shows before the
+                                 sequence starts, so it is not deferred; the rest are. %>
+                             sizes="100vw" loading="<%= i === 0 ? 'eager' : 'lazy' %>" decoding="async" alt="">
+                    </span>
+                    <% }); %>
+                </span>
+                <% } else { %>
                 <img class="texturingimage" src="<%= imgUrl(settings.skills_texturing_img, 1600) %>"
                      srcset="<%= imgSrcset(settings.skills_texturing_img, [800, 1200, 1600, 2400, 3200]) %>"
                      sizes="100vw" loading="lazy" decoding="async" alt="">
+                <% } %>
             </div>
 
         <div style="padding-top: 50px;">

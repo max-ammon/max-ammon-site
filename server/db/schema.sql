@@ -109,6 +109,19 @@ CREATE TABLE IF NOT EXISTS pipeline_markers (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Frames of a Skills picture that plays as the section scrolls past. `slot` says
+-- which picture the frames belong to ('texturing' today), so a second one can be
+-- given frames later without another table. Fewer than two frames in a slot and
+-- the section renders the single image its setting points at, exactly as before.
+CREATE TABLE IF NOT EXISTS skill_frames (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  slot       TEXT NOT NULL DEFAULT '',
+  file_path  TEXT NOT NULL DEFAULT '',
+  sort       INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_skill_frames_slot ON skill_frames (slot, sort);
+
 -- 3D geometry: glTF/GLB models listed on /geometry and opened in a three.js
 -- viewer. Mirrors the splats table — a thumbnail + the model file + text, plus
 -- the owner-set look (exposure, starting camera, environment brightness).

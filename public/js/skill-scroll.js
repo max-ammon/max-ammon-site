@@ -2,15 +2,16 @@
   'use strict';
 
   /*
-   * The Skills section's scroll-driven pictures. Two effects, one pass:
+   * The Skills section's scroll-driven pictures. Four effects, one pass:
    *
    *   [data-anim-frames]   the Animation picture, played frame by frame
+   *   [data-scrub-frames]  the Texturing picture, a sequence scrubbed by scroll
    *   [data-scroll-scale]  the Modeling pair, largest as the section passes
    *   [data-scroll-shrink] the demo's play button, shrinking as you leave it
    *
-   * Both read the same notion of how far through its pass an element is, and
-   * both run off one listener and one animation frame, so they can never drift
-   * apart or cost twice the work.
+   * They all read the same notion of how far through its pass an element is, and
+   * all run off one listener and one animation frame, so they can never drift
+   * apart or cost more than one pass of work.
    *
    * ---- the Animation picture --------------------------------------------
    *
@@ -29,9 +30,10 @@
    * movement rather than any change at all.
    */
   var stacks = Array.prototype.slice.call(document.querySelectorAll('[data-anim-frames]'));
+  var scrubs = Array.prototype.slice.call(document.querySelectorAll('[data-scrub-frames]'));
   var scalers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-scale]'));
   var shrinkers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-shrink]'));
-  if (!stacks.length && !scalers.length && !shrinkers.length) return;
+  if (!stacks.length && !scrubs.length && !scalers.length && !shrinkers.length) return;
 
   // How far back a frame sits at one and at two frames from the current one.
   var NEAR = 0.45;
@@ -97,6 +99,61 @@
   }
 
   /*
+   * ---- the Texturing sequence ----------------------------------------------
+   *
+   * A longer sequence — sixteen stills rather than three — played by scroll
+   * position: scrolling down runs it forwards, scrolling back up runs it in
+   * reverse, and it sits still when you do.
+   *
+   * The Animation picture's onion skins are wrong here. They are made for three
+   * frames, where a ghost either side reads as an animator's drawing; across
+   * sixteen it would leave four or five stills piled up at once and the picture
+   * would never be a picture. So this shows one frame, cross-fading only into
+   * the next as it hands over.
+   *
+   * The cross-fade leans on the stack: the outgoing frame stays fully opaque and
+   * the incoming one fades in above it. Fading both at once would be the obvious
+   * way and the wrong one — two half-transparent frames let the page background
+   * through the middle of the blend, and the picture would go pale every time it
+   * changed.
+   */
+  function frameReady(f) {
+    var img = f.__img;
+    return !!img && img.complete && img.naturalWidth > 0;
+  }
+
+  function updateScrub(el) {
+    var frames = el.__frames;
+    if (!frames || frames.length < 2) return;
+    var pos = passProgress(el) * (frames.length - 1);
+    var i = Math.floor(pos);
+    if (i > frames.length - 1) i = frames.length - 1;
+    var frac = pos - i;
+
+    /*
+     * Only ever show a frame that has actually arrived. The frames past the
+     * first are lazy, so on a slow connection the sequence is still filling in
+     * while the section comes up — and cutting to a frame that has not decoded
+     * would blank the picture altogether. Holding the last one that did decode
+     * makes that read as a sequence that is briefly coarse rather than broken.
+     */
+    var cur = i;
+    while (cur >= 0 && !frameReady(frames[cur])) cur--;
+    if (cur < 0) return; // nothing decoded yet — leave the stack as the CSS has it
+
+    var nextIdx = -1;
+    var blend = 0;
+    if (cur === i && i + 1 < frames.length && frameReady(frames[i + 1])) {
+      nextIdx = i + 1;
+      blend = frac;
+    }
+    for (var k = 0; k < frames.length; k++) {
+      var op = k === cur ? 1 : k === nextIdx ? blend : 0;
+      frames[k].style.opacity = op.toFixed(3);
+    }
+  }
+
+  /*
    * ---- the Modeling pair ---------------------------------------------------
    * Smallest as the section arrives and as it leaves, at its natural size when
    * the section is centred. transform never touches layout, so the pictures
@@ -147,6 +204,7 @@
     pending = window.requestAnimationFrame(function () {
       pending = 0;
       for (var i = 0; i < stacks.length; i++) update(stacks[i]);
+      for (var s = 0; s < scrubs.length; s++) updateScrub(scrubs[s]);
       for (var j = 0; j < scalers.length; j++) updateScale(scalers[j]);
       for (var k = 0; k < shrinkers.length; k++) updateShrink(shrinkers[k]);
     });
@@ -167,6 +225,20 @@
     stack.__frames.forEach(function (f) {
       var img = f.querySelector('img');
       if (img && !img.complete) img.addEventListener('load', schedule, { once: true });
+    });
+  });
+
+  scrubs.forEach(function (el) {
+    el.__frames = Array.prototype.slice.call(el.querySelectorAll('.sf'));
+    el.__frames.forEach(function (f) {
+      // Kept on the frame so the every-frame check is a property read rather
+      // than a query, and so a frame that fails to load is never mistaken for
+      // one that simply has not arrived yet.
+      f.__img = f.querySelector('img');
+      if (f.__img && !f.__img.complete) {
+        f.__img.addEventListener('load', schedule, { once: true });
+        f.__img.addEventListener('error', schedule, { once: true });
+      }
     });
   });
 

@@ -179,6 +179,14 @@ function referencedMap() {
     add(p.image_path, 'Pipeline icon' + (p.label ? ': ' + p.label : ''));
   }
 
+  // Frames of a scroll-driven Skills picture. The generic sweep below would
+  // catch these anyway; naming them here is what turns "used by something" into
+  // a label that says which sequence, so a whole sequence is recognisable in the
+  // storage list rather than sixteen anonymous files.
+  for (const f of db.prepare('SELECT slot, file_path FROM skill_frames ORDER BY slot, sort, id').all()) {
+    add(f.file_path, 'Skills: ' + (f.slot || 'sequence') + ' frame');
+  }
+
   for (const s of db.prepare('SELECT key, value FROM site_settings').all()) {
     extract(s.value, 'Setting: ' + s.key);
   }

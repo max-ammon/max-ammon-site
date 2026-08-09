@@ -398,3 +398,40 @@ a.ci-value:hover { text-decoration: underline; }
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
 }
+
+/* The Texturing sequence, scrubbed by scroll position (see /js/skill-scroll.js).
+   Built the same way as the Animation stack and for the same reason: it wears
+   .texturingimage itself, so every rule that sized and placed the old <img>
+   applies to it unchanged, and inline-block keeps it on the line box a replaced
+   element sat on.
+
+   No tint here — this one is a picture playing, not a frame being picked out —
+   so the frames need no isolation and no mask either. */
+.scrub-frames {
+  display: inline-block;
+  vertical-align: baseline;
+  /* The stack has to be the containing block its laid-over frames position
+     against. The Animation stack gets this from .animationimage, which was
+     already relative; .texturingimage never was, and without it every frame past
+     the first escapes to the nearest positioned ancestor and is stretched across
+     the whole section. Relative with no offsets moves nothing. */
+  position: relative;
+}
+.scrub-frames .sf {
+  display: block;
+  position: relative;
+  /* Before the script has had a frame to run — and if it never does — only the
+     first frame shows, which is exactly the single picture this replaces. */
+  opacity: 0;
+}
+.scrub-frames .sf-base { opacity: 1; }
+.scrub-frames .sf:not(.sf-base) {
+  position: absolute;
+  inset: 0;
+}
+.scrub-frames .sf img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.scrub-frames .sf-base img { height: auto; }

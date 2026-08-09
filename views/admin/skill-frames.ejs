@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('../partials/admin-head', { title: title }) %>
+<style>
+  .frame-grid { list-style: none; padding: 0; margin: 0 0 22px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .frame-card { background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 7px; }
+  .frame-shot { position: relative; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: hidden; aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center; }
+  .frame-shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .frame-no { position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,0.66); color: #fff; font-size: 0.66rem; font-weight: 700; line-height: 1; padding: 3px 5px; border-radius: 4px; }
+  .frame-tools { display: flex; gap: 4px; align-items: center; }
+  .frame-tools form { margin: 0; }
+  .frame-tools button { min-width: 28px; }
+  .frame-tools .spacer { flex: 1; }
+  .danger { color: #d9534f; }
+
+  .fallback-note { display: flex; gap: 14px; align-items: center; }
+  .fallback-note img { width: 160px; border-radius: 6px; border: 1px solid var(--a-border); display: block; }
+</style>
+</head>
+<body class="admin">
+<%- include('../partials/admin-topbar') %>
+    <main class="admin-main">
+        <p class="muted"><a href="/admin">← Dashboard</a></p>
+        <h1><%= title %></h1>
+        <p class="muted">
+          Give the <strong><%= slot.section %></strong> picture a sequence of frames and it plays as that part of the
+          Skills section scrolls past — scrolling down runs it forwards, scrolling back up runs it in reverse.
+          The first frame holds as the section arrives and the last one holds as it leaves, so both are properly seen.
+          With fewer than two frames here the section shows its single picture exactly as it does today, so removing
+          them all is a safe way back.
+        </p>
+        <% if (saved) { %><div class="alert ok">Saved. <a href="/#skills" target="_blank" rel="noopener">View site ↗</a></div><% } %>
+        <% if (err === 'nofile') { %><div class="alert error">Nothing was added — choose PNG, JPG or WebP images.</div><% } %>
+
+        <% if (frames.length === 1) { %>
+          <div class="alert">One frame on its own does not play. Add at least one more, or remove it to go back to the single picture.</div>
+        <% } %>
+
+        <% if (frames.length) { %>
+        <p class="muted"><strong><%= frames.length %></strong> frame<%= frames.length === 1 ? '' : 's' %> — they play in the order shown.</p>
+        <ul class="frame-grid">
+            <% frames.forEach(function (f, i) { %>
+            <li class="frame-card">
+                <div class="frame-shot">
+                    <img src="<%= f.file_path %>" alt="" loading="lazy" decoding="async">
+                    <span class="frame-no"><%= i + 1 %></span>
+                </div>
+                <div class="frame-tools">
+                    <form method="post" action="/admin/skill-frames/<%= slug %>/<%= f.id %>/move" class="inline">
+                        <input type="hidden" name="dir" value="up">
+                        <button class="btn-link btn-sm" type="submit" title="Move earlier" <%= i === 0 ? 'disabled' : '' %>>←</button>
+                    </form>
+                    <form method="post" action="/admin/skill-frames/<%= slug %>/<%= f.id %>/move" class="inline">
+                        <input type="hidden" name="dir" value="down">
+                        <button class="btn-link btn-sm" type="submit" title="Move later" <%= i === frames.length - 1 ? 'disabled' : '' %>>→</button>
+                    </form>
+                    <span class="spacer"></span>
+                    <form method="post" action="/admin/skill-frames/<%= slug %>/<%= f.id %>/delete" class="inline" onsubmit="return confirm('Remove frame <%= i + 1 %>?');">
+                        <button class="btn-link btn-sm danger" type="submit" title="Remove this frame">Delete</button>
+                    </form>
+                </div>
+            </li>
+            <% }); %>
+        </ul>
+        <% } else { %>
+        <div class="card-inset fallback-note">
+            <% if (fallback) { %><img src="<%= fallback %>" alt=""><% } %>
+            <p class="muted" style="margin:0;">No frames yet, so the section shows this single picture. It stays the fallback: add frames below and they take over, remove them all and it comes back. Change the picture itself under <a href="/admin/images/skills">Skills images</a>.</p>
+        </div>
+        <% } %>
+
+        <div class="card-inset">
+            <h3><%= frames.length ? 'Add more frames' : 'Add frames' %></h3>
+            <form method="post" action="/admin/skill-frames/<%= slug %>" enctype="multipart/form-data">
+                <label>Frames
+                    <input type="file" name="frames" accept="image/*" multiple required>
+                </label>
+                <p class="muted" style="margin-top:6px;">
+                    Choose the whole sequence at once — they are sorted by filename, so <code>frame_02</code> lands before
+                    <code>frame_10</code>. New frames are added after the ones already here. Every frame is downloaded when a
+                    visitor reaches the section, so keep them a sensible size: they are served at up to 1600px wide, and
+                    sixteen large stills add up.
+                </p>
+                <button class="btn" type="submit">Add frames</button>
+            </form>
+        </div>
+
+        <% if (frames.length) { %>
+        <form method="post" action="/admin/skill-frames/<%= slug %>/clear" style="margin-top:18px;" onsubmit="return confirm('Remove all <%= frames.length %> frames? The section goes back to its single picture.');">
+            <button class="btn-link danger" type="submit">Remove all frames</button>
+        </form>
+        <% } %>
+    </main>
+</body>
+</html>
