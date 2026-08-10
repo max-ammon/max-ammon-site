@@ -245,14 +245,14 @@
                     mask, which is what every rule that sized and placed this
                     picture was written against. %>
                 <span id="profilepic">
-                    <%# The sizes are the circle doubled, because that is how large
+                    <%# The sizes are the circle and a half, because that is how large
                         this is actually drawn while it arrives — a file picked for
                         the resting size would be soft for the whole of the zoom,
                         and a browser chooses once and never revisits it for a
                         transform. %>
                     <img data-scroll-zoom src="<%= imgUrl(settings.about_profile, 800) %>"
                          srcset="<%= imgSrcset(settings.about_profile, [480, 800, 1200]) %>"
-                         sizes="(max-width: 1500px) 500px, (max-width: 2048px) 800px, 1000px"
+                         sizes="(max-width: 1500px) 375px, (max-width: 2048px) 600px, 750px"
                          loading="lazy" decoding="async" alt="">
                 </span>
             </div>
