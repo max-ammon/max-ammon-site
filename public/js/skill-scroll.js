@@ -10,7 +10,7 @@
    *   [data-wipe-frames]   the Grading picture, each frame wiped in from the left
    *   [data-scroll-scale]  the Modeling pair, largest as the section passes
    *   [data-scroll-shrink] the demo's play button, shrinking as you leave it
-   *   [data-scroll-grow]   the About picture, growing into place as it arrives
+   *   [data-scroll-zoom]   the About picture, settling into frame as it arrives
    *
    * They nearly all read the same notion of how far through its pass an element
    * is — the About picture is the exception, since it is measured against its
@@ -39,8 +39,8 @@
   var wipes = Array.prototype.slice.call(document.querySelectorAll('[data-wipe-frames]'));
   var scalers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-scale]'));
   var shrinkers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-shrink]'));
-  var growers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-grow]'));
-  if (!stacks.length && !scrubs.length && !wipes.length && !scalers.length && !shrinkers.length && !growers.length) return;
+  var zoomers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-zoom]'));
+  if (!stacks.length && !scrubs.length && !wipes.length && !scalers.length && !shrinkers.length && !zoomers.length) return;
 
   // How far back a frame sits at one and at two frames from the current one.
   var NEAR = 0.45;
@@ -295,30 +295,35 @@
   }
 
   /*
-   * ---- growing into place --------------------------------------------------
-   * The About picture: a tenth under size as it comes onto the screen, at the
-   * size it has always had by the time its section is in view, and staying
-   * there for the whole way down. One-sided, unlike the Modeling pair — this
-   * one arrives and stays arrived rather than swelling past and shrinking away
-   * again.
+   * ---- settling into frame -------------------------------------------------
+   * The About picture: zoomed a tenth in as it comes onto the screen, at its
+   * natural framing by the time its section is in view, and staying there for
+   * the whole way down. So scrolling to it opens the picture out rather than
+   * enlarging it — more of the photograph as it settles. One-sided, unlike the
+   * Modeling pair: this one arrives and stays arrived rather than swelling past
+   * and shrinking away again.
    *
-   * transform never touches layout, so the round mask and everything around it
-   * stay exactly where they are; only the picture appears to grow.
+   * The mask is a box of its own and this scales the picture inside it, so the
+   * circle does not move or change size — only what is behind it does. It also
+   * only ever zooms in past the framing, never below it, and that is not a
+   * detail: the framing is the picture at cover, the least zoom that fills a
+   * round hole with a rectangular photo, so anything below it would pull the
+   * picture off the edge of the circle and let the page show through the gap.
    *
    * "In view" has to mean two things, because a section can be taller than the
    * screen or shorter than it. Shorter, and it is fully in view once its bottom
    * reaches the bottom of the screen; taller, and the fullest view there is comes
    * when its top reaches the top. Either way it is the moment the section is as
-   * completely on screen as it is ever going to be, which is where the growing
+   * completely on screen as it is ever going to be, which is where the settling
    * should be over.
    */
-  var GROW_FROM = 0.9;
+  var ZOOM_FROM = 1.1;
 
-  function updateGrow(el) {
+  function updateZoom(el) {
     var vh = window.innerHeight || document.documentElement.clientHeight;
     // The element's own rect is its scaled one, and feeding a transform back
     // into the measurement that produces it makes the effect chase itself. Its
-    // box is the parent's, which the transform does not touch.
+    // box is the parent's — here the mask — which the transform does not touch.
     var b = el.__box.getBoundingClientRect();
     var s = el.__section.getBoundingClientRect();
 
@@ -333,13 +338,13 @@
      * Both of those move one-for-one with the scroll, so their sum is the whole
      * distance between the two moments and the ratio is linear in scroll — no
      * absolute positions to work out and nothing to recompute when the page
-     * reflows. A sine eases it so it settles at full size instead of arriving at
-     * a corner.
+     * reflows. A sine eases it so it settles into its framing instead of
+     * arriving at a corner.
      */
     var span = came + left;
     var p = span > 0 ? came / span : 1;
-    var g = GROW_FROM + (1 - GROW_FROM) * Math.sin((clamp01(p) * Math.PI) / 2);
-    el.style.transform = 'scale(' + g.toFixed(4) + ')';
+    var z = ZOOM_FROM + (1 - ZOOM_FROM) * Math.sin((clamp01(p) * Math.PI) / 2);
+    el.style.transform = 'scale(' + z.toFixed(4) + ')';
   }
 
   /*
@@ -357,11 +362,11 @@
       for (var w = 0; w < wipes.length; w++) updateWipe(wipes[w]);
       for (var j = 0; j < scalers.length; j++) updateScale(scalers[j]);
       for (var k = 0; k < shrinkers.length; k++) updateShrink(shrinkers[k]);
-      for (var g = 0; g < growers.length; g++) updateGrow(growers[g]);
+      for (var g = 0; g < zoomers.length; g++) updateZoom(zoomers[g]);
     });
   }
 
-  growers.forEach(function (el) {
+  zoomers.forEach(function (el) {
     // Measured through its parent, and stopped at its own section: what "in
     // view" means is the section's business, and taking it from the element
     // keeps the effect free of anything named.
@@ -373,7 +378,7 @@
   // recompute as each arrives, exactly as the frames do. The About picture is
   // measured element rather than a box holding one, and a picture that has not
   // arrived has no size at all, so it has to count as its own.
-  scalers.concat(shrinkers).concat(growers).forEach(function (el) {
+  scalers.concat(shrinkers).concat(zoomers).forEach(function (el) {
     var imgs = el.tagName === 'IMG' ? [el] : Array.prototype.slice.call(el.querySelectorAll('img'));
     imgs.forEach(function (img) {
       if (!img.complete) img.addEventListener('load', schedule, { once: true });

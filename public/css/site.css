@@ -50,11 +50,45 @@ nav { align-items: center; }
    admin comes out round even if it isn't square (centre-cropped, not squashed).
    The existing image is already a round 1500x1500 PNG with transparent corners,
    so this doesn't change how it looks today. Sizing still comes from the
-   #profilepic max-width rules in stylesheet.css. */
+   #profilepic max-width rules in stylesheet.css.
+
+   The circle is a box around the picture rather than the picture itself, so the
+   picture can be zoomed inside it while the mask stays exactly where it is (see
+   /js/skill-scroll.js). It is the box that carries the id, because every rule
+   that ever sized or placed this picture — the max-widths here and in
+   stylesheet.css, the mobile override further down — was written against it.
+   inline-block, not block: the picture it replaces was an inline replaced
+   element, and the line box it sat on is part of the height of the column
+   around it. */
 #profilepic {
+  display: inline-block;
+  /* The picture used to size this spot itself: its own width, always larger
+     than every max-width below, so what came out was the cap. A box cannot do
+     that — its width comes from its contents, and the picture inside is sized
+     against the box, so asking each to follow the other collapses it. The
+     largest cap, written as the width, hands the caps back the job they had:
+     500 here, 400 and 250 as the media queries in stylesheet.css take over, and
+     55vw from the mobile rule further down. */
+  width: 500px;
   aspect-ratio: 1 / 1;
-  object-fit: cover;
   border-radius: 50%;
+  overflow: hidden;
+  /* The rounded overflow clip is not dependable once the picture inside carries
+     a transform — Chrome will hand back the square corners of the box, not the
+     circle. clip-path is a clip of this element's whole rendering, transformed
+     children included, so the mask stays a circle whatever is done inside it.
+     Both are kept: the radius is what rounds the box for anything that does not
+     take the clip path. On a square box the two describe the same circle. */
+  clip-path: circle(50%);
+}
+#profilepic > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* The crop is the picture's own, unchanged: cover is what makes a rectangular
+     photo fill a round hole without being squashed. Zoomed past it the circle
+     stays full, which is the whole reason the movement runs inwards-out. */
+  object-fit: cover;
 }
 
 /* Header side padding. stylesheet.css meant to set this
