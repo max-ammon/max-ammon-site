@@ -49,6 +49,10 @@ const SETTINGS = {
   skills_modeling_img1:  '/assets/images/skills_modeling_projector.png',
   skills_modeling_img2:  '/assets/images/skills_modeling_sim.png',
   skills_texturing_img:  '/assets/images/skills_texturing1.png',
+  // A still background for the Texturing sequence to play on. Empty by default,
+  // and only used when there are frames: with one set, the frames are painted
+  // over it and need only carry what actually changes (see /js/skill-scroll.js).
+  skills_texturing_frames_base: '',
   skills_animation_img:  '/assets/images/skills_animation.png',
   // Extra frames for the Animation image. Empty by default, so the section
   // renders exactly the single picture it always has; fill them in and the

@@ -241,6 +241,9 @@ const FRAME_SLOTS = {
     title: 'Texturing frames',
     section: 'Texturing & Lighting',
     imageKey: 'skills_texturing_img',
+    // A still the frames play on top of. Only this slot offers one so far; a
+    // second slot gets it by naming a setting of its own here.
+    baseKey: 'skills_texturing_frames_base',
     plays: 'plays as that part of the Skills section scrolls past — scrolling down runs it forwards, '
       + 'scrolling back up runs it in reverse. The first frame holds as the section arrives and the last '
       + 'one holds as it leaves, so both are properly seen.',
@@ -264,9 +267,32 @@ router.get('/skill-frames/:slot', (req, res) => {
     slot,
     frames: skillFrames.getFrames(req.params.slot),
     fallback: getSetting(slot.imageKey) || '',
+    base: slot.baseKey ? getSetting(slot.baseKey) || '' : '',
     saved: req.query.saved === '1',
     err: req.query.err || '',
   });
+});
+
+/*
+ * The still the frames play on. It is a setting rather than a frame row because
+ * it is not part of the sequence: it does not take a turn, it is simply what is
+ * underneath. Removing it only clears the setting — the file stays where it is
+ * and the storage manager lists it as unused, which is how every other picture
+ * this site replaces behaves.
+ */
+router.post('/skill-frames/:slot/base', uploadSkillFrame.single('base'), (req, res) => {
+  const slot = FRAME_SLOTS[req.params.slot];
+  if (!slot || !slot.baseKey) return res.redirect('/admin');
+  if (!req.file) return res.redirect('/admin/skill-frames/' + req.params.slot + '?err=nofile');
+  updateSettings({ [slot.baseKey]: toPublicPath(req.file.path) });
+  res.redirect('/admin/skill-frames/' + req.params.slot + '?saved=1');
+});
+
+router.post('/skill-frames/:slot/base/delete', (req, res) => {
+  const slot = FRAME_SLOTS[req.params.slot];
+  if (!slot || !slot.baseKey) return res.redirect('/admin');
+  updateSettings({ [slot.baseKey]: '' });
+  res.redirect('/admin/skill-frames/' + req.params.slot + '?saved=1');
 });
 
 router.post('/skill-frames/:slot', uploadSkillFrame.array('frames', 400), (req, res) => {

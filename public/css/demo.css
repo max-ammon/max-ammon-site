@@ -436,6 +436,27 @@ a.ci-value:hover { text-decoration: underline; }
 }
 .scrub-frames .sf-base img { height: auto; }
 
+/* With a background picture the sequence stops being a pile of complete stills
+   and becomes a set of overlays on one: the plate is in flow and gives the stack
+   its size, and every frame — the first one included, which was the plate before
+   — is laid over it. The frames are stretched onto the plate's box, so they have
+   to share its proportions; the alternative, sizing the box to each frame, would
+   have them shift under one another as they change over. */
+.scrub-frames .sf-plate {
+  display: block;
+  position: relative;
+}
+.scrub-frames .sf-plate img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.scrub-frames.has-plate .sf-base {
+  position: absolute;
+  inset: 0;
+}
+.scrub-frames.has-plate .sf-base img { height: 100%; }
+
 /* The Grading sequence, each frame wiped in from the left as the section comes
    up (see /js/skill-scroll.js). Same stack as the two above, and it wears
    .gradingimage itself so the rules that sized and placed the old <img> apply

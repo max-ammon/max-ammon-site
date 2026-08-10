@@ -117,8 +117,24 @@
                     the 3200 the single picture offers: a whole sequence is
                     downloaded to play it, and sixteen of the largest size is a lot
                     of picture for something no single frame is dwelt on. %>
+                <%# A background picture turns the sequence into a set of overlays:
+                    the detail is downloaded once, at full size, and each frame
+                    carries only what changes over it — which is what makes a long
+                    sequence affordable. Without one the frames carry the whole
+                    picture themselves and the first of them is the plate. %>
+                <% var texturingPlate = String(settings.skills_texturing_frames_base || '').trim(); %>
                 <% if (texturingFrames && texturingFrames.length > 1) { %>
-                <span class="texturingimage scrub-frames" data-scrub-frames>
+                <span class="texturingimage scrub-frames<%= texturingPlate ? ' has-plate' : '' %>" data-scrub-frames>
+                    <% if (texturingPlate) { %>
+                    <%# In flow, so the stack is its size and every frame is laid over
+                        it. Never deferred: it is the picture, and the frames are
+                        holes in a sheet over it. %>
+                    <span class="sf-plate">
+                        <img src="<%= imgUrl(texturingPlate, 1600) %>"
+                             srcset="<%= imgSrcset(texturingPlate, [800, 1200, 1600, 2400, 3200]) %>"
+                             sizes="100vw" loading="eager" decoding="async" alt="">
+                    </span>
+                    <% } %>
                     <% texturingFrames.forEach(function (frame, i) { %>
                     <span class="sf<%= i === 0 ? ' sf-base' : '' %>">
                         <img src="<%= imgUrl(frame, 2000) %>"

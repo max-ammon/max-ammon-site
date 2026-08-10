@@ -68,6 +68,45 @@
         </div>
         <% } %>
 
+        <% if (slot.baseKey) { %>
+        <div class="card-inset">
+            <h3>Background picture <span class="muted" style="font-weight:400;">— optional</span></h3>
+            <% if (base) { %>
+            <div class="fallback-note">
+                <img src="<%= base %>" alt="">
+                <div>
+                    <p class="muted" style="margin:0 0 8px;">
+                        The frames are played on top of this picture, so each one only has to carry what actually
+                        changes and can be transparent everywhere else. This background is served at full size; the
+                        frames over it stop at 2000px, which is what makes a long sequence affordable.
+                    </p>
+                    <form method="post" action="/admin/skill-frames/<%= slug %>/base/delete" class="inline" onsubmit="return confirm('Remove the background picture? The frames then have to carry the whole picture themselves.');">
+                        <button class="btn-link danger" type="submit">Remove background</button>
+                    </form>
+                </div>
+            </div>
+            <% } else { %>
+            <p class="muted" style="margin-top:0;">
+                Optional. Give the sequence a still to play on and each frame only has to carry what actually changes —
+                transparent everywhere else, which is far lighter than a folder of complete pictures. The background is
+                served at full size and the frames over it at up to 2000px, so the detail comes from the one picture
+                that is downloaded once rather than from every frame.
+            </p>
+            <% } %>
+            <form method="post" action="/admin/skill-frames/<%= slug %>/base" enctype="multipart/form-data" style="margin-top:10px;">
+                <label><%= base ? 'Replace background' : 'Background picture' %>
+                    <input type="file" name="base" accept="image/*" required>
+                </label>
+                <p class="muted" style="margin-top:6px;">
+                    Give it the same shape as the frames — they are stretched onto it, so a background of a different
+                    proportion puts everything out of register. With no background here the frames carry the whole
+                    picture themselves, exactly as they do today.
+                </p>
+                <button class="btn" type="submit"><%= base ? 'Replace background' : 'Set background' %></button>
+            </form>
+        </div>
+        <% } %>
+
         <div class="card-inset">
             <h3><%= frames.length ? 'Add more frames' : 'Add frames' %></h3>
             <form method="post" action="/admin/skill-frames/<%= slug %>" enctype="multipart/form-data">
