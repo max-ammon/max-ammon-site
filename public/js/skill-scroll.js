@@ -2,17 +2,21 @@
   'use strict';
 
   /*
-   * The Skills section's scroll-driven pictures. Five effects, one pass:
+   * The page's scroll-driven pictures — mostly the Skills section's, and the
+   * two elsewhere that are the same kind of thing. Six effects, one pass:
    *
    *   [data-anim-frames]   the Animation picture, played frame by frame
    *   [data-scrub-frames]  the Texturing picture, a sequence scrubbed by scroll
    *   [data-wipe-frames]   the Grading picture, each frame wiped in from the left
    *   [data-scroll-scale]  the Modeling pair, largest as the section passes
    *   [data-scroll-shrink] the demo's play button, shrinking as you leave it
+   *   [data-scroll-grow]   the About picture, growing into place as it arrives
    *
-   * They all read the same notion of how far through its pass an element is, and
-   * all run off one listener and one animation frame, so they can never drift
-   * apart or cost more than one pass of work.
+   * They nearly all read the same notion of how far through its pass an element
+   * is — the About picture is the exception, since it is measured against its
+   * section rather than the screen — and all run off one listener and one
+   * animation frame, so they can never drift apart or cost more than one pass
+   * of work.
    *
    * ---- the Animation picture --------------------------------------------
    *
@@ -35,7 +39,8 @@
   var wipes = Array.prototype.slice.call(document.querySelectorAll('[data-wipe-frames]'));
   var scalers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-scale]'));
   var shrinkers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-shrink]'));
-  if (!stacks.length && !scrubs.length && !wipes.length && !scalers.length && !shrinkers.length) return;
+  var growers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-grow]'));
+  if (!stacks.length && !scrubs.length && !wipes.length && !scalers.length && !shrinkers.length && !growers.length) return;
 
   // How far back a frame sits at one and at two frames from the current one.
   var NEAR = 0.45;
@@ -290,6 +295,54 @@
   }
 
   /*
+   * ---- growing into place --------------------------------------------------
+   * The About picture: a tenth under size as it comes onto the screen, at the
+   * size it has always had by the time its section is in view, and staying
+   * there for the whole way down. One-sided, unlike the Modeling pair — this
+   * one arrives and stays arrived rather than swelling past and shrinking away
+   * again.
+   *
+   * transform never touches layout, so the round mask and everything around it
+   * stay exactly where they are; only the picture appears to grow.
+   *
+   * "In view" has to mean two things, because a section can be taller than the
+   * screen or shorter than it. Shorter, and it is fully in view once its bottom
+   * reaches the bottom of the screen; taller, and the fullest view there is comes
+   * when its top reaches the top. Either way it is the moment the section is as
+   * completely on screen as it is ever going to be, which is where the growing
+   * should be over.
+   */
+  var GROW_FROM = 0.9;
+
+  function updateGrow(el) {
+    var vh = window.innerHeight || document.documentElement.clientHeight;
+    // The element's own rect is its scaled one, and feeding a transform back
+    // into the measurement that produces it makes the effect chase itself. Its
+    // box is the parent's, which the transform does not touch.
+    var b = el.__box.getBoundingClientRect();
+    var s = el.__section.getBoundingClientRect();
+
+    // How far it has come since the picture's top edge touched the bottom of the
+    // screen, and how much further until the section is as in view as it gets.
+    var came = vh - b.top;
+    var left = s.height <= vh ? s.bottom - vh : s.top;
+    if (came < 0) came = 0;
+    if (left < 0) left = 0;
+
+    /*
+     * Both of those move one-for-one with the scroll, so their sum is the whole
+     * distance between the two moments and the ratio is linear in scroll — no
+     * absolute positions to work out and nothing to recompute when the page
+     * reflows. A sine eases it so it settles at full size instead of arriving at
+     * a corner.
+     */
+    var span = came + left;
+    var p = span > 0 ? came / span : 1;
+    var g = GROW_FROM + (1 - GROW_FROM) * Math.sin((clamp01(p) * Math.PI) / 2);
+    el.style.transform = 'scale(' + g.toFixed(4) + ')';
+  }
+
+  /*
    * Coalesce to one update per frame by replacing the pending request rather
    * than latching a flag: a flag that is only cleared inside the callback
    * freezes the whole effect for good if that callback is ever dropped.
@@ -304,13 +357,25 @@
       for (var w = 0; w < wipes.length; w++) updateWipe(wipes[w]);
       for (var j = 0; j < scalers.length; j++) updateScale(scalers[j]);
       for (var k = 0; k < shrinkers.length; k++) updateShrink(shrinkers[k]);
+      for (var g = 0; g < growers.length; g++) updateGrow(growers[g]);
     });
   }
 
-  // The pair's box only settles once its pictures have loaded, and they are
-  // lazy — so recompute as each arrives, exactly as the frames do.
-  scalers.concat(shrinkers).forEach(function (el) {
-    Array.prototype.slice.call(el.querySelectorAll('img')).forEach(function (img) {
+  growers.forEach(function (el) {
+    // Measured through its parent, and stopped at its own section: what "in
+    // view" means is the section's business, and taking it from the element
+    // keeps the effect free of anything named.
+    el.__box = el.parentElement || el;
+    el.__section = (el.closest && el.closest('section')) || el.__box;
+  });
+
+  // A box only settles once its pictures have loaded, and they are lazy — so
+  // recompute as each arrives, exactly as the frames do. The About picture is
+  // measured element rather than a box holding one, and a picture that has not
+  // arrived has no size at all, so it has to count as its own.
+  scalers.concat(shrinkers).concat(growers).forEach(function (el) {
+    var imgs = el.tagName === 'IMG' ? [el] : Array.prototype.slice.call(el.querySelectorAll('img'));
+    imgs.forEach(function (img) {
       if (!img.complete) img.addEventListener('load', schedule, { once: true });
     });
   });

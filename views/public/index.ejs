@@ -238,7 +238,11 @@
              sizes="100vw" loading="lazy" decoding="async" alt="">
         <div style="display:inline-flex;padding:75px;">
             <div>
-                <img id="profilepic" src="<%= imgUrl(settings.about_profile, 800) %>"
+                <%# Grows from a tenth under size as it comes onto the screen to the
+                    size it has always had once the section is in view, and stays
+                    there (see /js/skill-scroll.js). transform only, so the circle
+                    and everything around it keep their places. %>
+                <img id="profilepic" data-scroll-grow src="<%= imgUrl(settings.about_profile, 800) %>"
                      srcset="<%= imgSrcset(settings.about_profile, [480, 800]) %>"
                      sizes="(max-width: 1500px) 250px, (max-width: 2048px) 400px, 500px"
                      loading="lazy" decoding="async" alt="">
