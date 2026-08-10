@@ -31,6 +31,13 @@
           <%= slot.minimum === 1 ? 'With none here' : 'With fewer than two ' + nouns + ' here' %>, the section shows
           what it shows without them, so removing them all is a safe way back.
         </p>
+        <% if (slot.replaces) { %>
+        <p class="muted">
+          These replace the older <a href="<%= slot.replaces.href %>"><%= slot.replaces.title %></a>, which is off the
+          dashboard now but still there: whatever is in it shows whenever this is empty, and clearing it is what
+          removes it for good.
+        </p>
+        <% } %>
         <% if (saved) { %><div class="alert ok">Saved. <a href="/#skills" target="_blank" rel="noopener">View site ↗</a></div><% } %>
         <% if (err === 'nofile') { %><div class="alert error">Nothing was added — choose PNG, JPG or WebP images.</div><% } %>
         <% if (err === 'slit') { %><div class="alert error">Slit width has to be a number between 0.5 and 50 percent.</div><% } %>

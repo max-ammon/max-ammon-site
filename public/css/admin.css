@@ -110,7 +110,12 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--a-accent); 
 .alert.error { background: rgba(255,107,107,0.12); border: 1px solid var(--a-danger); color: #ffd0d0; }
 .alert.ok { background: rgba(70,201,139,0.12); border: 1px solid var(--a-ok); color: #c8f4de; }
 
-/* Dashboard cards */
+/* Dashboard cards, in groups. The heading is the same rule the editors' own
+   groups wear, so a section of the dashboard reads as the same kind of thing as
+   a section of a page inside it. The grid keeps its own top margin, so a group
+   only has to add the space between one group and the next. */
+.card-group + .card-group { margin-top: 34px; }
+.card-group > h2 { font-size: 1.1rem; border-bottom: 1px solid var(--a-border); padding-bottom: 8px; margin: 0 0 -8px; }
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-top: 24px; }
 .card {
   display: block;
@@ -123,7 +128,7 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--a-accent); 
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
 .card:hover { border-color: var(--a-accent); transform: translateY(-2px); }
-.card h2 { margin: 0 0 6px; font-size: 1.1rem; }
+.card h3 { margin: 0 0 6px; font-size: 1.1rem; }
 .card p { margin: 0; color: var(--a-muted); font-size: 0.9rem; }
 
 /* Editors */

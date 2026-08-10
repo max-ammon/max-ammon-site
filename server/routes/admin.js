@@ -42,33 +42,75 @@ router.use((req, res, next) => {
 // (The old fixed-size aspect classes are retired: thumbnails are now scaled to
 // a uniform height, with each item's width derived from its measured ratio.)
 
-const SECTIONS = [
-  { href: '/admin/content', title: 'Text', desc: 'Edit the words on your site (Demo, Skills, About, Contact, Gallery).' },
-  { href: '/admin/colors', title: 'Colours', desc: 'Adjust the colour scheme with a live preview.' },
-  { href: '/admin/images/about', title: 'Profile & banner', desc: 'Change your profile picture and the About banner image.' },
-  { href: '/admin/images/skills', title: 'Skills images', desc: 'Swap the images shown with your four skill categories.' },
-  { href: '/admin/pipeline', title: 'Pipeline software', desc: 'Place software logos along the production-pipeline bar in Skills.' },
-  { href: '/admin/skill-frames/texturing', title: 'Texturing frames', desc: 'Give the Texturing & Lighting picture a sequence of frames that plays as the section scrolls past.' },
-  { href: '/admin/skill-frames/texturing-layers', title: 'Texturing layers', desc: 'Cut the Texturing & Lighting picture into a band of slits that travels across it — one slit per layer of the asset.' },
-  { href: '/admin/skill-frames/grading', title: 'Grading frames', desc: 'Give the Compositing & Grading picture a sequence of frames, each wiped in from the left as the section comes up.' },
-  { href: '/admin/demo', title: 'Demo video', desc: 'Set the YouTube video and shape of the Demo embed.' },
-  { href: '/admin/demo-archive', title: 'Demo archive', desc: 'Collect your older demo reels on their own page, linked from the Demo section.' },
-  { href: '/admin/social', title: 'Social preview', desc: 'The image, title and text shown when your link is shared (LinkedIn, Discord, …).' },
-  { href: '/admin/gallery', title: 'Gallery', desc: 'Add projects, upload media, embed videos, arrange the gallery.' },
-  { href: '/admin/photography', title: 'Photography', desc: 'Upload and arrange the photos on your Photography page, and set how many sit in a row.' },
-  { href: '/admin/splats', title: 'Gaussian Splats', desc: 'Add and arrange the splats shown on your Gaussian Splats page.' },
-  { href: '/admin/geometry', title: '3D Geometry', desc: 'Upload glTF/GLB models people can rotate in the browser.' },
-  { href: '/admin/messages', title: 'Messages', desc: 'Read messages sent through your contact form.' },
-  { href: '/admin/analytics', title: 'Analytics', desc: 'Private, cookie-free visitor stats — views, top pages, and referrers.' },
-  { href: '/admin/storage', title: 'Storage & backup', desc: 'See every stored file and what uses it, remove unused ones, and download a full backup.' },
+/*
+ * The dashboard, grouped by what you came to do rather than in the order these
+ * editors happened to be built. Everything is still on the one page — a card is
+ * easier to find under a heading than in a grid of eighteen, and none of it is
+ * used often enough to be worth hiding behind another click.
+ *
+ * The Texturing sequence is not here on purpose: the slit layers replace it, and
+ * the page that manages it is linked from theirs so the old frames can still be
+ * cleared.
+ */
+const SECTION_GROUPS = [
+  {
+    title: 'Text & appearance',
+    items: [
+      { href: '/admin/content', title: 'Text', desc: 'Edit the words on your site (Demo, Skills, About, Contact, Gallery).' },
+      { href: '/admin/colors', title: 'Colours', desc: 'Adjust the colour scheme with a live preview.' },
+      { href: '/admin/images/about', title: 'Profile & banner', desc: 'Change your profile picture and the About banner image.' },
+      { href: '/admin/social', title: 'Social preview', desc: 'The image, title and text shown when your link is shared (LinkedIn, Discord, …).' },
+    ],
+  },
+  {
+    title: 'Demo',
+    items: [
+      { href: '/admin/demo', title: 'Demo video', desc: 'Set the YouTube video and shape of the Demo embed.' },
+      { href: '/admin/demo-archive', title: 'Demo archive', desc: 'Collect your older demo reels on their own page, linked from the Demo section.' },
+    ],
+  },
+  {
+    title: 'Skills',
+    items: [
+      { href: '/admin/images/skills', title: 'Skills images', desc: 'Swap the images shown with your four skill categories.' },
+      { href: '/admin/pipeline', title: 'Pipeline software', desc: 'Place software logos along the production-pipeline bar in Skills.' },
+      { href: '/admin/skill-frames/texturing-layers', title: 'Texturing layers', desc: 'Cut the Texturing & Lighting picture into a band of slits that travels across it — one slit per layer of the asset.' },
+      { href: '/admin/skill-frames/grading', title: 'Grading frames', desc: 'Give the Compositing & Grading picture a sequence of frames, each wiped in from the left as the section comes up.' },
+    ],
+  },
+  {
+    title: 'Media management',
+    items: [
+      { href: '/admin/gallery', title: 'Gallery', desc: 'Add projects, upload media, embed videos, arrange the gallery.' },
+      { href: '/admin/photography', title: 'Photography', desc: 'Upload and arrange the photos on your Photography page, and set how many sit in a row.' },
+      { href: '/admin/splats', title: 'Gaussian Splats', desc: 'Add and arrange the splats shown on your Gaussian Splats page.' },
+      { href: '/admin/geometry', title: '3D Geometry', desc: 'Upload glTF/GLB models people can rotate in the browser.' },
+    ],
+  },
+  {
+    title: 'Social',
+    items: [
+      { href: '/admin/messages', title: 'Messages', desc: 'Read messages sent through your contact form.' },
+      { href: '/admin/analytics', title: 'Analytics', desc: 'Private, cookie-free visitor stats — views, top pages, and referrers.' },
+    ],
+  },
+  {
+    title: 'Data management',
+    items: [
+      { href: '/admin/storage', title: 'Storage & backup', desc: 'See every stored file and what uses it, remove unused ones, and download a full backup.' },
+    ],
+  },
 ];
 
 router.get('/', (req, res) => {
   const unread = messages.unreadCount();
-  const sections = SECTIONS.map((s) =>
-    s.href === '/admin/messages' && unread ? { ...s, desc: `${unread} new message${unread > 1 ? 's' : ''}. ${s.desc}` } : s
-  );
-  res.render('admin/dashboard', { title: 'Dashboard', sections });
+  const groups = SECTION_GROUPS.map((g) => ({
+    title: g.title,
+    items: g.items.map((s) =>
+      s.href === '/admin/messages' && unread ? { ...s, desc: `${unread} new message${unread > 1 ? 's' : ''}. ${s.desc}` } : s
+    ),
+  }));
+  res.render('admin/dashboard', { title: 'Dashboard', groups });
 });
 
 // --- Messages inbox --------------------------------------------------------
@@ -271,6 +313,9 @@ const FRAME_SLOTS = {
     slitKey: 'skills_texturing_slit_pct',
     noun: 'layer',
     minimum: 1,
+    // The sequence these replace. It is off the dashboard, so this is the way
+    // back to it — the old frames are still there until they are cleared.
+    replaces: { href: '/admin/skill-frames/texturing', title: 'Texturing frames' },
     plays: 'is cut into a band of slits that travels across the picture as that part of the Skills section '
       + 'scrolls past — one slit per layer, in the order below, each showing its own layer and nothing else. '
       + 'Scrolling down brings the band in from the left and takes it out to the right; scrolling back up '
