@@ -296,8 +296,8 @@
 
   /*
    * ---- settling into frame -------------------------------------------------
-   * The About picture: zoomed a tenth in as it comes onto the screen, at its
-   * natural framing by the time its section is in view, and staying there for
+   * The About picture: zoomed to twice its framing as it comes onto the screen,
+   * at that framing by the time its section is in view, and staying there for
    * the whole way down. So scrolling to it opens the picture out rather than
    * enlarging it — more of the photograph as it settles. One-sided, unlike the
    * Modeling pair: this one arrives and stays arrived rather than swelling past
@@ -317,7 +317,13 @@
    * completely on screen as it is ever going to be, which is where the settling
    * should be over.
    */
-  var ZOOM_FROM = 1.1;
+  /*
+   * Twice the framing at the start. Worth knowing where that lands: the picture
+   * is drawn at twice the circle while it arrives, so the file it is given has
+   * to be big enough for that and not for the resting size — which is what the
+   * `sizes` on it is written for.
+   */
+  var ZOOM_FROM = 2;
 
   function updateZoom(el) {
     var vh = window.innerHeight || document.documentElement.clientHeight;
