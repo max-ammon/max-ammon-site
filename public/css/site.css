@@ -371,6 +371,7 @@ nav a.nav-current { text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
      come after that rule: same specificity, both important, so order decides. */
   #skills .anim-frames,
   #skills .scrub-frames,
+  #skills .slit-layers,
   #skills .wipe-frames { position: relative !important; }
   /* Compositing & grading: its image sits to the LEFT on desktop, so in source
      order the image comes before the text. Stacking it as-is on mobile would put

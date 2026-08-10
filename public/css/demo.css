@@ -457,6 +457,55 @@ a.ci-value:hover { text-decoration: underline; }
 }
 .scrub-frames.has-plate .sf-base img { height: 100%; }
 
+/* The Texturing slits: one picture per layer of the asset, all over the same
+   background, each showing through a single slit of a band that travels across
+   the picture as the section passes (see /js/skill-scroll.js).
+
+   The script sets two lengths on the stack — where the band is and how wide a
+   slit is — and each layer works out its own place from them with its index, so
+   a whole band of slits moves for the price of two property writes. */
+.slit-layers {
+  display: inline-block;
+  vertical-align: baseline;
+  position: relative;
+  /* Parked off the left until the script has run, so a picture that never gets
+     one is the background alone rather than a band stuck across it. */
+  --slit-w: 0px;
+  --slit-x: -99999px;
+}
+.slit-layers .sl-plate {
+  display: block;
+  position: relative;
+}
+.slit-layers .sl-plate img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.slit-layers .sl {
+  position: absolute;
+  inset: 0;
+  /* A solid block, not a gradient: a slit is a cut, and neighbouring layers
+     never bleed into one another. */
+  -webkit-mask-image: linear-gradient(#000 0 0);
+  mask-image: linear-gradient(#000 0 0);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  /* The extra pixel is a bleed to the right, into the neighbour's slit. Slits
+     land on fractions of a pixel and a rounded-down edge would leave a hairline
+     of background between two of them; the neighbour is painted after this one
+     and covers the bleed, so it can only ever fill a gap, never widen a slit. */
+  -webkit-mask-size: calc(var(--slit-w) + 1px) 100%;
+  mask-size: calc(var(--slit-w) + 1px) 100%;
+  -webkit-mask-position: calc(var(--slit-x) + var(--i) * var(--slit-w)) 0;
+  mask-position: calc(var(--slit-x) + var(--i) * var(--slit-w)) 0;
+}
+.slit-layers .sl img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 /* The Grading sequence, each frame wiped in from the left as the section comes
    up (see /js/skill-scroll.js). Same stack as the two above, and it wears
    .gradingimage itself so the rules that sized and placed the old <img> apply

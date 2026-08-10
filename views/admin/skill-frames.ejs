@@ -23,20 +23,29 @@
     <main class="admin-main">
         <p class="muted"><a href="/admin">← Dashboard</a></p>
         <h1><%= title %></h1>
+        <%# One page for every slot, so what one of these pictures is called comes
+            from the slot rather than being written into the page. %>
+        <% var noun = slot.noun || 'frame'; var nouns = noun + 's'; %>
         <p class="muted">
-          Give the <strong><%= slot.section %></strong> picture a sequence of frames and it <%= slot.plays %>
-          With fewer than two frames here the section shows its single picture exactly as it does today, so removing
-          them all is a safe way back.
+          Give the <strong><%= slot.section %></strong> picture a set of <%= nouns %> and it <%= slot.plays %>
+          <%= slot.minimum === 1 ? 'With none here' : 'With fewer than two ' + nouns + ' here' %>, the section shows
+          what it shows without them, so removing them all is a safe way back.
         </p>
         <% if (saved) { %><div class="alert ok">Saved. <a href="/#skills" target="_blank" rel="noopener">View site ↗</a></div><% } %>
         <% if (err === 'nofile') { %><div class="alert error">Nothing was added — choose PNG, JPG or WebP images.</div><% } %>
+        <% if (err === 'slit') { %><div class="alert error">Slit width has to be a number between 0.5 and 50 percent.</div><% } %>
 
-        <% if (frames.length === 1) { %>
-          <div class="alert">One frame on its own does not play. Add at least one more, or remove it to go back to the single picture.</div>
+        <% if (slot.baseRequired && frames.length && !base) { %>
+          <div class="alert">These <%= nouns %> are cut into a background picture, and there isn't one yet — until you
+          set one below, the section carries on showing what it showed before.</div>
+        <% } %>
+
+        <% if (frames.length === 1 && slot.minimum > 1) { %>
+          <div class="alert">One <%= noun %> on its own does not play. Add at least one more, or remove it to go back to the single picture.</div>
         <% } %>
 
         <% if (frames.length) { %>
-        <p class="muted"><strong><%= frames.length %></strong> frame<%= frames.length === 1 ? '' : 's' %> — they play in the order shown.</p>
+        <p class="muted"><strong><%= frames.length %></strong> <%= frames.length === 1 ? noun : nouns %> — they are used in the order shown.</p>
         <ul class="frame-grid">
             <% frames.forEach(function (f, i) { %>
             <li class="frame-card">
@@ -54,8 +63,8 @@
                         <button class="btn-link btn-sm" type="submit" title="Move later" <%= i === frames.length - 1 ? 'disabled' : '' %>>→</button>
                     </form>
                     <span class="spacer"></span>
-                    <form method="post" action="/admin/skill-frames/<%= slug %>/<%= f.id %>/delete" class="inline" onsubmit="return confirm('Remove frame <%= i + 1 %>?');">
-                        <button class="btn-link btn-sm danger" type="submit" title="Remove this frame">Delete</button>
+                    <form method="post" action="/admin/skill-frames/<%= slug %>/<%= f.id %>/delete" class="inline" onsubmit="return confirm('Remove <%= noun %> <%= i + 1 %>?');">
+                        <button class="btn-link btn-sm danger" type="submit" title="Remove this <%= noun %>">Delete</button>
                     </form>
                 </div>
             </li>
@@ -64,68 +73,93 @@
         <% } else { %>
         <div class="card-inset fallback-note">
             <% if (fallback) { %><img src="<%= fallback %>" alt=""><% } %>
-            <p class="muted" style="margin:0;">No frames yet, so the section shows this single picture. It stays the fallback: add frames below and they take over, remove them all and it comes back. Change the picture itself under <a href="/admin/images/skills">Skills images</a>.</p>
+            <p class="muted" style="margin:0;">No <%= nouns %> yet, so the section shows this single picture. It stays the fallback: add <%= nouns %> below and they take over, remove them all and it comes back. Change the picture itself under <a href="/admin/images/skills">Skills images</a>.</p>
         </div>
         <% } %>
 
         <% if (slot.baseKey) { %>
         <div class="card-inset">
-            <h3>Background picture <span class="muted" style="font-weight:400;">— optional</span></h3>
+            <h3>Background picture <span class="muted" style="font-weight:400;">— <%= slot.baseRequired ? 'required' : 'optional' %></span></h3>
+            <p class="muted" style="margin-top:0;">
+                <% if (slot.baseRequired) { %>
+                    The slits are cut into this picture: every layer is drawn over it and shows only through its own
+                    slit, so without one there is nothing for them to cut into and the section carries on as before.
+                    It and the layers are all served at full size, which is what keeps a slit as sharp as the picture
+                    around it.
+                <% } else { %>
+                    Optional. Give the sequence a still to play on and each frame only has to carry what actually
+                    changes — transparent everywhere else, which is far lighter than a folder of complete pictures.
+                    The background is served at full size and the frames over it at up to 2000px, so the detail comes
+                    from the one picture that is downloaded once rather than from every frame.
+                <% } %>
+                Both this page and the other one for this picture set the same background, so it only has to be
+                uploaded once.
+            </p>
             <% if (base) { %>
             <div class="fallback-note">
                 <img src="<%= base %>" alt="">
-                <div>
-                    <p class="muted" style="margin:0 0 8px;">
-                        The frames are played on top of this picture, so each one only has to carry what actually
-                        changes and can be transparent everywhere else. This background is served at full size; the
-                        frames over it stop at 2000px, which is what makes a long sequence affordable.
-                    </p>
-                    <form method="post" action="/admin/skill-frames/<%= slug %>/base/delete" class="inline" onsubmit="return confirm('Remove the background picture? The frames then have to carry the whole picture themselves.');">
-                        <button class="btn-link danger" type="submit">Remove background</button>
-                    </form>
-                </div>
+                <form method="post" action="/admin/skill-frames/<%= slug %>/base/delete" class="inline" onsubmit="return confirm('Remove the background picture? Everything built on it goes back to the single picture.');">
+                    <button class="btn-link danger" type="submit">Remove background</button>
+                </form>
             </div>
-            <% } else { %>
-            <p class="muted" style="margin-top:0;">
-                Optional. Give the sequence a still to play on and each frame only has to carry what actually changes —
-                transparent everywhere else, which is far lighter than a folder of complete pictures. The background is
-                served at full size and the frames over it at up to 2000px, so the detail comes from the one picture
-                that is downloaded once rather than from every frame.
-            </p>
             <% } %>
             <form method="post" action="/admin/skill-frames/<%= slug %>/base" enctype="multipart/form-data" style="margin-top:10px;">
                 <label><%= base ? 'Replace background' : 'Background picture' %>
                     <input type="file" name="base" accept="image/*" required>
                 </label>
                 <p class="muted" style="margin-top:6px;">
-                    Give it the same shape as the frames — they are stretched onto it, so a background of a different
-                    proportion puts everything out of register. With no background here the frames carry the whole
-                    picture themselves, exactly as they do today.
+                    Give it the same shape as the <%= nouns %> — they are stretched onto it, so anything of a different
+                    proportion puts everything out of register.
                 </p>
                 <button class="btn" type="submit"><%= base ? 'Replace background' : 'Set background' %></button>
             </form>
         </div>
         <% } %>
 
+        <% if (slot.slitKey) { %>
         <div class="card-inset">
-            <h3><%= frames.length ? 'Add more frames' : 'Add frames' %></h3>
+            <h3>Slit width</h3>
+            <form method="post" action="/admin/skill-frames/<%= slug %>/slit">
+                <label>Percent of the picture's width
+                    <input type="number" name="slit" value="<%= slit %>" min="0.5" max="50" step="0.1" required style="max-width:120px;">
+                </label>
+                <p class="muted" style="margin-top:6px;">
+                    One slit, as a share of the picture rather than in pixels, so it is the same slice of it on every
+                    screen. <strong>6.5</strong> is a 250px slit in a 3840px render. The band is this times however many
+                    layers there are — <%= frames.length || 'no' %> at the moment<% if (frames.length) { %>, so
+                    <strong><%= (Number(slit) * frames.length).toFixed(1) %>%</strong> of the picture is slits<% } %>.
+                </p>
+                <button class="btn" type="submit">Save slit width</button>
+            </form>
+        </div>
+        <% } %>
+
+        <div class="card-inset">
+            <h3><%= frames.length ? 'Add more ' + nouns : 'Add ' + nouns %></h3>
             <form method="post" action="/admin/skill-frames/<%= slug %>" enctype="multipart/form-data">
-                <label>Frames
+                <label><%= nouns.charAt(0).toUpperCase() + nouns.slice(1) %>
                     <input type="file" name="frames" accept="image/*" multiple required>
                 </label>
                 <p class="muted" style="margin-top:6px;">
-                    Choose the whole sequence at once — they are sorted by filename, so <code>frame_02</code> lands before
-                    <code>frame_10</code>. New frames are added after the ones already here. Every frame is downloaded when a
-                    visitor reaches the section, so keep them a sensible size: they are served at up to 2000px wide, and
-                    sixteen large stills add up.
+                    Choose them all at once — they are sorted by filename, so <code><%= noun %>_02</code> lands before
+                    <code><%= noun %>_10</code>. New ones are added after those already here.
+                    <% if (slot.slitKey) { %>
+                        Each layer is the whole picture, the same size and shape as the background, and is served at
+                        full size — a slit shows its layer at the scale of the picture around it, so nothing smaller
+                        would do. They are downloaded when a visitor reaches the section, so a set of six full-size
+                        renders is what it sounds like; keep them as lean as they can be while staying sharp.
+                    <% } else { %>
+                        Every frame is downloaded when a visitor reaches the section, so keep them a sensible size:
+                        they are served at up to 2000px wide, and sixteen large stills add up.
+                    <% } %>
                 </p>
-                <button class="btn" type="submit">Add frames</button>
+                <button class="btn" type="submit">Add <%= nouns %></button>
             </form>
         </div>
 
         <% if (frames.length) { %>
-        <form method="post" action="/admin/skill-frames/<%= slug %>/clear" style="margin-top:18px;" onsubmit="return confirm('Remove all <%= frames.length %> frames? The section goes back to its single picture.');">
-            <button class="btn-link danger" type="submit">Remove all frames</button>
+        <form method="post" action="/admin/skill-frames/<%= slug %>/clear" style="margin-top:18px;" onsubmit="return confirm('Remove all <%= frames.length %> <%= nouns %>? The section goes back to what it shows without them.');">
+            <button class="btn-link danger" type="submit">Remove all <%= nouns %></button>
         </form>
         <% } %>
     </main>

@@ -49,6 +49,7 @@ const SECTIONS = [
   { href: '/admin/images/skills', title: 'Skills images', desc: 'Swap the images shown with your four skill categories.' },
   { href: '/admin/pipeline', title: 'Pipeline software', desc: 'Place software logos along the production-pipeline bar in Skills.' },
   { href: '/admin/skill-frames/texturing', title: 'Texturing frames', desc: 'Give the Texturing & Lighting picture a sequence of frames that plays as the section scrolls past.' },
+  { href: '/admin/skill-frames/texturing-layers', title: 'Texturing layers', desc: 'Cut the Texturing & Lighting picture into a band of slits that travels across it — one slit per layer of the asset.' },
   { href: '/admin/skill-frames/grading', title: 'Grading frames', desc: 'Give the Compositing & Grading picture a sequence of frames, each wiped in from the left as the section comes up.' },
   { href: '/admin/demo', title: 'Demo video', desc: 'Set the YouTube video and shape of the Demo embed.' },
   { href: '/admin/demo-archive', title: 'Demo archive', desc: 'Collect your older demo reels on their own page, linked from the Demo section.' },
@@ -234,8 +235,10 @@ router.post('/pipeline/:id/delete', (req, res) => {
 // Keyed by slot so a second picture can be given frames without new routes. The
 // setting each slot falls back to is what the section shows with fewer than two
 // frames, which is also what it showed before any of this existed.
-// `plays` is how that slot's sequence behaves, since the two are not the same
+// `plays` is how that slot's sequence behaves, since these are not all the same
 // effect and the page that manages them should say which one it is describing.
+// `noun` is what one of them is called there — a frame in a sequence, a layer in
+// a set — and `minimum` how many it takes before the effect runs at all.
 const FRAME_SLOTS = {
   texturing: {
     title: 'Texturing frames',
@@ -244,9 +247,35 @@ const FRAME_SLOTS = {
     // A still the frames play on top of. Only this slot offers one so far; a
     // second slot gets it by naming a setting of its own here.
     baseKey: 'skills_texturing_frames_base',
+    noun: 'frame',
+    minimum: 2,
     plays: 'plays as that part of the Skills section scrolls past — scrolling down runs it forwards, '
       + 'scrolling back up runs it in reverse. The first frame holds as the section arrives and the last '
       + 'one holds as it leaves, so both are properly seen.',
+  },
+  /*
+   * The same picture as the slot above, built the other way round: whole layers
+   * of the asset rather than stills of the whole thing, cut into a travelling
+   * band of slits by the page itself. It is a slot of its own rather than a
+   * setting on that one so that both can be filled at once — layers take over
+   * when they are there, and emptying them puts the sequence back untouched.
+   */
+  'texturing-layers': {
+    title: 'Texturing layers',
+    section: 'Texturing & Lighting',
+    imageKey: 'skills_texturing_img',
+    // The same background the sequence uses: the layers are cut into it, so a
+    // set of layers without one has nothing to be cut into.
+    baseKey: 'skills_texturing_frames_base',
+    baseRequired: true,
+    slitKey: 'skills_texturing_slit_pct',
+    noun: 'layer',
+    minimum: 1,
+    plays: 'is cut into a band of slits that travels across the picture as that part of the Skills section '
+      + 'scrolls past — one slit per layer, in the order below, each showing its own layer and nothing else. '
+      + 'Scrolling down brings the band in from the left and takes it out to the right; scrolling back up '
+      + 'runs it the other way. Nothing about the movement is in the pictures, so the band is as smooth as '
+      + 'the screen can draw it however many layers there are.',
   },
   grading: {
     title: 'Grading frames',
@@ -268,6 +297,7 @@ router.get('/skill-frames/:slot', (req, res) => {
     frames: skillFrames.getFrames(req.params.slot),
     fallback: getSetting(slot.imageKey) || '',
     base: slot.baseKey ? getSetting(slot.baseKey) || '' : '',
+    slit: slot.slitKey ? getSetting(slot.slitKey, '6.5') : '',
     saved: req.query.saved === '1',
     err: req.query.err || '',
   });
@@ -292,6 +322,24 @@ router.post('/skill-frames/:slot/base/delete', (req, res) => {
   const slot = FRAME_SLOTS[req.params.slot];
   if (!slot || !slot.baseKey) return res.redirect('/admin');
   updateSettings({ [slot.baseKey]: '' });
+  res.redirect('/admin/skill-frames/' + req.params.slot + '?saved=1');
+});
+
+/*
+ * How wide one slit is, as a percentage of the picture — a percentage rather
+ * than pixels because the picture is a different number of pixels wide on every
+ * screen, and a slit should be the same slice of it on all of them. Clamped to
+ * something that is still a slit: past a half the band stops reading as a cut
+ * through the picture and becomes the picture, and at nothing it disappears.
+ */
+router.post('/skill-frames/:slot/slit', (req, res) => {
+  const slot = FRAME_SLOTS[req.params.slot];
+  if (!slot || !slot.slitKey) return res.redirect('/admin');
+  const pct = Number(String(req.body.slit || '').replace(',', '.'));
+  if (!isFinite(pct) || pct < 0.5 || pct > 50) {
+    return res.redirect('/admin/skill-frames/' + req.params.slot + '?err=slit');
+  }
+  updateSettings({ [slot.slitKey]: String(pct) });
   res.redirect('/admin/skill-frames/' + req.params.slot + '?saved=1');
 });
 

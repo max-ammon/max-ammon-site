@@ -122,8 +122,36 @@
                     carries only what changes over it — which is what makes a long
                     sequence affordable. Without one the frames carry the whole
                     picture themselves and the first of them is the plate. %>
+                <%# Layers are the other way of building this picture: whole layers
+                    of the asset over the same background, cut into a band of slits
+                    that travels across it. They take precedence when they are
+                    there, and they need the background, since the slits are cut
+                    into it — so emptying either one puts the sequence below back
+                    exactly as it was. Served at the background's own sizes: a slit
+                    shows its layer at the same scale as the picture around it, and
+                    they share a `sizes`, so the browser picks the same width for
+                    all of them and no slit is ever softer than the plate. %>
                 <% var texturingPlate = String(settings.skills_texturing_frames_base || '').trim(); %>
-                <% if (texturingFrames && texturingFrames.length > 1) { %>
+                <% var texturingSlit = Number(settings.skills_texturing_slit_pct || 6.5) || 6.5; %>
+                <% if (texturingPlate && texturingLayers && texturingLayers.length) { %>
+                <span class="texturingimage slit-layers" data-slit-layers data-slit="<%= texturingSlit %>">
+                    <span class="sl-plate">
+                        <img src="<%= imgUrl(texturingPlate, 1600) %>"
+                             srcset="<%= imgSrcset(texturingPlate, [800, 1200, 1600, 2400, 3200]) %>"
+                             sizes="100vw" loading="eager" decoding="async" alt="">
+                    </span>
+                    <% texturingLayers.forEach(function (layer, i) { %>
+                    <%# --i is the slit this layer owns: the script gives the stack
+                        where the band starts and how wide a slit is, and each layer
+                        adds its own index to find its place in it. %>
+                    <span class="sl" style="--i: <%= i %>">
+                        <img src="<%= imgUrl(layer, 1600) %>"
+                             srcset="<%= imgSrcset(layer, [800, 1200, 1600, 2400, 3200]) %>"
+                             sizes="100vw" loading="lazy" decoding="async" alt="">
+                    </span>
+                    <% }); %>
+                </span>
+                <% } else if (texturingFrames && texturingFrames.length > 1) { %>
                 <span class="texturingimage scrub-frames<%= texturingPlate ? ' has-plate' : '' %>" data-scrub-frames>
                     <% if (texturingPlate) { %>
                     <%# In flow, so the stack is its size and every frame is laid over

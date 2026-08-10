@@ -270,6 +270,7 @@ app.get('/', attachSiteContext, (req, res) => {
     // Frames of the Skills pictures that play as the section scrolls past. Only
     // the main page has them, so they are a local here rather than site context.
     texturingFrames: framePaths('texturing'),
+    texturingLayers: framePaths('texturing-layers'),
     gradingFrames: framePaths('grading'),
   });
 });

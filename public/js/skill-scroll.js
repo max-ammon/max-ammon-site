@@ -7,6 +7,7 @@
    *
    *   [data-anim-frames]   the Animation picture, played frame by frame
    *   [data-scrub-frames]  the Texturing picture, a sequence scrubbed by scroll
+   *   [data-slit-layers]   the same picture, cut into slits travelling across it
    *   [data-wipe-frames]   the Grading picture, each frame wiped in from the left
    *   [data-scroll-scale]  the Modeling pair, largest as the section passes
    *   [data-scroll-shrink] the demo's play button, shrinking as you leave it
@@ -36,11 +37,12 @@
    */
   var stacks = Array.prototype.slice.call(document.querySelectorAll('[data-anim-frames]'));
   var scrubs = Array.prototype.slice.call(document.querySelectorAll('[data-scrub-frames]'));
+  var slits = Array.prototype.slice.call(document.querySelectorAll('[data-slit-layers]'));
   var wipes = Array.prototype.slice.call(document.querySelectorAll('[data-wipe-frames]'));
   var scalers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-scale]'));
   var shrinkers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-shrink]'));
   var zoomers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-zoom]'));
-  if (!stacks.length && !scrubs.length && !wipes.length && !scalers.length && !shrinkers.length && !zoomers.length) return;
+  if (!stacks.length && !scrubs.length && !slits.length && !wipes.length && !scalers.length && !shrinkers.length && !zoomers.length) return;
 
   // How far back a frame sits at one and at two frames from the current one.
   var NEAR = 0.45;
@@ -147,6 +149,49 @@
     for (var k = 0; k < frames.length; k++) {
       frames[k].style.opacity = k === cur ? '1' : '0';
     }
+  }
+
+  /*
+   * ---- the Texturing slits -------------------------------------------------
+   *
+   * The same picture as the sequence above, made a different way. Instead of
+   * stills that each hold the whole thing at one moment, the layers of the asset
+   * are given whole — one picture per layer, all the size of the background they
+   * sit on — and a band of slits travels across them: each layer shows through
+   * its own slit and nowhere else, so the band reads as a cut through the render
+   * with a different layer in every strip of it.
+   *
+   * Nothing about the movement is in the pictures, which is the point. Where the
+   * band is, is one number. How wide a slit is, is another. The number of slits
+   * is however many layers were uploaded. A sequence of stills has all three
+   * baked into the files, so it can only step as finely as it has frames — at
+   * sixteen stills across a picture this wide, each step moves the band further
+   * than a slit is wide, and no amount of care in the export makes that smooth.
+   * Here there are no steps at all.
+   *
+   * The whole band is one offset: slit i sits at x + i widths, so the browser is
+   * told two lengths per frame and works out six positions from them. Hard edges
+   * throughout — the mask is a solid block, not a gradient, so a slit is a cut
+   * and neighbouring layers never bleed into one another.
+   */
+  function updateSlits(el) {
+    var n = el.__count;
+    if (!n) return;
+    var w = el.getBoundingClientRect().width;
+    if (!w) return; // the plate has not loaded yet, so there is nothing to cut
+
+    var slit = (w * el.__pct) / 100;
+    var band = slit * n;
+    /*
+     * From the band wholly off the left edge to wholly off the right, so it
+     * arrives and leaves rather than appearing part-way across. The pass holds
+     * at both ends the way the sequences do, which is what keeps the picture
+     * whole for a moment before and after.
+     */
+    var x = -band + passProgress(el) * (w + band);
+
+    el.style.setProperty('--slit-w', slit.toFixed(2) + 'px');
+    el.style.setProperty('--slit-x', x.toFixed(2) + 'px');
   }
 
   /*
@@ -365,12 +410,26 @@
       pending = 0;
       for (var i = 0; i < stacks.length; i++) update(stacks[i]);
       for (var s = 0; s < scrubs.length; s++) updateScrub(scrubs[s]);
+      for (var l = 0; l < slits.length; l++) updateSlits(slits[l]);
       for (var w = 0; w < wipes.length; w++) updateWipe(wipes[w]);
       for (var j = 0; j < scalers.length; j++) updateScale(scalers[j]);
       for (var k = 0; k < shrinkers.length; k++) updateShrink(shrinkers[k]);
       for (var g = 0; g < zoomers.length; g++) updateZoom(zoomers[g]);
     });
   }
+
+  slits.forEach(function (el) {
+    el.__count = el.querySelectorAll('.sl').length;
+    // How wide a slit is, as a percentage of the picture, so it means the same
+    // thing at every screen width. The fallback is only ever reached by markup
+    // written by hand.
+    el.__pct = parseFloat(el.getAttribute('data-slit')) || 6.5;
+    // The band is measured against the stack, and the stack is the plate — so
+    // until the plate has arrived there is no width to cut up.
+    Array.prototype.slice.call(el.querySelectorAll('img')).forEach(function (img) {
+      if (!img.complete) img.addEventListener('load', schedule, { once: true });
+    });
+  });
 
   zoomers.forEach(function (el) {
     // Measured through its parent, and stopped at its own section: what "in

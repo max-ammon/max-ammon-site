@@ -53,6 +53,9 @@ const SETTINGS = {
   // and only used when there are frames: with one set, the frames are painted
   // over it and need only carry what actually changes (see /js/skill-scroll.js).
   skills_texturing_frames_base: '',
+  // How wide one slit of the Texturing layers is, as a percentage of the
+  // picture. 6.5 is a 250px slit in a 3840px render.
+  skills_texturing_slit_pct: '6.5',
   skills_animation_img:  '/assets/images/skills_animation.png',
   // Extra frames for the Animation image. Empty by default, so the section
   // renders exactly the single picture it always has; fill them in and the
