@@ -18,7 +18,7 @@
                 <input type="range" id="splatExposure" min="0.2" max="3" step="0.05" value="<%= splat.exposure || 1 %>" aria-label="Exposure">
             </label>
             <button id="splatColourBtn" type="button" title="White balance and tint — only you see this; changes save automatically">Colour</button>
-            <button id="splatSizeBtn" type="button" title="How large the splats themselves are drawn — only you see this; changes save automatically">Size</button>
+            <button id="splatLookBtn" type="button" title="How large and how opaque the splats themselves are drawn — only you see this; changes save automatically">Splats</button>
             <% if (splat.background_url) { %><button id="splatBackdropBtn" type="button" title="Aim the 360 backdrop — only you see this; it saves automatically">Backdrop</button><% } %>
             <button id="splatSetView" type="button" title="Save the current camera as the view everyone starts at">Set default view</button>
             <button id="splatClearView" type="button" title="Go back to automatic framing"<%= splat.view ? '' : ' hidden' %>>Clear</button>
@@ -62,20 +62,26 @@
             <div class="gm-file">Warmth runs blue &rarr; orange, tint green &rarr; magenta. Brightness stays put either way.</div>
         </div>
 
-        <%# Owner-only splat size: how large the discs the capture is made of are
-            drawn. A multiplier on what was captured, saved per splat — sparse
-            captures close up as it rises, dense ones open into their points as
-            it falls. %>
-        <div class="view-panel" id="splatSizePanel" hidden>
-            <div class="gm-head">Splat size <span class="gm-note">only you see this</span></div>
-            <label class="gm-row">Scale
+        <%# Owner-only look of the splats themselves: how large the discs the
+            capture is made of are drawn, and how opaque. Both are multipliers on
+            what was captured, saved per splat — sparse captures close up as size
+            rises, and opacity is what decides whether the cloud reads as solid
+            or as something you can see into. %>
+        <div class="view-panel" id="splatLookPanel" hidden>
+            <div class="gm-head">Splats <span class="gm-note">only you see this</span></div>
+            <label class="gm-row">Size
                 <input type="range" id="splatSize" min="0.2" max="2" step="0.01" value="<%= splat.splat_scale || 1 %>">
                 <output id="splatSizeOut"></output>
             </label>
+            <label class="gm-row">Opacity
+                <input type="range" id="splatOpacity" min="0.1" max="2" step="0.01" value="<%= splat.splat_alpha || 1 %>">
+                <output id="splatOpacityOut"></output>
+            </label>
             <div class="gm-row gm-actions">
-                <button type="button" id="splatSizeReset">As captured</button>
+                <button type="button" id="splatSizeReset">Size as captured</button>
+                <button type="button" id="splatOpacityReset">Opacity as captured</button>
             </div>
-            <div class="gm-file">1× is the capture untouched. Larger closes the gaps in a sparse capture and costs more to draw; smaller opens it into the points it is made of.</div>
+            <div class="gm-file">1× is the capture untouched. Larger size closes the gaps in a sparse capture and costs more to draw; smaller opens it into the points it is made of. Opacity below 1 makes the whole cloud see-through; above it, faint splats firm up (a splat never goes past solid).</div>
         </div>
 
         <%# Owner-only aim for the 360 backdrop. A panorama faces wherever the
@@ -107,6 +113,7 @@
             data-flip="<%= splat.flip_up ? '1' : '0' %>"
             data-exposure="<%= splat.exposure || 1 %>"
             data-splat-scale="<%= splat.splat_scale || 1 %>"
+            data-splat-alpha="<%= splat.splat_alpha || 1 %>"
             data-bg="<%= splat.background_url %>"
             data-bg-yaw="<%= splat.background_yaw || 0 %>"
             data-wb="<%= splat.white_balance || 0 %>"

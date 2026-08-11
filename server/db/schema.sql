@@ -244,6 +244,7 @@ CREATE TABLE IF NOT EXISTS splats (
   flip_up      INTEGER NOT NULL DEFAULT 0,    -- 1 = flip the up axis (fixes upside-down captures)
   exposure     REAL NOT NULL DEFAULT 1,        -- viewer brightness multiplier (owner-set)
   splat_scale  REAL NOT NULL DEFAULT 1,        -- how large each splat is drawn (owner-set; 1 = as captured)
+  splat_alpha  REAL NOT NULL DEFAULT 1,        -- how opaque each splat is drawn (owner-set; 1 = as captured)
   white_balance REAL NOT NULL DEFAULT 0,      -- -1 cool .. 0 neutral .. +1 warm
   tint          REAL NOT NULL DEFAULT 0,      -- -1 green .. 0 neutral .. +1 magenta
   background_path TEXT NOT NULL DEFAULT '',   -- equirectangular 360 image behind the splat ('' = none)

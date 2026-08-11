@@ -31,6 +31,7 @@ const delSplat = db.prepare('DELETE FROM splats WHERE id = ?');
 const setSort = db.prepare('UPDATE splats SET sort = ? WHERE id = ?');
 const setExp = db.prepare('UPDATE splats SET exposure = ? WHERE id = ?');
 const setScaleStmt = db.prepare('UPDATE splats SET splat_scale = ? WHERE id = ?');
+const setAlphaStmt = db.prepare('UPDATE splats SET splat_alpha = ? WHERE id = ?');
 const setView = db.prepare('UPDATE splats SET default_view = ? WHERE id = ?');
 const setGradeStmt = db.prepare('UPDATE splats SET white_balance = ?, tint = ? WHERE id = ?');
 const setYawStmt = db.prepare('UPDATE splats SET background_yaw = ? WHERE id = ?');
@@ -134,6 +135,24 @@ function setSplatScale(id, value) {
   if (!isFinite(n)) n = 1;
   n = Math.min(2, Math.max(0.2, Math.round(n * 100) / 100));
   setScaleStmt.run(n, Number(id));
+  return n;
+}
+
+/*
+ * How opaque each splat is drawn, on the same terms: a multiplier on what was
+ * captured, 1 being the capture untouched. Below it the whole cloud turns
+ * see-through; above it the faint splats firm up, though no single one is ever
+ * drawn past solid — the viewer clamps that, or the blend would accumulate past
+ * what it expects.
+ *
+ * The floor is not 0: a splat cloud at no opacity is an empty screen, and an
+ * empty screen is indistinguishable from a viewer that failed to load.
+ */
+function setSplatAlpha(id, value) {
+  let n = parseFloat(value);
+  if (!isFinite(n)) n = 1;
+  n = Math.min(2, Math.max(0.1, Math.round(n * 100) / 100));
+  setAlphaStmt.run(n, Number(id));
   return n;
 }
 
@@ -300,6 +319,7 @@ module.exports = {
   moveSplat,
   setExposure,
   setSplatScale,
+  setSplatAlpha,
   setGrade,
   setBackdropYaw,
   setDefaultView,

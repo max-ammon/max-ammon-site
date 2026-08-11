@@ -66,6 +66,7 @@ addColumnIfMissing('splats', 'background_yaw', 'REAL NOT NULL DEFAULT 0');
 // gallery project it belongs to, so the circle closes in both directions.
 addColumnIfMissing('splats', 'link_project_id', 'INTEGER');
 addColumnIfMissing('splats', 'splat_scale', 'REAL NOT NULL DEFAULT 1');
+addColumnIfMissing('splats', 'splat_alpha', 'REAL NOT NULL DEFAULT 1');
 addColumnIfMissing('models', 'link_project_id', 'INTEGER');
 addColumnIfMissing('models', 'smooth_normals', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('models', 'metalness', 'REAL');

@@ -17,6 +17,7 @@
   var FLIP_UP = SELF.getAttribute('data-flip') === '1';
   var EXPOSURE = parseFloat(SELF.getAttribute('data-exposure')) || 1;
   var SPLAT_SCALE = parseFloat(SELF.getAttribute('data-splat-scale')) || 1; // size of the discs themselves
+  var SPLAT_ALPHA = parseFloat(SELF.getAttribute('data-splat-alpha')) || 1;  // and how opaque they are
   var SPLAT_ID = SELF.getAttribute('data-id') || '';
   var BG_SRC = SELF.getAttribute('data-bg') || '';           // equirectangular 360 backdrop
   var BG_YAW = parseFloat(SELF.getAttribute('data-bg-yaw')) || 0; // whole turns
@@ -116,12 +117,20 @@
   /*
    * ---- shaders (from antimatter15/splat) ------------------------------------
    *
-   * One addition to the vertex shader: splatScale, which multiplies the two axes
-   * of the screen-space ellipse a splat is drawn as. The falloff in the fragment
+   * Two additions to the vertex shader. splatScale multiplies the two axes of
+   * the screen-space ellipse a splat is drawn as: the falloff in the fragment
    * shader is in the quad's own space, so scaling the axes scales the whole
    * Gaussian rather than cropping it — a splat drawn larger is the same splat,
    * spread wider. It goes inside the 1024 clamp so that guard stays an absolute
    * cap on what one splat may cover, whatever the multiplier says.
+   *
+   * splatAlpha multiplies how opaque each splat is. It belongs here rather than
+   * in the fragment shader because the fragment's B is this alpha times the
+   * falloff, and the colour it writes is premultiplied by B — so scaling the
+   * alpha once, up front, scales what a splat contributes and what it hides
+   * behind it by the same amount, which is what "more transparent" has to mean.
+   * Clamped, so a multiplier above 1 can make a faint splat solid but never
+   * accumulate past what the blend expects.
    */
   var vsSource =
     '#version 300 es\n' +
@@ -132,6 +141,7 @@
     'uniform vec2 focal;\n' +
     'uniform vec2 viewport;\n' +
     'uniform float splatScale;\n' +
+    'uniform float splatAlpha;\n' +
     'in vec2 position;\n' +
     'in int index;\n' +
     'out vec4 vColor;\n' +
@@ -163,6 +173,7 @@
     '    vec2 majorAxis = min(sqrt(2.0 * lambda1) * splatScale, 1024.0) * diagonalVector;\n' +
     '    vec2 minorAxis = min(sqrt(2.0 * lambda2) * splatScale, 1024.0) * vec2(diagonalVector.y, -diagonalVector.x);\n' +
     '    vColor = clamp(pos2d.z/pos2d.w+1.0, 0.0, 1.0) * vec4((cov.w) & 0xffu, (cov.w >> 8) & 0xffu, (cov.w >> 16) & 0xffu, (cov.w >> 24) & 0xffu) / 255.0;\n' +
+    '    vColor.a = clamp(vColor.a * splatAlpha, 0.0, 1.0);\n' +
     '    vPosition = position;\n' +
     '    vec2 vCenter = vec2(pos2d) / pos2d.w;\n' +
     '    gl_Position = vec4(vCenter + position.x * majorAxis / viewport + position.y * minorAxis / viewport, 0.0, 1.0);\n' +
@@ -527,11 +538,17 @@
   var u_view = gl.getUniformLocation(program, 'view');
   var u_exposure = gl.getUniformLocation(program, 'exposure');
   var u_splatScale = gl.getUniformLocation(program, 'splatScale');
+  var u_splatAlpha = gl.getUniformLocation(program, 'splatAlpha');
   // In the HDR path exposure is applied by the tone-mapping pass each frame.
   if (!HDR_OK) gl.uniform1f(u_exposure, EXPOSURE);
-  // The splat size is geometry rather than colour, so it belongs to this program
-  // in both paths and is set once until the owner changes it.
+  /*
+   * How large the splats are and how opaque they are both describe the splats
+   * themselves rather than the picture made of them, so unlike exposure they
+   * belong to this program in both paths, and are set once until the owner
+   * changes them.
+   */
   gl.uniform1f(u_splatScale, SPLAT_SCALE);
+  gl.uniform1f(u_splatAlpha, SPLAT_ALPHA);
   applyGrade(); // the fallback shader needs a gain before the first draw
   initBackdrop();
 
@@ -1213,12 +1230,6 @@
   }
 
   /*
-   * Owner-only splat size: how large the discs the capture is made of are drawn.
-   * Same live-then-save shape as the sliders above — the uniform is set as the
-   * slider moves and the value is written back once it settles, so what is being
-   * judged on screen is exactly what every visitor will get.
-   */
-  /*
    * The owner panels all sit in the same corner, so only one can be open at a
    * time. Each registers here and opening one closes the rest — which is the
    * same rule as before, except it now holds in every direction rather than
@@ -1239,37 +1250,52 @@
     });
   }
 
-  var scaleEl = document.getElementById('splatSize');
-  registerPanel(document.getElementById('splatSizeBtn'), document.getElementById('splatSizePanel'));
-  if (scaleEl) {
-    var scaleTimer = null;
-    var scaleOut = document.getElementById('splatSizeOut');
-    var readScale = function () {
-      SPLAT_SCALE = parseFloat(scaleEl.value) || 1;
-      if (scaleOut) scaleOut.textContent = SPLAT_SCALE.toFixed(2) + '×';
+  /*
+   * Owner-only splat look: how large the discs a capture is made of are drawn,
+   * and how opaque they are. One panel, because they describe the same thing —
+   * but a slider each and a save each, because they do not change together.
+   *
+   * Both are the live-then-save shape of the sliders above: the uniform is set
+   * as the slider moves and the value written back once it settles, so what is
+   * being judged on screen is exactly what every visitor will get.
+   */
+  registerPanel(document.getElementById('splatLookBtn'), document.getElementById('splatLookPanel'));
+
+  function wireLookSlider(id, endpoint, field, uniform, onValue) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var out = document.getElementById(id + 'Out');
+    var resetEl = document.getElementById(id + 'Reset');
+    var timer = null;
+    var read = function () {
+      var v = parseFloat(el.value) || 1;
+      onValue(v);
+      if (out) out.textContent = v.toFixed(2) + '×';
       gl.useProgram(program);
-      gl.uniform1f(u_splatScale, SPLAT_SCALE);
+      gl.uniform1f(uniform, v);
       invalidate();
-      if (scaleTimer) clearTimeout(scaleTimer);
-      scaleTimer = setTimeout(function () {
-        fetch('/admin/splats/' + encodeURIComponent(SPLAT_ID) + '/splat-scale', {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(function () {
+        fetch('/admin/splats/' + encodeURIComponent(SPLAT_ID) + '/' + endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: 'splat_scale=' + encodeURIComponent(SPLAT_SCALE),
+          body: field + '=' + encodeURIComponent(v),
           credentials: 'same-origin',
         }).catch(function () {});
       }, 500);
     };
-    if (scaleOut) scaleOut.textContent = SPLAT_SCALE.toFixed(2) + '×';
-    scaleEl.addEventListener('input', readScale);
-    var scaleResetEl = document.getElementById('splatSizeReset');
-    if (scaleResetEl) {
-      scaleResetEl.addEventListener('click', function () {
-        scaleEl.value = 1;
-        readScale();
+    if (out) out.textContent = (parseFloat(el.value) || 1).toFixed(2) + '×';
+    el.addEventListener('input', read);
+    if (resetEl) {
+      resetEl.addEventListener('click', function () {
+        el.value = 1;
+        read();
       });
     }
   }
+
+  wireLookSlider('splatSize', 'splat-scale', 'splat_scale', u_splatScale, function (v) { SPLAT_SCALE = v; });
+  wireLookSlider('splatOpacity', 'splat-alpha', 'splat_alpha', u_splatAlpha, function (v) { SPLAT_ALPHA = v; });
 
   /*
    * Owner-only white balance + tint. Same live-then-save shape as the exposure
