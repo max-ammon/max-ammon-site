@@ -16,6 +16,7 @@
   var FORMAT = (SELF.getAttribute('data-format') || '').toLowerCase();
   var FLIP_UP = SELF.getAttribute('data-flip') === '1';
   var EXPOSURE = parseFloat(SELF.getAttribute('data-exposure')) || 1;
+  var SPLAT_SCALE = parseFloat(SELF.getAttribute('data-splat-scale')) || 1; // size of the discs themselves
   var SPLAT_ID = SELF.getAttribute('data-id') || '';
   var BG_SRC = SELF.getAttribute('data-bg') || '';           // equirectangular 360 backdrop
   var BG_YAW = parseFloat(SELF.getAttribute('data-bg-yaw')) || 0; // whole turns
@@ -112,7 +113,16 @@
     ];
   }
 
-  // ---- shaders (verbatim from antimatter15/splat) ---------------------------
+  /*
+   * ---- shaders (from antimatter15/splat) ------------------------------------
+   *
+   * One addition to the vertex shader: splatScale, which multiplies the two axes
+   * of the screen-space ellipse a splat is drawn as. The falloff in the fragment
+   * shader is in the quad's own space, so scaling the axes scales the whole
+   * Gaussian rather than cropping it — a splat drawn larger is the same splat,
+   * spread wider. It goes inside the 1024 clamp so that guard stays an absolute
+   * cap on what one splat may cover, whatever the multiplier says.
+   */
   var vsSource =
     '#version 300 es\n' +
     'precision highp float;\n' +
@@ -121,6 +131,7 @@
     'uniform mat4 projection, view;\n' +
     'uniform vec2 focal;\n' +
     'uniform vec2 viewport;\n' +
+    'uniform float splatScale;\n' +
     'in vec2 position;\n' +
     'in int index;\n' +
     'out vec4 vColor;\n' +
@@ -149,8 +160,8 @@
     '    float lambda1 = mid + radius, lambda2 = mid - radius;\n' +
     '    if(lambda2 < 0.0) return;\n' +
     '    vec2 diagonalVector = normalize(vec2(cov2d[0][1], lambda1 - cov2d[0][0]));\n' +
-    '    vec2 majorAxis = min(sqrt(2.0 * lambda1), 1024.0) * diagonalVector;\n' +
-    '    vec2 minorAxis = min(sqrt(2.0 * lambda2), 1024.0) * vec2(diagonalVector.y, -diagonalVector.x);\n' +
+    '    vec2 majorAxis = min(sqrt(2.0 * lambda1) * splatScale, 1024.0) * diagonalVector;\n' +
+    '    vec2 minorAxis = min(sqrt(2.0 * lambda2) * splatScale, 1024.0) * vec2(diagonalVector.y, -diagonalVector.x);\n' +
     '    vColor = clamp(pos2d.z/pos2d.w+1.0, 0.0, 1.0) * vec4((cov.w) & 0xffu, (cov.w >> 8) & 0xffu, (cov.w >> 16) & 0xffu, (cov.w >> 24) & 0xffu) / 255.0;\n' +
     '    vPosition = position;\n' +
     '    vec2 vCenter = vec2(pos2d) / pos2d.w;\n' +
@@ -515,8 +526,12 @@
   var u_focal = gl.getUniformLocation(program, 'focal');
   var u_view = gl.getUniformLocation(program, 'view');
   var u_exposure = gl.getUniformLocation(program, 'exposure');
+  var u_splatScale = gl.getUniformLocation(program, 'splatScale');
   // In the HDR path exposure is applied by the tone-mapping pass each frame.
   if (!HDR_OK) gl.uniform1f(u_exposure, EXPOSURE);
+  // The splat size is geometry rather than colour, so it belongs to this program
+  // in both paths and is set once until the owner changes it.
+  gl.uniform1f(u_splatScale, SPLAT_SCALE);
   applyGrade(); // the fallback shader needs a gain before the first draw
   initBackdrop();
 
@@ -1198,20 +1213,72 @@
   }
 
   /*
+   * Owner-only splat size: how large the discs the capture is made of are drawn.
+   * Same live-then-save shape as the sliders above — the uniform is set as the
+   * slider moves and the value is written back once it settles, so what is being
+   * judged on screen is exactly what every visitor will get.
+   */
+  /*
+   * The owner panels all sit in the same corner, so only one can be open at a
+   * time. Each registers here and opening one closes the rest — which is the
+   * same rule as before, except it now holds in every direction rather than
+   * only from the panel that happened to be written last.
+   */
+  var panels = [];
+  function registerPanel(btn, panel) {
+    if (!btn || !panel) return;
+    panels.push({ btn: btn, panel: panel });
+    btn.addEventListener('click', function () {
+      var opening = panel.hidden;
+      panels.forEach(function (p) {
+        p.panel.hidden = true;
+        p.btn.classList.remove('is-on');
+      });
+      panel.hidden = !opening;
+      btn.classList.toggle('is-on', opening);
+    });
+  }
+
+  var scaleEl = document.getElementById('splatSize');
+  registerPanel(document.getElementById('splatSizeBtn'), document.getElementById('splatSizePanel'));
+  if (scaleEl) {
+    var scaleTimer = null;
+    var scaleOut = document.getElementById('splatSizeOut');
+    var readScale = function () {
+      SPLAT_SCALE = parseFloat(scaleEl.value) || 1;
+      if (scaleOut) scaleOut.textContent = SPLAT_SCALE.toFixed(2) + '×';
+      gl.useProgram(program);
+      gl.uniform1f(u_splatScale, SPLAT_SCALE);
+      invalidate();
+      if (scaleTimer) clearTimeout(scaleTimer);
+      scaleTimer = setTimeout(function () {
+        fetch('/admin/splats/' + encodeURIComponent(SPLAT_ID) + '/splat-scale', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'splat_scale=' + encodeURIComponent(SPLAT_SCALE),
+          credentials: 'same-origin',
+        }).catch(function () {});
+      }, 500);
+    };
+    if (scaleOut) scaleOut.textContent = SPLAT_SCALE.toFixed(2) + '×';
+    scaleEl.addEventListener('input', readScale);
+    var scaleResetEl = document.getElementById('splatSizeReset');
+    if (scaleResetEl) {
+      scaleResetEl.addEventListener('click', function () {
+        scaleEl.value = 1;
+        readScale();
+      });
+    }
+  }
+
+  /*
    * Owner-only white balance + tint. Same live-then-save shape as the exposure
    * slider: the gain is recomputed on every input event (free — the HDR pass
    * reads it per frame) and the pair is written back once the sliders settle.
    */
   var wbEl = document.getElementById('splatWb');
   var tintEl = document.getElementById('splatTint');
-  var colourBtn = document.getElementById('splatColourBtn');
-  var colourPanel = document.getElementById('splatColourPanel');
-  if (colourBtn && colourPanel) {
-    colourBtn.addEventListener('click', function () {
-      colourPanel.hidden = !colourPanel.hidden;
-      colourBtn.classList.toggle('is-on', !colourPanel.hidden);
-    });
-  }
+  registerPanel(document.getElementById('splatColourBtn'), document.getElementById('splatColourPanel'));
   if (wbEl && tintEl) {
     var gradeTimer = null;
     var wbOut = document.getElementById('splatWbOut');
@@ -1255,18 +1322,7 @@
    * value is written back once the slider settles.
    */
   var bgYawEl = document.getElementById('splatBgYaw');
-  var backdropBtn = document.getElementById('splatBackdropBtn');
-  var backdropPanel = document.getElementById('splatBackdropPanel');
-  if (backdropBtn && backdropPanel) {
-    backdropBtn.addEventListener('click', function () {
-      backdropPanel.hidden = !backdropPanel.hidden;
-      backdropBtn.classList.toggle('is-on', !backdropPanel.hidden);
-      if (!backdropPanel.hidden && colourPanel && !colourPanel.hidden) {
-        colourPanel.hidden = true; // one panel at a time
-        if (colourBtn) colourBtn.classList.remove('is-on');
-      }
-    });
-  }
+  registerPanel(document.getElementById('splatBackdropBtn'), document.getElementById('splatBackdropPanel'));
   if (bgYawEl) {
     var yawTimer = null;
     var yawOut = document.getElementById('splatBgYawOut');

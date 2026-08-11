@@ -30,6 +30,7 @@ const updSplat = db.prepare(`UPDATE splats SET
 const delSplat = db.prepare('DELETE FROM splats WHERE id = ?');
 const setSort = db.prepare('UPDATE splats SET sort = ? WHERE id = ?');
 const setExp = db.prepare('UPDATE splats SET exposure = ? WHERE id = ?');
+const setScaleStmt = db.prepare('UPDATE splats SET splat_scale = ? WHERE id = ?');
 const setView = db.prepare('UPDATE splats SET default_view = ? WHERE id = ?');
 const setGradeStmt = db.prepare('UPDATE splats SET white_balance = ?, tint = ? WHERE id = ?');
 const setYawStmt = db.prepare('UPDATE splats SET background_yaw = ? WHERE id = ?');
@@ -114,6 +115,25 @@ function setExposure(id, value) {
   if (!isFinite(n)) n = 1;
   n = Math.min(3, Math.max(0.2, n));
   setExp.run(n, Number(id));
+  return n;
+}
+
+/*
+ * How large each splat is drawn, as a multiplier on the size it was captured at.
+ * 1 is the capture untouched; below it the discs shrink and the cloud opens up
+ * into the points it is made of; above it they spread and close the gaps a
+ * sparse capture leaves. It is a look, not a fix, and it belongs to the capture
+ * rather than to the visitor, so it is stored per splat like the exposure.
+ *
+ * The range is deliberately narrow at the top: the cost of drawing a splat goes
+ * with the pixels it covers, so a large multiplier is a real bill on a weak
+ * device, and past about twice size the capture stops being legible anyway.
+ */
+function setSplatScale(id, value) {
+  let n = parseFloat(value);
+  if (!isFinite(n)) n = 1;
+  n = Math.min(2, Math.max(0.2, Math.round(n * 100) / 100));
+  setScaleStmt.run(n, Number(id));
   return n;
 }
 
@@ -279,6 +299,7 @@ module.exports = {
   deleteSplat,
   moveSplat,
   setExposure,
+  setSplatScale,
   setGrade,
   setBackdropYaw,
   setDefaultView,

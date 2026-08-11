@@ -927,6 +927,12 @@ router.post('/splats/:id/exposure', (req, res) => {
   res.json({ ok: true, exposure });
 });
 
+// Owner-only splat size, saved live from the viewer's Size panel: how large the
+// discs a capture is made of are drawn, per splat.
+router.post('/splats/:id/splat-scale', (req, res) => {
+  res.json({ ok: true, splat_scale: splatsSvc.setSplatScale(Number(req.params.id), req.body.splat_scale) });
+});
+
 // Owner-only white balance / tint, saved live from the viewer's Colour panel.
 router.post('/splats/:id/grade', (req, res) => {
   res.json({ ok: true, ...splatsSvc.setGrade(Number(req.params.id), req.body.white_balance, req.body.tint) });
