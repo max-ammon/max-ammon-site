@@ -247,6 +247,10 @@ CREATE TABLE IF NOT EXISTS splats (
   splat_alpha  REAL NOT NULL DEFAULT 1,        -- how opaque each splat is drawn (owner-set; 1 = as captured)
   white_balance REAL NOT NULL DEFAULT 0,      -- -1 cool .. 0 neutral .. +1 warm
   tint          REAL NOT NULL DEFAULT 0,      -- -1 green .. 0 neutral .. +1 magenta
+  grade_shadows REAL NOT NULL DEFAULT 0,      -- -1 .. +1 lift/lower the dark end
+  grade_mids    REAL NOT NULL DEFAULT 0,      -- -1 .. +1 the middle
+  grade_highs   REAL NOT NULL DEFAULT 0,      -- -1 .. +1 the bright end
+  grade_gamma   REAL NOT NULL DEFAULT 1,      -- 0.5 .. 2, 1 = untouched
   background_path TEXT NOT NULL DEFAULT '',   -- equirectangular 360 image behind the splat ('' = none)
   background_yaw  REAL NOT NULL DEFAULT 0,    -- 0..1 turn of that panorama, to aim it
   default_view TEXT NOT NULL DEFAULT '',      -- owner-set starting camera (JSON: target/dist/yaw/pitch)

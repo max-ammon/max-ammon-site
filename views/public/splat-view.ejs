@@ -56,10 +56,31 @@
                 <input type="range" id="splatTint" min="-1" max="1" step="0.01" value="<%= splat.tint || 0 %>">
                 <output id="splatTintOut"></output>
             </label>
+            <%# The tonal half: the three bands and gamma, on top of the exposure
+                in the bar. They are applied where the finished picture exists —
+                the tone-mapping pass — so they need a GPU that can render to a
+                float buffer; the note below appears where one is missing. %>
+            <label class="gm-row">Shadows
+                <input type="range" id="splatShadows" min="-1" max="1" step="0.01" value="<%= splat.grade_shadows || 0 %>">
+                <output id="splatShadowsOut"></output>
+            </label>
+            <label class="gm-row">Mids
+                <input type="range" id="splatMids" min="-1" max="1" step="0.01" value="<%= splat.grade_mids || 0 %>">
+                <output id="splatMidsOut"></output>
+            </label>
+            <label class="gm-row">Highlights
+                <input type="range" id="splatHighs" min="-1" max="1" step="0.01" value="<%= splat.grade_highs || 0 %>">
+                <output id="splatHighsOut"></output>
+            </label>
+            <label class="gm-row">Gamma
+                <input type="range" id="splatGamma" min="0.5" max="2" step="0.01" value="<%= splat.grade_gamma || 1 %>">
+                <output id="splatGammaOut"></output>
+            </label>
             <div class="gm-row gm-actions">
                 <button type="button" id="splatGradeReset">Neutral</button>
             </div>
-            <div class="gm-file">Warmth runs blue &rarr; orange, tint green &rarr; magenta. Brightness stays put either way.</div>
+            <div class="gm-file">Warmth runs blue &rarr; orange, tint green &rarr; magenta; brightness stays put either way. The three bands lift or lower the dark, middle and bright parts of what is on screen, and gamma bends everything between black and white.</div>
+            <div class="gm-file" id="splatToneNote" hidden>This GPU can't render to a float buffer, so the viewer composites straight to the screen — warmth and tint still apply, the four tonal sliders don't.</div>
         </div>
 
         <%# Owner-only look of the splats themselves: how large the discs the
@@ -118,6 +139,10 @@
             data-bg-yaw="<%= splat.background_yaw || 0 %>"
             data-wb="<%= splat.white_balance || 0 %>"
             data-tint="<%= splat.tint || 0 %>"
+            data-shadows="<%= splat.grade_shadows || 0 %>"
+            data-mids="<%= splat.grade_mids || 0 %>"
+            data-highs="<%= splat.grade_highs || 0 %>"
+            data-gamma="<%= splat.grade_gamma || 1 %>"
             data-view="<%= splat.view ? JSON.stringify(splat.view) : '' %>"
             data-id="<%= splat.id %>"></script>
 </body>

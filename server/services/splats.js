@@ -33,7 +33,10 @@ const setExp = db.prepare('UPDATE splats SET exposure = ? WHERE id = ?');
 const setScaleStmt = db.prepare('UPDATE splats SET splat_scale = ? WHERE id = ?');
 const setAlphaStmt = db.prepare('UPDATE splats SET splat_alpha = ? WHERE id = ?');
 const setView = db.prepare('UPDATE splats SET default_view = ? WHERE id = ?');
-const setGradeStmt = db.prepare('UPDATE splats SET white_balance = ?, tint = ? WHERE id = ?');
+const setGradeStmt = db.prepare(`UPDATE splats SET
+  white_balance = @white_balance, tint = @tint,
+  grade_shadows = @shadows, grade_mids = @mids, grade_highs = @highs, grade_gamma = @gamma
+  WHERE id = @id`);
 const setYawStmt = db.prepare('UPDATE splats SET background_yaw = ? WHERE id = ?');
 
 /*
@@ -51,21 +54,41 @@ function setBackdropYaw(id, value) {
 }
 
 /*
- * Owner white balance / tint, applied in linear light by the viewer's
- * tone-mapping pass. Both run -1 .. +1 with 0 neutral: white balance from cool
- * (blue) to warm (orange), tint from green to magenta — the usual photographic
- * pair. Stored per splat so a capture with an off colour cast can be corrected
- * once for every visitor.
+ * The owner's grade for one capture, applied in linear light by the viewer's
+ * tone-mapping pass. Six values, saved together because they are one grade:
+ *
+ *   white balance  -1 cool .. +1 warm      the usual photographic pair, for a
+ *   tint           -1 green .. +1 magenta  capture with a cast from its lighting
+ *   shadows        -1 .. +1                the dark end,
+ *   mids           -1 .. +1                the middle,
+ *   highs          -1 .. +1                and the bright end
+ *   gamma          0.5 .. 2                everything, bent
+ *
+ * All the -1..+1 pairs are 0 at neutral and gamma is 1, so a grade that has
+ * never been touched is the capture as it came. Anything unreadable lands on
+ * neutral rather than being rejected: this is saved automatically as sliders
+ * move, and a refused save would be silent.
  */
-function setGrade(id, whiteBalance, tint) {
-  const clamp = (v) => {
-    const n = parseFloat(v);
+function setGrade(id, values) {
+  const v = values || {};
+  const band = (x) => {
+    const n = parseFloat(x);
     return isFinite(n) ? Math.min(1, Math.max(-1, Math.round(n * 1000) / 1000)) : 0;
   };
-  const wb = clamp(whiteBalance);
-  const ti = clamp(tint);
-  setGradeStmt.run(wb, ti, Number(id));
-  return { white_balance: wb, tint: ti };
+  const grade = {
+    id: Number(id),
+    white_balance: band(v.white_balance),
+    tint: band(v.tint),
+    shadows: band(v.shadows),
+    mids: band(v.mids),
+    highs: band(v.highs),
+    gamma: (() => {
+      const n = parseFloat(v.gamma);
+      return isFinite(n) ? Math.min(2, Math.max(0.5, Math.round(n * 1000) / 1000)) : 1;
+    })(),
+  };
+  setGradeStmt.run(grade);
+  return grade;
 }
 
 /*

@@ -23,6 +23,10 @@
   var BG_YAW = parseFloat(SELF.getAttribute('data-bg-yaw')) || 0; // whole turns
   var WB = parseFloat(SELF.getAttribute('data-wb')) || 0;    // -1 cool .. +1 warm
   var TINT = parseFloat(SELF.getAttribute('data-tint')) || 0; // -1 green .. +1 magenta
+  var GAMMA = parseFloat(SELF.getAttribute('data-gamma')) || 1;      // 0.5 .. 2, 1 neutral
+  var SHADOWS = parseFloat(SELF.getAttribute('data-shadows')) || 0;  // the three bands,
+  var MIDS = parseFloat(SELF.getAttribute('data-mids')) || 0;        // -1 .. +1 each,
+  var HIGHS = parseFloat(SELF.getAttribute('data-highs')) || 0;      // 0 neutral
   // Owner-set starting camera ({t:[x,y,z], d, y, p}); null = auto-frame the splat.
   var DEFAULT_VIEW = (function () {
     var raw = SELF.getAttribute('data-view');
@@ -232,6 +236,22 @@
     '    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);\n' +
     '}\n';
 
+  /*
+   * The tone-mapping pass is also where the grade lives, because it is the only
+   * place the finished picture exists: a band of tone is a property of the
+   * composited image, not of any one splat, so nothing per-splat could know
+   * which band it had landed in.
+   *
+   * Order is exposure, then the per-channel gains, then the three bands, then
+   * gamma, and the shoulder last. That is the order they mean: exposure decides
+   * how much light there is, the bands redistribute it, gamma bends what is
+   * left, and the shoulder catches whatever came out above white.
+   *
+   * The bands are weighted on a rough perceptual value rather than on linear
+   * luminance, or "mid" would sit down in what the eye reads as shadow. Their
+   * weights sum to 1 at every level, so with all three at the same setting this
+   * is a plain gain and nothing is double-counted at the joins.
+   */
   var postFs =
     '#version 300 es\n' +
     'precision highp float;\n' +
@@ -239,6 +259,9 @@
     'uniform float exposure;\n' +
     // White balance / tint as per-channel gains, applied in linear light.
     'uniform vec3 grade;\n' +
+    // Shadows / mids / highlights, -1 .. +1 each, and the overall gamma.
+    'uniform vec3 bands;\n' +
+    'uniform float gamma;\n' +
     'in vec2 vUv;\n' +
     'out vec4 fragColor;\n' +
     // Highlights below the knee pass through untouched, so a splat left at
@@ -246,6 +269,13 @@
     'const float KNEE = 0.85;\n' +
     'void main () {\n' +
     '    vec3 c = texture(tex, vUv).rgb * exposure * grade;\n' +
+    '    float lum = dot(max(c, vec3(0.0)), vec3(0.2126, 0.7152, 0.0722));\n' +
+    '    float t = pow(clamp(lum, 0.0, 1.0), 1.0 / 2.2);\n' +
+    '    float ws = 1.0 - smoothstep(0.0, 0.5, t);\n' +
+    '    float wh = smoothstep(0.5, 1.0, t);\n' +
+    '    float wm = 1.0 - ws - wh;\n' +
+    '    c *= max(1.0 + bands.x * ws + bands.y * wm + bands.z * wh, 0.0);\n' +
+    '    if (gamma != 1.0) c = pow(max(c, vec3(0.0)), vec3(1.0 / gamma));\n' +
     // Compress the brightest channel and scale the other two by the same factor,
     // so an over-exposed orange desaturates towards white instead of turning
     // yellow. Below the knee nothing is touched.
@@ -508,6 +538,8 @@
 
   var u_grade = gl.getUniformLocation(program, 'grade');
   var u_postGrade = postProgram ? gl.getUniformLocation(postProgram, 'grade') : null;
+  var u_postBands = postProgram ? gl.getUniformLocation(postProgram, 'bands') : null;
+  var u_postGamma = postProgram ? gl.getUniformLocation(postProgram, 'gamma') : null;
 
   /*
    * White balance and tint as per-channel gains. Warm lifts red and drops blue;
@@ -979,6 +1011,8 @@
       gl.uniform1f(u_postExposure, EXPOSURE);
       var gainv = gradeGain();
       gl.uniform3f(u_postGrade, gainv[0], gainv[1], gainv[2]);
+      gl.uniform3f(u_postBands, SHADOWS, MIDS, HIGHS);
+      gl.uniform1f(u_postGamma, GAMMA);
       gl.bindVertexArray(postVao);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       gl.bindVertexArray(null);
@@ -1298,25 +1332,49 @@
   wireLookSlider('splatOpacity', 'splat-alpha', 'splat_alpha', u_splatAlpha, function (v) { SPLAT_ALPHA = v; });
 
   /*
-   * Owner-only white balance + tint. Same live-then-save shape as the exposure
-   * slider: the gain is recomputed on every input event (free — the HDR pass
-   * reads it per frame) and the pair is written back once the sliders settle.
+   * Owner-only grade: white balance and tint, the three tonal bands, and gamma.
+   * Same live-then-save shape as the exposure slider — every value is reread on
+   * any input event and the whole grade is written back once the sliders settle.
+   * One save for the six, because they are one grade: nothing here is judged on
+   * its own.
+   *
+   * The bands and gamma live in the tone-mapping pass, which only runs where the
+   * GPU can render to a float buffer. Somewhere without that, the viewer keeps
+   * its old single-pass path and these four have nothing to act on — so the
+   * panel says so rather than offering sliders that do nothing.
    */
-  var wbEl = document.getElementById('splatWb');
-  var tintEl = document.getElementById('splatTint');
   registerPanel(document.getElementById('splatColourBtn'), document.getElementById('splatColourPanel'));
-  if (wbEl && tintEl) {
+
+  var gradeEls = {
+    white_balance: document.getElementById('splatWb'),
+    tint: document.getElementById('splatTint'),
+    shadows: document.getElementById('splatShadows'),
+    mids: document.getElementById('splatMids'),
+    highs: document.getElementById('splatHighs'),
+    gamma: document.getElementById('splatGamma'),
+  };
+  var toneOnly = document.getElementById('splatToneNote');
+  if (toneOnly) toneOnly.hidden = HDR_OK;
+  if (gradeEls.white_balance && gradeEls.tint) {
     var gradeTimer = null;
-    var wbOut = document.getElementById('splatWbOut');
-    var tintOut = document.getElementById('splatTintOut');
-    var showGrade = function () {
-      if (wbOut) wbOut.textContent = WB.toFixed(2);
-      if (tintOut) tintOut.textContent = TINT.toFixed(2);
-    };
+    var neutral = { white_balance: 0, tint: 0, shadows: 0, mids: 0, highs: 0, gamma: 1 };
     var readGrade = function () {
-      WB = parseFloat(wbEl.value) || 0;
-      TINT = parseFloat(tintEl.value) || 0;
-      showGrade();
+      var body = [];
+      Object.keys(gradeEls).forEach(function (key) {
+        var el = gradeEls[key];
+        if (!el) return;
+        var v = parseFloat(el.value);
+        if (!isFinite(v)) v = neutral[key];
+        var out = document.getElementById(el.id + 'Out');
+        if (out) out.textContent = v.toFixed(2);
+        if (key === 'white_balance') WB = v;
+        else if (key === 'tint') TINT = v;
+        else if (key === 'shadows') SHADOWS = v;
+        else if (key === 'mids') MIDS = v;
+        else if (key === 'highs') HIGHS = v;
+        else GAMMA = v;
+        body.push(key + '=' + encodeURIComponent(v));
+      });
       applyGrade();
       invalidate();
       if (gradeTimer) clearTimeout(gradeTimer);
@@ -1324,19 +1382,27 @@
         fetch('/admin/splats/' + encodeURIComponent(SPLAT_ID) + '/grade', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: 'white_balance=' + encodeURIComponent(WB) + '&tint=' + encodeURIComponent(TINT),
+          body: body.join('&'),
           credentials: 'same-origin',
         }).catch(function () {});
       }, 500);
     };
-    showGrade();
-    wbEl.addEventListener('input', readGrade);
-    tintEl.addEventListener('input', readGrade);
+    Object.keys(gradeEls).forEach(function (key) {
+      if (gradeEls[key]) gradeEls[key].addEventListener('input', readGrade);
+    });
+    // Shows the values the page was given, without saving them back.
+    Object.keys(gradeEls).forEach(function (key) {
+      var el = gradeEls[key];
+      if (!el) return;
+      var out = document.getElementById(el.id + 'Out');
+      if (out) out.textContent = (parseFloat(el.value) || neutral[key]).toFixed(2);
+    });
     var gradeResetEl = document.getElementById('splatGradeReset');
     if (gradeResetEl) {
       gradeResetEl.addEventListener('click', function () {
-        wbEl.value = 0;
-        tintEl.value = 0;
+        Object.keys(gradeEls).forEach(function (key) {
+          if (gradeEls[key]) gradeEls[key].value = neutral[key];
+        });
         readGrade();
       });
     }

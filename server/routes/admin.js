@@ -938,9 +938,10 @@ router.post('/splats/:id/splat-alpha', (req, res) => {
   res.json({ ok: true, splat_alpha: splatsSvc.setSplatAlpha(Number(req.params.id), req.body.splat_alpha) });
 });
 
-// Owner-only white balance / tint, saved live from the viewer's Colour panel.
+// Owner-only grade — white balance, tint, the three tonal bands and gamma —
+// saved live from the viewer's Colour panel, all six together.
 router.post('/splats/:id/grade', (req, res) => {
-  res.json({ ok: true, ...splatsSvc.setGrade(Number(req.params.id), req.body.white_balance, req.body.tint) });
+  res.json({ ok: true, ...splatsSvc.setGrade(Number(req.params.id), req.body) });
 });
 
 // Owner-only, called by the viewer's "Set default view" / "Clear" buttons: saves
