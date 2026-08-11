@@ -60,11 +60,74 @@
     }
   }
 
-  var gl = canvas.getContext('webgl2', { antialias: false });
+  /*
+   * A context can fail to come back for reasons that have nothing to do with
+   * what the browser is capable of — a phone under memory pressure, a tab that
+   * already has several 3D views alive in it, a context lost earlier and never
+   * given back. Telling someone their browser is too old in those cases sends
+   * them nowhere: the page they are on would work perfectly a moment later.
+   *
+   * So ask before saying. The driver's own reason arrives on a
+   * webglcontextcreationerror event, and two throwaway canvases separate "this
+   * browser cannot" from "not right now": if a fresh canvas gets a WebGL2
+   * context, WebGL2 is plainly here and the problem is this page's state, which
+   * a reload clears. The probes are handed back immediately — a diagnosis that
+   * leaks contexts would make the very thing it is diagnosing worse.
+   */
+  var creationError = '';
+  canvas.addEventListener('webglcontextcreationerror', function (e) {
+    if (e && e.statusMessage) creationError = String(e.statusMessage);
+  });
+
+  function probeContext(kind) {
+    var c = document.createElement('canvas').getContext(kind);
+    if (!c) return false;
+    var lose = c.getExtension('WEBGL_lose_context');
+    if (lose) lose.loseContext();
+    return true;
+  }
+
+  // Some drivers refuse one set of attributes and grant another, so a plain
+  // request is worth trying before concluding anything.
+  var gl = canvas.getContext('webgl2', { antialias: false }) || canvas.getContext('webgl2');
   if (!gl) {
-    fail('This 3D viewer needs WebGL2, which your browser does not seem to support.');
+    var because = creationError ? ' (' + creationError + ')' : '';
+    if (probeContext('webgl2')) {
+      fail('This 3D view could not start' + because + ', though this browser does support it. '
+        + 'Reloading the page usually clears it — it is normally another 3D view still holding the graphics card.');
+    } else if (probeContext('webgl')) {
+      fail('This 3D viewer needs WebGL2 and this browser is only offering WebGL1' + because + '. '
+        + 'If you opened this from inside another app, opening it in Safari or Chrome instead usually has it.');
+    } else {
+      fail('This 3D viewer needs WebGL2, which this browser does not seem to offer' + because + '. '
+        + 'On a phone this is often a browser built into another app — opening the page in Safari or Chrome usually works.');
+    }
     return;
   }
+
+  /*
+   * A phone short of memory can have the context taken away again while the
+   * splat is on screen. Left alone that is a canvas that has quietly stopped
+   * drawing; caught, it is a sentence saying what happened. preventDefault is
+   * what allows the browser to hand one back at all, so it is worth doing even
+   * though this viewer rebuilds from scratch on a reload rather than restoring.
+   */
+  canvas.addEventListener('webglcontextlost', function (e) {
+    e.preventDefault();
+    fail('The browser took the graphics card back from this 3D view, usually because the device was short of memory. Reload the page to start it again.');
+  });
+
+  /*
+   * Coming back to this page with the back button hands it over from the
+   * browser's cache exactly as it was — including, on a phone, a context that
+   * was taken away while it sat there. Nothing here can revive one, so the only
+   * honest thing is to start the page again. Only when it really is lost: a
+   * context that survived the trip is perfectly good, and reloading that would
+   * be throwing away a splat the visitor has already waited for.
+   */
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted && gl.isContextLost()) window.location.reload();
+  });
 
   // ---- small vec/mat helpers -------------------------------------------------
   function sub(a, b) {
