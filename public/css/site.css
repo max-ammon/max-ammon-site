@@ -46,6 +46,16 @@
 nav { align-items: center; }
 #name { align-items: baseline; transform: translateY(2px); }
 
+/* The About banner's box. It exists to clip: a blurred picture fades out past
+   its own edges, so the banner is drawn a little larger while it is soft (see
+   /js/skill-scroll.js) and this keeps that overscan — and the soft edge with it
+   — out of sight. Block, so it is the same box in the flow the picture was. */
+.about-banner {
+  display: block;
+  overflow: hidden;
+}
+.about-banner img { display: block; }
+
 /* Profile picture always renders as a circle, so any photo uploaded via the
    admin comes out round even if it isn't square (centre-cropped, not squashed).
    The existing image is already a round 1500x1500 PNG with transparent corners,

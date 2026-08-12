@@ -261,9 +261,16 @@
     </section>
 
     <section id="about">
-        <img style="max-width: 100%;" src="<%= imgUrl(settings.about_banner, 1600) %>"
-             srcset="<%= imgSrcset(settings.about_banner, [800, 1200, 1600, 2400, 3200]) %>"
-             sizes="100vw" loading="lazy" decoding="async" alt="">
+        <%# The banner comes in soft and sharpens as the section arrives, clear by
+            the time the profile picture below it is completely on screen (see
+            /js/skill-scroll.js). The span is what clips it: a blurred picture
+            fades out past its own edges, so while it is soft it is drawn a little
+            larger and the box keeps the soft edge out of sight. %>
+        <span class="about-banner">
+            <img data-scroll-unblur="#profilepic" style="max-width: 100%;" src="<%= imgUrl(settings.about_banner, 1600) %>"
+                 srcset="<%= imgSrcset(settings.about_banner, [800, 1200, 1600, 2400, 3200]) %>"
+                 sizes="100vw" loading="lazy" decoding="async" alt="">
+        </span>
         <div style="display:inline-flex;padding:75px;">
             <div>
                 <%# The circle is the box now and the picture sits inside it, so the

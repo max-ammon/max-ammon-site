@@ -12,6 +12,7 @@
    *   [data-scroll-scale]  the Modeling pair, largest as the section passes
    *   [data-scroll-shrink] the demo's play button, shrinking as you leave it
    *   [data-scroll-zoom]   the About picture, settling into frame as it arrives
+   *   [data-scroll-unblur] the About banner, sharpening as the section arrives
    *
    * They nearly all read the same notion of how far through its pass an element
    * is — the About picture is the exception, since it is measured against its
@@ -42,7 +43,9 @@
   var scalers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-scale]'));
   var shrinkers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-shrink]'));
   var zoomers = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-zoom]'));
-  if (!stacks.length && !scrubs.length && !slits.length && !wipes.length && !scalers.length && !shrinkers.length && !zoomers.length) return;
+  var unblurs = Array.prototype.slice.call(document.querySelectorAll('[data-scroll-unblur]'));
+  if (!stacks.length && !scrubs.length && !slits.length && !wipes.length && !scalers.length
+      && !shrinkers.length && !zoomers.length && !unblurs.length) return;
 
   // How far back a frame sits at one and at two frames from the current one.
   var NEAR = 0.45;
@@ -370,6 +373,17 @@
    */
   var ZOOM_FROM = 1.5;
 
+  /*
+   * How much further something has to travel before it is as completely on
+   * screen as it can be. Shorter than the screen, that is its bottom reaching
+   * the bottom; taller than it, its top reaching the top — the fullest view
+   * there is of something that cannot fit.
+   */
+  function untilFullyInView(r, vh) {
+    var left = r.height <= vh ? r.bottom - vh : r.top;
+    return left < 0 ? 0 : left;
+  }
+
   function updateZoom(el) {
     var vh = window.innerHeight || document.documentElement.clientHeight;
     // The element's own rect is its scaled one, and feeding a transform back
@@ -381,9 +395,8 @@
     // How far it has come since the picture's top edge touched the bottom of the
     // screen, and how much further until the section is as in view as it gets.
     var came = vh - b.top;
-    var left = s.height <= vh ? s.bottom - vh : s.top;
     if (came < 0) came = 0;
-    if (left < 0) left = 0;
+    var left = untilFullyInView(s, vh);
 
     /*
      * Both of those move one-for-one with the scroll, so their sum is the whole
@@ -396,6 +409,47 @@
     var p = span > 0 ? came / span : 1;
     var z = ZOOM_FROM + (1 - ZOOM_FROM) * Math.sin((clamp01(p) * Math.PI) / 2);
     el.style.transform = 'scale(' + z.toFixed(4) + ')';
+  }
+
+  /*
+   * ---- coming into focus ---------------------------------------------------
+   * The About banner arrives soft and sharpens as you scroll to it, clear by the
+   * moment the profile picture below it is completely on screen — which is what
+   * it is measured against, rather than anything about the banner itself. The
+   * two together read as the section resolving as you reach it.
+   *
+   * A blurred picture fades out past its own edges, so while it is soft it is
+   * drawn a little larger and the box around it clips that overscan away. The
+   * amount is tied to the blur, so what is hidden is exactly the fade and the
+   * picture is back to its own size the moment it is sharp.
+   *
+   * Blur is the most expensive thing on this page to ask for every frame, so it
+   * is written only when it has actually changed, and cleared outright rather
+   * than left at blur(0) — a filter that is set at all keeps the element on its
+   * own layer, and there is nothing to gain from that once it is sharp.
+   */
+  var BLUR_MAX = 12; // px, at the moment it comes onto the screen
+
+  function updateUnblur(el) {
+    if (!el.__target) return; // nothing to be sharp by: leave the picture alone
+    var vh = window.innerHeight || document.documentElement.clientHeight;
+    var came = vh - el.__box.getBoundingClientRect().top;
+    if (came < 0) came = 0;
+    var left = untilFullyInView(el.__target.getBoundingClientRect(), vh);
+    var span = came + left;
+    var p = span > 0 ? came / span : 1;
+    // Eased the same way as the others, so it settles into sharp rather than
+    // arriving there at full speed.
+    var blur = Math.round(BLUR_MAX * (1 - Math.sin((clamp01(p) * Math.PI) / 2)) * 10) / 10;
+    if (blur === el.__blur) return;
+    el.__blur = blur;
+    if (blur < 0.05) {
+      el.style.filter = '';
+      el.style.transform = '';
+    } else {
+      el.style.filter = 'blur(' + blur + 'px)';
+      el.style.transform = 'scale(' + (1 + blur * 0.003).toFixed(4) + ')';
+    }
   }
 
   /*
@@ -415,6 +469,7 @@
       for (var j = 0; j < scalers.length; j++) updateScale(scalers[j]);
       for (var k = 0; k < shrinkers.length; k++) updateShrink(shrinkers[k]);
       for (var g = 0; g < zoomers.length; g++) updateZoom(zoomers[g]);
+      for (var u = 0; u < unblurs.length; u++) updateUnblur(unblurs[u]);
     });
   }
 
@@ -439,11 +494,26 @@
     el.__section = (el.closest && el.closest('section')) || el.__box;
   });
 
+  unblurs.forEach(function (el) {
+    // Measured through its parent for the same reason as the picture above: this
+    // one is scaled while it is soft, and its own rect would carry that scale.
+    el.__box = el.parentElement || el;
+    el.__blur = -1;
+    // What it has to be sharp by, named in the markup rather than here — a bad
+    // selector leaves the picture alone rather than throwing the whole file over.
+    var sel = el.getAttribute('data-scroll-unblur') || '';
+    try {
+      el.__target = sel ? document.querySelector(sel) : null;
+    } catch (e) {
+      el.__target = null;
+    }
+  });
+
   // A box only settles once its pictures have loaded, and they are lazy — so
   // recompute as each arrives, exactly as the frames do. The About picture is
   // measured element rather than a box holding one, and a picture that has not
   // arrived has no size at all, so it has to count as its own.
-  scalers.concat(shrinkers).concat(zoomers).forEach(function (el) {
+  scalers.concat(shrinkers).concat(zoomers).concat(unblurs).forEach(function (el) {
     var imgs = el.tagName === 'IMG' ? [el] : Array.prototype.slice.call(el.querySelectorAll('img'));
     imgs.forEach(function (img) {
       if (!img.complete) img.addEventListener('load', schedule, { once: true });
