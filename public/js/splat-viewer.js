@@ -209,10 +209,13 @@
     'uniform vec2 viewport;\n' +
     'uniform float splatScale;\n' +
     'uniform float splatAlpha;\n' +
-    // Degree-1 harmonics: three coefficients a splat, three texels, or nothing
-    // at all when the file had none.
+    // Harmonics to degree 2: eight coefficients a splat over six texels, or
+    // nothing at all when the file had none.
     'uniform highp sampler2D u_sh;\n' +
     'uniform float shOn;\n' +
+    // Whether the colour in the data texture is two pairs of halves (a file that
+    // had real colour) or the four bytes the .splat format keeps.
+    'uniform float hdrOn;\n' +
     'in vec2 position;\n' +
     'in int index;\n' +
     'out vec4 vColor;\n' +
@@ -258,7 +261,14 @@
     '    vec2 diagonalVector = dot(dv, dv) > 1e-12 ? normalize(dv) : vec2(1.0, 0.0);\n' +
     '    vec2 majorAxis = min(sqrt(2.0 * lambda1) * splatScale, 1024.0) * diagonalVector;\n' +
     '    vec2 minorAxis = min(sqrt(2.0 * lambda2) * splatScale, 1024.0) * vec2(diagonalVector.y, -diagonalVector.x);\n' +
-    '    vec4 base = vec4((cov.w) & 0xffu, (cov.w >> 8) & 0xffu, (cov.w >> 16) & 0xffu, (cov.w >> 24) & 0xffu) / 255.0;\n' +
+    '    vec4 base;\n' +
+    '    if (hdrOn > 0.5) {\n' +
+    '        vec2 rg = unpackHalf2x16(cen.w);\n' +
+    '        vec2 ba = unpackHalf2x16(cov.w);\n' +
+    '        base = vec4(rg, ba);\n' +
+    '    } else {\n' +
+    '        base = vec4((cov.w) & 0xffu, (cov.w >> 8) & 0xffu, (cov.w >> 16) & 0xffu, (cov.w >> 24) & 0xffu) / 255.0;\n' +
+    '    }\n' +
     /*
      * The colour in the record is the splat seen from nowhere in particular. The
      * three harmonics bend it towards where the camera actually is, which is what
@@ -269,12 +279,35 @@
      * Signs and the coefficient are the reference evaluation's, unchanged.
      */
     '    if (shOn > 0.5) {\n' +
-    '        ivec2 sh0 = ivec2(int((uint(index) & 0x3ffu) * 3u), int(uint(index) >> 10));\n' +
-    '        vec3 c1 = texelFetch(u_sh, sh0, 0).rgb;\n' +
-    '        vec3 c2 = texelFetch(u_sh, sh0 + ivec2(1, 0), 0).rgb;\n' +
-    '        vec3 c3 = texelFetch(u_sh, sh0 + ivec2(2, 0), 0).rgb;\n' +
-    '        vec3 dir = normalize(transpose(mat3(view)) * cam.xyz);\n' +
-    '        base.rgb = clamp(base.rgb + 0.4886025119029199 * (-dir.y * c1 + dir.z * c2 - dir.x * c3), 0.0, 1.0);\n' +
+    // 512 splats to a row here, half the covariance texture's, so that six
+    // texels a splat stay inside a width every GPU will take.
+    '        ivec2 s0 = ivec2(int((uint(index) & 0x1ffu) * 6u), int(uint(index) >> 9));\n' +
+    '        vec4 t0 = texelFetch(u_sh, s0, 0);\n' +
+    '        vec4 t1 = texelFetch(u_sh, s0 + ivec2(1, 0), 0);\n' +
+    '        vec4 t2 = texelFetch(u_sh, s0 + ivec2(2, 0), 0);\n' +
+    '        vec4 t3 = texelFetch(u_sh, s0 + ivec2(3, 0), 0);\n' +
+    '        vec4 t4 = texelFetch(u_sh, s0 + ivec2(4, 0), 0);\n' +
+    '        vec4 t5 = texelFetch(u_sh, s0 + ivec2(5, 0), 0);\n' +
+    // Every three texels hold four coefficients, so the eight come out of six in
+    // two identical steps. Bytes back to their value: a byte of 128 is nothing.
+    '        vec3 c0 = t0.rgb, c1 = vec3(t0.a, t1.rg), c2 = vec3(t1.ba, t2.r), c3 = t2.gba;\n' +
+    '        vec3 c4 = t3.rgb, c5 = vec3(t3.a, t4.rg), c6 = vec3(t4.ba, t5.r), c7 = t5.gba;\n' +
+    '        float q = 255.0 / 128.0;\n' +
+    '        c0 = c0 * q - 1.0; c1 = c1 * q - 1.0; c2 = c2 * q - 1.0; c3 = c3 * q - 1.0;\n' +
+    '        c4 = c4 * q - 1.0; c5 = c5 * q - 1.0; c6 = c6 * q - 1.0; c7 = c7 * q - 1.0;\n' +
+    '        vec3 d = normalize(transpose(mat3(view)) * cam.xyz);\n' +
+    '        float x = d.x, y = d.y, z = d.z;\n' +
+    '        vec3 sh = 0.4886025119029199 * (-y * c0 + z * c1 - x * c2);\n' +
+    // Degree 2: the same evaluation the reference does, constants and all.
+    '        sh += 1.0925484305920792 * x * y * c3;\n' +
+    '        sh += -1.0925484305920792 * y * z * c4;\n' +
+    '        sh += 0.31539156525252005 * (2.0 * z * z - x * x - y * y) * c5;\n' +
+    '        sh += -1.0925484305920792 * x * z * c6;\n' +
+    '        sh += 0.5462742152960396 * (x * x - y * y) * c7;\n' +
+    // Only the floor is held: a splat the harmonics push above white is a splat
+    // that is meant to be that bright, and the tone mapping is what decides
+    // what to do about it.
+    '        base.rgb = max(base.rgb + sh, vec3(0.0));\n' +
     '    }\n' +
     '    base.a = clamp(base.a * splatAlpha, 0.0, 1.0);\n' +
     '    vColor = clamp(pos2d.z/pos2d.w+1.0, 0.0, 1.0) * base;\n' +
@@ -675,8 +708,10 @@
   var u_splatAlpha = gl.getUniformLocation(program, 'splatAlpha');
   var u_shTex = gl.getUniformLocation(program, 'u_sh');
   var u_shOn = gl.getUniformLocation(program, 'shOn');
+  var u_hdrOn = gl.getUniformLocation(program, 'hdrOn');
   var hasSh = false;
   gl.uniform1f(u_shOn, 0); // until a file arrives that has them
+  gl.uniform1f(u_hdrOn, 0); // ...and until one arrives with colour past a byte
   // In the HDR path exposure is applied by the tone-mapping pass each frame.
   if (!HDR_OK) gl.uniform1f(u_exposure, EXPOSURE);
   /*
@@ -1096,13 +1131,14 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32UI, d.texwidth, d.texheight, 0, gl.RGBA_INTEGER, gl.UNSIGNED_INT, d.texdata);
     textureReady = true;
+    gl.useProgram(program);
+    gl.uniform1f(u_hdrOn, d.hdr ? 1 : 0);
 
     /*
      * The harmonics, when the file carried any. Their own texture on its own
      * unit, so a file without them costs nothing and the shader skips the
-     * fetches entirely. Half floats: three coefficients per splat is already the
-     * larger half of what is uploaded, and this term is a gentle correction
-     * rather than something precision could be spent on.
+     * fetches entirely. A byte a coefficient, which is what lets eight of them
+     * fit in the room three took as halves.
      */
     if (!d.shdata || !shTexture) return;
     var maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
@@ -1113,7 +1149,7 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, d.shwidth, d.shheight, 0, gl.RGBA, gl.HALF_FLOAT, d.shdata);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, d.shwidth, d.shheight, 0, gl.RGBA, gl.UNSIGNED_BYTE, d.shdata);
     gl.activeTexture(gl.TEXTURE0);
     gl.useProgram(program);
     gl.uniform1i(u_shTex, 3);

@@ -21,20 +21,35 @@ let buffer = null; // ArrayBuffer of packed 32-byte records
 let vertexCount = 0;
 
 /*
- * Degree-1 spherical harmonics: three coefficients per colour channel, nine
- * floats per splat, kept beside the records rather than in them because a
- * .splat record has no room and a file may not have them at all.
+ * Spherical harmonics to degree 2: eight coefficients per colour channel,
+ * twenty-four values a splat, kept beside the records rather than in them
+ * because a .splat record has no room and a file may not have them at all.
  *
  * They are what makes a surface change as you move around it — the difference
  * between a photograph of a wet stone and a painting of one. The DC term in the
- * record is the colour looked at from nowhere in particular; these three bend it
- * towards where the camera actually is. Degrees 2 and 3 are read past: they cost
- * five and twelve more coefficients for progressively smaller corrections, and
- * this is a viewer on a web page.
+ * record is the colour looked at from nowhere in particular; the first three
+ * bend it towards where the camera is, and the next five sharpen that from a
+ * broad lean into something with a shape to it.
+ *
+ * Degree 3 is read past. It is seven more coefficients again — nearly twice
+ * this much data — for a refinement of a refinement, and it is the band .spz
+ * itself quantises most coarsely, which says what its own authors think it is
+ * worth.
  */
-let shCoeffs = null; // Float32Array, 9 per splat, or null when the file has none
-const SH_C1 = 0.4886025119029199;
-const SH_PER_SPLAT = 9;
+let shCoeffs = null; // Float32Array, 24 per splat, or null when there are none
+const SH_COEFFS = 8;
+const SH_PER_SPLAT = SH_COEFFS * 3;
+
+/*
+ * Full-precision colour, likewise beside the record rather than in it. The
+ * record keeps colour in a byte a channel, which is the .splat format's own
+ * shape, and a trained splat is routinely brighter than a byte can hold — a
+ * specular highlight or a lamp comes out of training well above 1. Clamped into
+ * a byte at load, that splat is flat white before anything has been drawn, and
+ * its colour is gone for good. Kept here, it survives to the tone mapping, which
+ * is the part that is supposed to decide what to do with light above white.
+ */
+let hdrColor = null; // Float32Array, 4 per splat (rgb + alpha), or null
 
 // ---- half-float packing (for the covariance texture) ----------------------
 const _floatView = new Float32Array(1);
@@ -69,7 +84,12 @@ function packHalf2x16(x, y) {
 }
 
 // ---- pack the cloud into a 2048-wide RGBA32UI texture ----------------------
-// Two texels per splat: [pos.xyz, _], [cov(3x half2), rgba(u8x4)].
+// Two texels per splat: [pos.xyz, colour rg], [cov(3x half2), colour ba].
+//
+// The fourth slot of the first texel was spare — the shader reads the position
+// and has never touched it — which is exactly the four bytes full-precision
+// colour needs on top of the four it already has. So a splat brighter than
+// white costs nothing to carry: two halves here, two where the bytes were.
 function generateTexture() {
   if (!buffer) return;
   const f_buffer = new Float32Array(buffer);
@@ -87,11 +107,17 @@ function generateTexture() {
     texdata_f[8 * i + 1] = f_buffer[8 * i + 1];
     texdata_f[8 * i + 2] = f_buffer[8 * i + 2];
 
-    // colour (rgba)
-    texdata_c[4 * (8 * i + 7) + 0] = u_buffer[32 * i + 24 + 0];
-    texdata_c[4 * (8 * i + 7) + 1] = u_buffer[32 * i + 24 + 1];
-    texdata_c[4 * (8 * i + 7) + 2] = u_buffer[32 * i + 24 + 2];
-    texdata_c[4 * (8 * i + 7) + 3] = u_buffer[32 * i + 24 + 3];
+    // colour: as halves where the file gave us more than a byte's worth, and as
+    // the four bytes the record holds where it did not.
+    if (hdrColor) {
+      texdata[8 * i + 3] = packHalf2x16(hdrColor[4 * i + 0], hdrColor[4 * i + 1]);
+      texdata[8 * i + 7] = packHalf2x16(hdrColor[4 * i + 2], hdrColor[4 * i + 3]);
+    } else {
+      texdata_c[4 * (8 * i + 7) + 0] = u_buffer[32 * i + 24 + 0];
+      texdata_c[4 * (8 * i + 7) + 1] = u_buffer[32 * i + 24 + 1];
+      texdata_c[4 * (8 * i + 7) + 2] = u_buffer[32 * i + 24 + 2];
+      texdata_c[4 * (8 * i + 7) + 3] = u_buffer[32 * i + 24 + 3];
+    }
 
     // covariance = M^T M, with M = S * R(quaternion)
     const scale = [f_buffer[8 * i + 3 + 0], f_buffer[8 * i + 3 + 1], f_buffer[8 * i + 3 + 2]];
@@ -128,32 +154,44 @@ function generateTexture() {
   }
 
   /*
-   * The harmonics go in a texture of their own: three RGBA16F texels a splat,
-   * laid out on the same rows as the covariance texture — 1024 splats to a row —
-   * so the shader finds them with the index arithmetic it already does. Half
-   * floats are far more precision than coefficients this size need, and a
-   * texture of its own means a file without harmonics costs nothing at all.
+   * The harmonics go in a texture of their own, on the same rows as the
+   * covariance texture — 1024 splats to a row — so the shader finds them with
+   * the index arithmetic it already does, and a file without them costs nothing.
+   *
+   * A byte a coefficient, on .spz's own scale of a hundred-and-twenty-eighth
+   * either side of zero. For a .spz that is not a loss at all: this is the grid
+   * its values already sit on. For a .ply it is a step of 0.004 in a coefficient
+   * whose whole contribution to a colour is about half of it — a fifth of what a
+   * single step of 8-bit colour would show. Which is what pays for degree 2:
+   * twenty-four coefficients as bytes take exactly the twenty-four bytes that
+   * nine took as halves.
+   *
+   * Twenty-four values fill six texels with nothing left over, and every three
+   * texels hold four coefficients, which is the pattern the shader unpacks.
+   *
+   * Five hundred and twelve splats to a row rather than the covariance
+   * texture's thousand, because six texels each at a thousand would be 6144
+   * across and a GPU is only obliged to offer 2048 — plenty do stop at 4096.
+   * Half the row and it is 3072 wide with twice the rows, which is the shape
+   * that fits everywhere the rest of this already fits.
    */
   let shdata = null;
   let shwidth = 0;
   let shheight = 0;
   if (shCoeffs) {
-    shwidth = 1024 * 3;
-    shheight = Math.ceil(vertexCount / 1024);
-    shdata = new Uint16Array(shwidth * shheight * 4);
+    shwidth = 512 * 6;
+    shheight = Math.ceil(vertexCount / 512);
+    shdata = new Uint8Array(shwidth * shheight * 4);
     for (let i = 0; i < vertexCount; i++) {
-      const row = i >> 10;
-      const col = (i & 0x3ff) * 3;
-      for (let k = 0; k < 3; k++) {
-        const t = (row * shwidth + col + k) * 4;
-        shdata[t + 0] = floatToHalf(shCoeffs[i * SH_PER_SPLAT + k * 3 + 0]);
-        shdata[t + 1] = floatToHalf(shCoeffs[i * SH_PER_SPLAT + k * 3 + 1]);
-        shdata[t + 2] = floatToHalf(shCoeffs[i * SH_PER_SPLAT + k * 3 + 2]);
+      const base = (i >> 9) * shwidth * 4 + (i & 0x1ff) * 6 * 4;
+      for (let v = 0; v < SH_PER_SPLAT; v++) {
+        const q = Math.round(shCoeffs[i * SH_PER_SPLAT + v] * 128 + 128);
+        shdata[base + v] = q < 0 ? 0 : q > 255 ? 255 : q;
       }
     }
   }
 
-  const msg = { texdata, texwidth, texheight, shdata, shwidth, shheight };
+  const msg = { texdata, texwidth, texheight, shdata, shwidth, shheight, hdr: !!hdrColor };
   self.postMessage(msg, shdata ? [texdata.buffer, shdata.buffer] : [texdata.buffer]);
 }
 
@@ -333,13 +371,18 @@ function processPlyBuffer(inputBuffer) {
     if (m) restPerChannel = Math.max(restPerChannel, Number(m[1]) + 1);
   }
   restPerChannel = Math.floor(restPerChannel / 3);
+  // However many of the eight this file actually carries: a degree-1 model has
+  // three, a degree-2 or higher one has all of them, and the rest stay zero,
+  // which is the same as not having them.
+  const plyKept = Math.min(SH_COEFFS, restPerChannel);
   const plySh = restPerChannel >= 3 ? new Float32Array(count * SH_PER_SPLAT) : null;
+  const plyHdr = types['f_dc_0'] ? new Float32Array(count * 4) : null;
 
   const out = new ArrayBuffer(ROW_LENGTH * count);
   for (let j = 0; j < count; j++) {
     row = sizeIndex[j];
     if (plySh) {
-      for (let k = 0; k < 3; k++) {
+      for (let k = 0; k < plyKept; k++) {
         plySh[j * SH_PER_SPLAT + k * 3 + 0] = attrs['f_rest_' + k];
         plySh[j * SH_PER_SPLAT + k * 3 + 1] = attrs['f_rest_' + (restPerChannel + k)];
         plySh[j * SH_PER_SPLAT + k * 3 + 2] = attrs['f_rest_' + (2 * restPerChannel + k)];
@@ -375,9 +418,15 @@ function processPlyBuffer(inputBuffer) {
 
     if (types['f_dc_0']) {
       const SH_C0 = 0.28209479177387814;
+      // The bytes stay — the sorter ranks splats by the opacity in them, and a
+      // .splat that arrives without harmonics still needs them — but the colour
+      // that gets drawn is taken from these, unclamped.
       rgba[0] = (0.5 + SH_C0 * attrs.f_dc_0) * 255;
       rgba[1] = (0.5 + SH_C0 * attrs.f_dc_1) * 255;
       rgba[2] = (0.5 + SH_C0 * attrs.f_dc_2) * 255;
+      plyHdr[j * 4 + 0] = 0.5 + SH_C0 * attrs.f_dc_0;
+      plyHdr[j * 4 + 1] = 0.5 + SH_C0 * attrs.f_dc_1;
+      plyHdr[j * 4 + 2] = 0.5 + SH_C0 * attrs.f_dc_2;
     } else {
       rgba[0] = attrs.red;
       rgba[1] = attrs.green;
@@ -388,8 +437,10 @@ function processPlyBuffer(inputBuffer) {
     } else {
       rgba[3] = 255;
     }
+    if (plyHdr) plyHdr[j * 4 + 3] = rgba[3] / 255;
   }
   shCoeffs = plySh;
+  hdrColor = plyHdr;
   return out;
 }
 
@@ -454,14 +505,16 @@ async function processSpzBuffer(inputBuffer) {
    * Then the harmonics, three coefficients per degree step and the three colour
    * channels interleaved within each: for one splat, coefficient 1 as RGB, then
    * coefficient 2, and so on. Every coefficient is a byte around 128, a
-   * hundred-and-twenty-eighth apiece — .spz's own precision, and plenty for a
-   * term this gentle. Degrees past the first are present in the file and read
-   * past; a file that promises more than it carries is treated as carrying none.
+   * hundred-and-twenty-eighth apiece. Degree 3 is present in a file that has it
+   * and read past; a file that promises more than it carries is treated as
+   * carrying none.
    */
   const shDim = shDegree === 1 ? 3 : shDegree === 2 ? 8 : shDegree === 3 ? 15 : 0;
   const shBytes = numPoints * shDim * 3;
   const spzSh = shDim >= 3 && o + shBytes <= raw.length ? raw.subarray(o, o + shBytes) : null;
+  const spzKept = Math.min(SH_COEFFS, shDim);
   shCoeffs = spzSh ? new Float32Array(numPoints * SH_PER_SPLAT) : null;
+  hdrColor = new Float32Array(numPoints * 4);
 
   const posScale = 1 / (1 << fractionalBits);
   const out = new ArrayBuffer(ROW_LENGTH * numPoints);
@@ -489,16 +542,19 @@ async function processSpzBuffer(inputBuffer) {
     scaleArr[1] = Math.exp(scales[i * 3 + 1] / 16 - 10);
     scaleArr[2] = Math.exp(scales[i * 3 + 2] / 16 - 10);
 
-    // colour: undo .spz's DC packing, then re-encode the way the texture expects
+    // colour: undo .spz's DC packing. The bytes are kept for the record, the
+    // unclamped value for what is actually drawn.
     for (let c = 0; c < 3; c++) {
       const fdc = (colors[i * 3 + c] / 255 - 0.5) / SPZ_COLOR_SCALE;
       rgba[c] = (0.5 + SH_C0 * fdc) * 255;
+      hdrColor[i * 4 + c] = 0.5 + SH_C0 * fdc;
     }
     rgba[3] = alphas[i]; // already sigmoid(opacity)*255, exactly what .splat stores
+    hdrColor[i * 4 + 3] = alphas[i] / 255;
 
     if (spzSh) {
       const s = i * shDim * 3;
-      for (let k = 0; k < 3; k++) {
+      for (let k = 0; k < spzKept; k++) {
         for (let c = 0; c < 3; c++) {
           shCoeffs[i * SH_PER_SPLAT + k * 3 + c] = (spzSh[s + k * 3 + c] - 128) / 128;
         }
@@ -584,7 +640,10 @@ self.onmessage = async (e) => {
       ingest();
     } else if (d.splat) {
       buffer = d.splat;
-      shCoeffs = null; // a .splat record has nowhere to keep harmonics
+      // A .splat record has nowhere to keep either: its colour is bytes because
+      // that is all the format ever had.
+      shCoeffs = null;
+      hdrColor = null;
       ingest();
     } else if (d.spz) {
       buffer = await processSpzBuffer(d.spz);
