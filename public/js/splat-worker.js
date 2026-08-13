@@ -20,6 +20,22 @@ const ROW_LENGTH = 3 * 4 + 3 * 4 + 4 + 4;
 let buffer = null; // ArrayBuffer of packed 32-byte records
 let vertexCount = 0;
 
+/*
+ * Degree-1 spherical harmonics: three coefficients per colour channel, nine
+ * floats per splat, kept beside the records rather than in them because a
+ * .splat record has no room and a file may not have them at all.
+ *
+ * They are what makes a surface change as you move around it — the difference
+ * between a photograph of a wet stone and a painting of one. The DC term in the
+ * record is the colour looked at from nowhere in particular; these three bend it
+ * towards where the camera actually is. Degrees 2 and 3 are read past: they cost
+ * five and twelve more coefficients for progressively smaller corrections, and
+ * this is a viewer on a web page.
+ */
+let shCoeffs = null; // Float32Array, 9 per splat, or null when the file has none
+const SH_C1 = 0.4886025119029199;
+const SH_PER_SPLAT = 9;
+
 // ---- half-float packing (for the covariance texture) ----------------------
 const _floatView = new Float32Array(1);
 const _int32View = new Int32Array(_floatView.buffer);
@@ -111,7 +127,34 @@ function generateTexture() {
     texdata[8 * i + 6] = packHalf2x16(4 * sigma[4], 4 * sigma[5]);
   }
 
-  self.postMessage({ texdata, texwidth, texheight }, [texdata.buffer]);
+  /*
+   * The harmonics go in a texture of their own: three RGBA16F texels a splat,
+   * laid out on the same rows as the covariance texture — 1024 splats to a row —
+   * so the shader finds them with the index arithmetic it already does. Half
+   * floats are far more precision than coefficients this size need, and a
+   * texture of its own means a file without harmonics costs nothing at all.
+   */
+  let shdata = null;
+  let shwidth = 0;
+  let shheight = 0;
+  if (shCoeffs) {
+    shwidth = 1024 * 3;
+    shheight = Math.ceil(vertexCount / 1024);
+    shdata = new Uint16Array(shwidth * shheight * 4);
+    for (let i = 0; i < vertexCount; i++) {
+      const row = i >> 10;
+      const col = (i & 0x3ff) * 3;
+      for (let k = 0; k < 3; k++) {
+        const t = (row * shwidth + col + k) * 4;
+        shdata[t + 0] = floatToHalf(shCoeffs[i * SH_PER_SPLAT + k * 3 + 0]);
+        shdata[t + 1] = floatToHalf(shCoeffs[i * SH_PER_SPLAT + k * 3 + 1]);
+        shdata[t + 2] = floatToHalf(shCoeffs[i * SH_PER_SPLAT + k * 3 + 2]);
+      }
+    }
+  }
+
+  const msg = { texdata, texwidth, texheight, shdata, shwidth, shheight };
+  self.postMessage(msg, shdata ? [texdata.buffer, shdata.buffer] : [texdata.buffer]);
 }
 
 // ---- centre + spread of the cloud, for auto-framing the camera ------------
@@ -276,9 +319,32 @@ function processPlyBuffer(inputBuffer) {
   }
   sizeIndex.sort((b, a) => sizeList[a] - sizeList[b]);
 
+  /*
+   * The rest of the harmonics, if the file has them. A .ply writes them one
+   * channel at a time — every red coefficient, then every green, then every blue
+   * — so the stride between channels is however many coefficients per channel
+   * this file happens to carry: three for a degree-1 model, fifteen for degree 3.
+   * Counting the properties is what tells us which, so a model of any degree is
+   * read the same way and only its first three coefficients are kept.
+   */
+  let restPerChannel = 0;
+  for (const name of Object.keys(types)) {
+    const m = /^f_rest_(\d+)$/.exec(name);
+    if (m) restPerChannel = Math.max(restPerChannel, Number(m[1]) + 1);
+  }
+  restPerChannel = Math.floor(restPerChannel / 3);
+  const plySh = restPerChannel >= 3 ? new Float32Array(count * SH_PER_SPLAT) : null;
+
   const out = new ArrayBuffer(ROW_LENGTH * count);
   for (let j = 0; j < count; j++) {
     row = sizeIndex[j];
+    if (plySh) {
+      for (let k = 0; k < 3; k++) {
+        plySh[j * SH_PER_SPLAT + k * 3 + 0] = attrs['f_rest_' + k];
+        plySh[j * SH_PER_SPLAT + k * 3 + 1] = attrs['f_rest_' + (restPerChannel + k)];
+        plySh[j * SH_PER_SPLAT + k * 3 + 2] = attrs['f_rest_' + (2 * restPerChannel + k)];
+      }
+    }
     const position = new Float32Array(out, j * ROW_LENGTH, 3);
     const scales = new Float32Array(out, j * ROW_LENGTH + 4 * 3, 3);
     const rgba = new Uint8ClampedArray(out, j * ROW_LENGTH + 4 * 3 + 4 * 3, 4);
@@ -323,6 +389,7 @@ function processPlyBuffer(inputBuffer) {
       rgba[3] = 255;
     }
   }
+  shCoeffs = plySh;
   return out;
 }
 
@@ -330,9 +397,9 @@ function processPlyBuffer(inputBuffer) {
 // .spz is a gzip-compressed, heavily quantised format ~10x smaller than .ply.
 // Decoding math + byte layout follow the reference loaders (nianticlabs/spz C++
 // and arrival-space/spz-js, both MIT): a 16-byte header then, in order,
-// positions / alphas / colours / scales / rotations / sh. We keep only what the
-// .splat record holds (position, scale, colour, opacity, rotation — SH beyond
-// the DC term is dropped, exactly as .splat already does).
+// positions / alphas / colours / scales / rotations / sh. The record holds
+// position, scale, colour, opacity and rotation; the first three harmonic
+// coefficients are kept beside it and the rest of them read past.
 const SH_C0 = 0.28209479177387814; // DC spherical-harmonic coefficient
 const SPZ_COLOR_SCALE = 0.15; // how .spz spreads the DC colour across a byte
 const SQRT1_2 = 1 / Math.sqrt(2);
@@ -366,6 +433,7 @@ async function processSpzBuffer(inputBuffer) {
   const version = view.getUint32(4, true);
   if (version < 1 || version > 3) throw new Error('Unsupported .spz version ' + version + '.');
   const numPoints = view.getUint32(8, true);
+  const shDegree = view.getUint8(12);
   const fractionalBits = view.getUint8(13);
   if (!numPoints) throw new Error('The .spz file contains no points.');
 
@@ -381,6 +449,19 @@ async function processSpzBuffer(inputBuffer) {
   const scales = raw.subarray(o, (o += numPoints * 3));
   const rotations = raw.subarray(o, (o += numPoints * rotStride));
   if (o > raw.length) throw new Error('The .spz file is truncated or malformed.');
+
+  /*
+   * Then the harmonics, three coefficients per degree step and the three colour
+   * channels interleaved within each: for one splat, coefficient 1 as RGB, then
+   * coefficient 2, and so on. Every coefficient is a byte around 128, a
+   * hundred-and-twenty-eighth apiece — .spz's own precision, and plenty for a
+   * term this gentle. Degrees past the first are present in the file and read
+   * past; a file that promises more than it carries is treated as carrying none.
+   */
+  const shDim = shDegree === 1 ? 3 : shDegree === 2 ? 8 : shDegree === 3 ? 15 : 0;
+  const shBytes = numPoints * shDim * 3;
+  const spzSh = shDim >= 3 && o + shBytes <= raw.length ? raw.subarray(o, o + shBytes) : null;
+  shCoeffs = spzSh ? new Float32Array(numPoints * SH_PER_SPLAT) : null;
 
   const posScale = 1 / (1 << fractionalBits);
   const out = new ArrayBuffer(ROW_LENGTH * numPoints);
@@ -414,6 +495,15 @@ async function processSpzBuffer(inputBuffer) {
       rgba[c] = (0.5 + SH_C0 * fdc) * 255;
     }
     rgba[3] = alphas[i]; // already sigmoid(opacity)*255, exactly what .splat stores
+
+    if (spzSh) {
+      const s = i * shDim * 3;
+      for (let k = 0; k < 3; k++) {
+        for (let c = 0; c < 3; c++) {
+          shCoeffs[i * SH_PER_SPLAT + k * 3 + c] = (spzSh[s + k * 3 + c] - 128) / 128;
+        }
+      }
+    }
 
     // rotation -> quaternion (x, y, z, w)
     let qx;
@@ -494,6 +584,7 @@ self.onmessage = async (e) => {
       ingest();
     } else if (d.splat) {
       buffer = d.splat;
+      shCoeffs = null; // a .splat record has nowhere to keep harmonics
       ingest();
     } else if (d.spz) {
       buffer = await processSpzBuffer(d.spz);

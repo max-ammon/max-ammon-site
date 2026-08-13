@@ -209,6 +209,10 @@
     'uniform vec2 viewport;\n' +
     'uniform float splatScale;\n' +
     'uniform float splatAlpha;\n' +
+    // Degree-1 harmonics: three coefficients a splat, three texels, or nothing
+    // at all when the file had none.
+    'uniform highp sampler2D u_sh;\n' +
+    'uniform float shOn;\n' +
     'in vec2 position;\n' +
     'in int index;\n' +
     'out vec4 vColor;\n' +
@@ -232,15 +236,48 @@
     '    );\n' +
     '    mat3 T = transpose(mat3(view)) * J;\n' +
     '    mat3 cov2d = transpose(T) * Vrk * T;\n' +
+    // A splat smaller than a pixel has no defensible shape on screen: it lands
+    // wherever the sampling happens to catch it and flickers as anything moves.
+    // The reference rasteriser widens every splat by a third of a pixel for that
+    // reason, which costs nothing on the large ones and turns the small ones from
+    // sparkle into the soft points they are meant to be.
+    '    cov2d[0][0] += 0.3;\n' +
+    '    cov2d[1][1] += 0.3;\n' +
     '    float mid = (cov2d[0][0] + cov2d[1][1]) / 2.0;\n' +
     '    float radius = length(vec2((cov2d[0][0] - cov2d[1][1]) / 2.0, cov2d[0][1]));\n' +
     '    float lambda1 = mid + radius, lambda2 = mid - radius;\n' +
     '    if(lambda2 < 0.0) return;\n' +
-    '    vec2 diagonalVector = normalize(vec2(cov2d[0][1], lambda1 - cov2d[0][0]));\n' +
+    /*
+     * The major axis of the projected ellipse. Both components are zero when the
+     * ellipse is exactly axis-aligned and its wider axis is the horizontal one —
+     * a flat surface square to the camera does it — and normalising nothing gives
+     * NaN, which silently loses the splat. Upstream has the same hole; a splat
+     * that is already axis-aligned simply is its own axis, so say so.
+     */
+    '    vec2 dv = vec2(cov2d[0][1], lambda1 - cov2d[0][0]);\n' +
+    '    vec2 diagonalVector = dot(dv, dv) > 1e-12 ? normalize(dv) : vec2(1.0, 0.0);\n' +
     '    vec2 majorAxis = min(sqrt(2.0 * lambda1) * splatScale, 1024.0) * diagonalVector;\n' +
     '    vec2 minorAxis = min(sqrt(2.0 * lambda2) * splatScale, 1024.0) * vec2(diagonalVector.y, -diagonalVector.x);\n' +
-    '    vColor = clamp(pos2d.z/pos2d.w+1.0, 0.0, 1.0) * vec4((cov.w) & 0xffu, (cov.w >> 8) & 0xffu, (cov.w >> 16) & 0xffu, (cov.w >> 24) & 0xffu) / 255.0;\n' +
-    '    vColor.a = clamp(vColor.a * splatAlpha, 0.0, 1.0);\n' +
+    '    vec4 base = vec4((cov.w) & 0xffu, (cov.w >> 8) & 0xffu, (cov.w >> 16) & 0xffu, (cov.w >> 24) & 0xffu) / 255.0;\n' +
+    /*
+     * The colour in the record is the splat seen from nowhere in particular. The
+     * three harmonics bend it towards where the camera actually is, which is what
+     * makes a surface look wet, or metal, or lit from one side, instead of
+     * painted. The direction has to be the one the model was trained in, so the
+     * camera-space vector to the splat is turned back by the view rotation —
+     * orthonormal, so its transpose is its inverse and no matrix need be built.
+     * Signs and the coefficient are the reference evaluation's, unchanged.
+     */
+    '    if (shOn > 0.5) {\n' +
+    '        ivec2 sh0 = ivec2(int((uint(index) & 0x3ffu) * 3u), int(uint(index) >> 10));\n' +
+    '        vec3 c1 = texelFetch(u_sh, sh0, 0).rgb;\n' +
+    '        vec3 c2 = texelFetch(u_sh, sh0 + ivec2(1, 0), 0).rgb;\n' +
+    '        vec3 c3 = texelFetch(u_sh, sh0 + ivec2(2, 0), 0).rgb;\n' +
+    '        vec3 dir = normalize(transpose(mat3(view)) * cam.xyz);\n' +
+    '        base.rgb = clamp(base.rgb + 0.4886025119029199 * (-dir.y * c1 + dir.z * c2 - dir.x * c3), 0.0, 1.0);\n' +
+    '    }\n' +
+    '    base.a = clamp(base.a * splatAlpha, 0.0, 1.0);\n' +
+    '    vColor = clamp(pos2d.z/pos2d.w+1.0, 0.0, 1.0) * base;\n' +
     '    vPosition = position;\n' +
     '    vec2 vCenter = vec2(pos2d) / pos2d.w;\n' +
     '    gl_Position = vec4(vCenter + position.x * majorAxis / viewport + position.y * minorAxis / viewport, 0.0, 1.0);\n' +
@@ -280,7 +317,9 @@
     'out vec4 fragColor;\n' +
     'void main () {\n' +
     '    float A = -dot(vPosition, vPosition);\n' +
-    '    if (A < -4.0) discard;\n' +
+    // Three sigma: the quad reaches exactly this far, and past it the gaussian is
+    // down to a hundredth of itself and worth nothing but fill rate.
+    '    if (A < -4.5) discard;\n' +
     '    float B = exp(A) * vColor.a;\n' +
     // In the HDR path exposure is applied after compositing, so nothing clips
     // mid-blend; the fallback keeps applying it here as before.
@@ -634,6 +673,10 @@
   var u_exposure = gl.getUniformLocation(program, 'exposure');
   var u_splatScale = gl.getUniformLocation(program, 'splatScale');
   var u_splatAlpha = gl.getUniformLocation(program, 'splatAlpha');
+  var u_shTex = gl.getUniformLocation(program, 'u_sh');
+  var u_shOn = gl.getUniformLocation(program, 'shOn');
+  var hasSh = false;
+  gl.uniform1f(u_shOn, 0); // until a file arrives that has them
   // In the HDR path exposure is applied by the tone-mapping pass each frame.
   if (!HDR_OK) gl.uniform1f(u_exposure, EXPOSURE);
   /*
@@ -647,10 +690,17 @@
   applyGrade(); // the fallback shader needs a gain before the first draw
   initBackdrop();
 
-  // Quad corners (per-vertex, one instance per splat).
+  /*
+   * Quad corners (per-vertex, one instance per splat). The distance is in units
+   * of the axes the vertex shader computes, which are sqrt(2) sigma each, so
+   * these 2.1213 are three sigma exactly — where the reference rasteriser stops
+   * as well. The 2 that stood here cut every splat at 2.83 sigma, which is a
+   * visible edge on the largest ones. It is 12% more area to fill per splat.
+   */
   var vertexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-2, -2, 2, -2, 2, 2, -2, 2]), gl.STATIC_DRAW);
+  var QUAD = 3 / Math.SQRT2;
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-QUAD, -QUAD, QUAD, -QUAD, QUAD, QUAD, -QUAD, QUAD]), gl.STATIC_DRAW);
   var a_position = gl.getAttribLocation(program, 'position');
   gl.enableVertexAttribArray(a_position);
   gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
@@ -658,6 +708,14 @@
   var texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.uniform1i(gl.getUniformLocation(program, 'u_texture'), 0);
+  /*
+   * Unit 0 is this data texture, 1 the tone-mapping pass's colour buffer, 2 the
+   * backdrop — which rebinds itself every single frame, so the harmonics take 3.
+   * Anything sharing with the backdrop would be quietly replaced by a panorama
+   * one frame in, and splats coloured by a photograph of a room is not an error
+   * anything would report.
+   */
+  var shTexture = gl.createTexture();
 
   // Per-instance splat index (the depth-sorted order from the worker).
   var indexBuffer = gl.createBuffer();
@@ -933,9 +991,13 @@
     var splats =
       (renderCount >= 1e6 ? (renderCount / 1e6).toFixed(1) + 'M' : Math.round(renderCount / 1000) + 'k') +
       (renderCount < totalSplats ? ' of ' + (totalSplats / 1e6).toFixed(1) + 'M' : '');
+    // Whether this file brought harmonics is worth seeing: it is the difference
+    // between a capture that changes as you move around it and one that cannot,
+    // and nothing else on screen would tell you which you are looking at.
+    var sh = hasSh ? ' · view-dependent' : ' · flat colour';
     qualityEl.textContent = atRest
-      ? 'at rest: ' + MAX_SCALE + '× · ' + splats + ' splats'
-      : 'moving: ' + renderScale.toFixed(2) + '× of ' + MAX_SCALE + '× · ' + Math.round(lastFps) + ' fps · ' + splats + ' splats';
+      ? 'at rest: ' + MAX_SCALE + '× · ' + splats + ' splats' + sh
+      : 'moving: ' + renderScale.toFixed(2) + '× of ' + MAX_SCALE + '× · ' + Math.round(lastFps) + ' fps · ' + splats + ' splats' + sh;
     qualityEl.hidden = false;
   }
 
@@ -1034,6 +1096,30 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32UI, d.texwidth, d.texheight, 0, gl.RGBA_INTEGER, gl.UNSIGNED_INT, d.texdata);
     textureReady = true;
+
+    /*
+     * The harmonics, when the file carried any. Their own texture on its own
+     * unit, so a file without them costs nothing and the shader skips the
+     * fetches entirely. Half floats: three coefficients per splat is already the
+     * larger half of what is uploaded, and this term is a gentle correction
+     * rather than something precision could be spent on.
+     */
+    if (!d.shdata || !shTexture) return;
+    var maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    if (d.shwidth > maxTex || d.shheight > maxTex) return; // no room: stay flat
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, shTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, d.shwidth, d.shheight, 0, gl.RGBA, gl.HALF_FLOAT, d.shdata);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.useProgram(program);
+    gl.uniform1i(u_shTex, 3);
+    gl.uniform1f(u_shOn, 1);
+    hasSh = true;
+    invalidate();
   }
 
   // ---- render loop ----------------------------------------------------------
