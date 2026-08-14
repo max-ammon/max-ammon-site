@@ -196,15 +196,81 @@
                     .filter(Boolean);
                 %>
                 <% if (animFrames.length > 1) { %>
+                <%
+                  /*
+                   * The tint the current frame carries. It used to be an aqua sheet
+                   * blended over the picture with mix-blend-mode: color, which is
+                   * defined as the source's colour carrying the backdrop's
+                   * brightness — and that is a trap on a layer a browser may
+                   * re-composite mid-scroll: a source that loses its colour blends
+                   * as black, and black with the backdrop's brightness is the
+                   * picture in grey. Safari did exactly that, flickering between
+                   * colour and monochrome as the page moved.
+                   *
+                   * The same result without any blending: a colour matrix is
+                   * literally the definition of that blend for a single source
+                   * colour — every channel takes the picture's luminance, offset by
+                   * how far the tint's own channel sits from its luminance — and a
+                   * second copy of the picture wearing it is faded in by the same
+                   * --tint the script already writes. No blend mode, no mask, no
+                   * isolation, nothing to lose its colour. sRGB because that is
+                   * where the blend it replaces was defined; filters would
+                   * otherwise do this in linear light and come out darker.
+                   */
+                  var animTint = '#45d6e6';
+                  var lum = function (c) { return 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]; };
+                  var tintRgb = [1, 3, 5].map(function (at) { return parseInt(animTint.substr(at, 2), 16) / 255; });
+                  /*
+                   * The blend's own arithmetic: the tint moved to the picture's
+                   * luminance, and then — this is the part a plain matrix cannot do
+                   * — pulled back into range by scaling its colour towards that
+                   * luminance rather than clipping each channel on its own. Which
+                   * is why white stays white under it instead of turning cyan.
+                   *
+                   * Every output channel depends on nothing but the luminance, so
+                   * the whole blend is one curve per channel: flatten the picture to
+                   * its luminance, then look each channel up. The curve is straight
+                   * either side of the two points where a channel meets an end of
+                   * the range, so a table of samples reproduces it to well under
+                   * what a byte of colour can show.
+                   */
+                  var setLum = function (l) {
+                    var c = tintRgb.map(function (v) { return v + (l - lum(tintRgb)); });
+                    var n = Math.min.apply(null, c), x = Math.max.apply(null, c);
+                    if (n < 0) c = c.map(function (v) { return l + ((v - l) * l) / (l - n); });
+                    if (x > 1) c = c.map(function (v) { return l + ((v - l) * (1 - l)) / (x - l); });
+                    return c;
+                  };
+                  var SAMPLES = 65;
+                  var tintTable = [0, 1, 2].map(function (ch) {
+                    var out = [];
+                    for (var s = 0; s < SAMPLES; s++) out.push(setLum(s / (SAMPLES - 1))[ch].toFixed(4));
+                    return out.join(' ');
+                  });
+                %>
+                <svg class="anim-tint-def" width="0" height="0" aria-hidden="true" focusable="false">
+                    <filter id="animTint" color-interpolation-filters="sRGB">
+                        <feColorMatrix type="matrix" values="0.3 0.59 0.11 0 0 0.3 0.59 0.11 0 0 0.3 0.59 0.11 0 0 0 0 0 1 0"/>
+                        <feComponentTransfer>
+                            <feFuncR type="table" tableValues="<%= tintTable[0] %>"/>
+                            <feFuncG type="table" tableValues="<%= tintTable[1] %>"/>
+                            <feFuncB type="table" tableValues="<%= tintTable[2] %>"/>
+                        </feComponentTransfer>
+                    </filter>
+                </svg>
                 <span class="animationimage anim-frames" data-anim-frames>
                     <% animFrames.forEach(function (frame, i) { %>
-                    <%# --frame-src masks the tint with this frame's own alpha; 800px
-                        is plenty for a mask edge and is usually the very file the
-                        <img> below already picked from its srcset. %>
-                    <span class="af<%= i === 0 ? ' af-base' : '' %>" style="--frame-src: url('<%= imgUrl(frame, 800) %>')">
+                    <span class="af<%= i === 0 ? ' af-base' : '' %>">
                         <img src="<%= imgUrl(frame, 1200) %>"
                              srcset="<%= imgSrcset(frame, [480, 800, 1200, 1600]) %>"
                              sizes="50vw" loading="lazy" decoding="async" alt="">
+                        <%# The same picture and the same srcset, so it is the file
+                            already downloaded and decoded, drawn a second time with
+                            the tint on it. Its own transparency comes with it, which
+                            is what the mask used to be for. %>
+                        <img class="af-tint" src="<%= imgUrl(frame, 1200) %>"
+                             srcset="<%= imgSrcset(frame, [480, 800, 1200, 1600]) %>"
+                             sizes="50vw" loading="lazy" decoding="async" alt="" aria-hidden="true">
                     </span>
                     <% }); %>
                 </span>
