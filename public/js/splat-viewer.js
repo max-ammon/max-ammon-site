@@ -292,9 +292,12 @@
     // two identical steps. Bytes back to their value: a byte of 128 is nothing.
     '        vec3 c0 = t0.rgb, c1 = vec3(t0.a, t1.rg), c2 = vec3(t1.ba, t2.r), c3 = t2.gba;\n' +
     '        vec3 c4 = t3.rgb, c5 = vec3(t3.a, t4.rg), c6 = vec3(t4.ba, t5.r), c7 = t5.gba;\n' +
-    '        float q = 255.0 / 128.0;\n' +
-    '        c0 = c0 * q - 1.0; c1 = c1 * q - 1.0; c2 = c2 * q - 1.0; c3 = c3 * q - 1.0;\n' +
-    '        c4 = c4 * q - 1.0; c5 = c5 * q - 1.0; c6 = c6 * q - 1.0; c7 = c7 * q - 1.0;\n' +
+    // Signed bytes: what comes back is already the coefficient, give or take the
+    // difference between a scale of 127 and the 128 they were stored on. A
+    // texture that never arrived reads as zeroes, which is a capture with no
+    // harmonics rather than one with every coefficient hard negative.
+    '        float q = 127.0 / 128.0;\n' +
+    '        c0 *= q; c1 *= q; c2 *= q; c3 *= q; c4 *= q; c5 *= q; c6 *= q; c7 *= q;\n' +
     '        vec3 d = normalize(transpose(mat3(view)) * cam.xyz);\n' +
     '        float x = d.x, y = d.y, z = d.z;\n' +
     '        vec3 sh = 0.4886025119029199 * (-y * c0 + z * c1 - x * c2);\n' +
@@ -788,6 +791,37 @@
   var minDist = 0.05;
   var maxDist = 500;
   var droppedForSize = 0; // splats this card had no room for
+  var shFailed = false;
+
+  /*
+   * ---- what happened, on the device it happened on --------------------------
+   * A phone has no console to read and no way to be asked a question, so a
+   * viewer that comes out black there is three rounds of guessing from here.
+   * Adding ?debug to the address puts the facts on the screen instead: what the
+   * card is, what it will take, how big the capture turned out to be, how large
+   * the textures were and whether it accepted them.
+   *
+   * Anyone with the link can turn it on, which is the point — the person with
+   * the device is not necessarily the person who can log in.
+   */
+  var DEBUG = /(?:^|[?&])debug\b/.test(window.location.search);
+  var diag = {};
+  var diagEl = null;
+  function note(k, v) {
+    if (!DEBUG) return;
+    diag[k] = v;
+    if (!diagEl) {
+      diagEl = document.createElement('pre');
+      diagEl.id = 'splatDebug';
+      diagEl.style.cssText = 'position:fixed;left:0;bottom:0;z-index:99999;margin:0;padding:8px 10px;'
+        + 'max-width:100%;max-height:52vh;overflow:auto;background:rgba(0,0,0,0.82);color:#cfe;'
+        + 'font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;user-select:text;';
+      (stage || document.body).appendChild(diagEl);
+    }
+    var out = [];
+    for (var key in diag) if (Object.prototype.hasOwnProperty.call(diag, key)) out.push(key + ': ' + diag[key]);
+    diagEl.textContent = out.join('\n');
+  }
 
   /*
    * ---- adaptive quality ------------------------------------------------------
@@ -1102,6 +1136,7 @@
   worker.onmessage = function (e) {
     var d = e.data;
     if (d.error) {
+      note('worker', 'failed: ' + d.error);
       fail('Could not load this splat: ' + d.error);
       return;
     }
@@ -1114,6 +1149,11 @@
       // guessed at from a capture that looks thinner here than elsewhere.
       droppedForSize = d.dropped || 0;
       initCamera(d.bounds);
+      note('splats', totalSplats + (droppedForSize ? ' (' + droppedForSize + ' dropped to fit)' : ''));
+      note('cloud', 'centre ' + d.bounds.center.map(function (v) { return v.toFixed(1); }).join(', ')
+        + ' · radius ' + d.bounds.radius.toFixed(1)
+        + (isFinite(d.bounds.radius) && isFinite(d.bounds.center[0]) ? '' : '  <-- NOT A NUMBER'));
+      note('camera', 'distance ' + dist.toFixed(1) + ' · may travel ' + minDist.toFixed(3) + ' to ' + maxDist.toFixed(0));
     }
     if (d.texdata) uploadTexture(d);
     if (d.depthIndex) {
@@ -1179,6 +1219,12 @@
      * is black with nothing in the console. So ask, and say so.
      */
     var texErr = gl.getError();
+    note('data texture', d.texwidth + '×' + d.texheight + ' rgba32ui ≈ '
+      + Math.round((d.texwidth * d.texheight * 16) / 1048576) + 'MB, error ' + texErr);
+    note('harmonics texture', d.shdata
+      ? d.shwidth + '×' + d.shheight + ' rgba8 ≈ ' + Math.round((d.shwidth * d.shheight * 4) / 1048576) + 'MB'
+      : 'none sent');
+    note('wide colour', d.hdr ? 'yes' : 'no (byte colour)');
     if (texErr !== gl.NO_ERROR) {
       fail('This capture is larger than this device can hold (the graphics card refused a '
         + d.texwidth + '×' + d.texheight + ' texture). It should open on a desktop browser.');
@@ -1203,9 +1249,24 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, d.shwidth, d.shheight, 0, gl.RGBA, gl.UNSIGNED_BYTE, d.shdata);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8_SNORM, d.shwidth, d.shheight, 0, gl.RGBA, gl.BYTE, d.shdata);
     gl.activeTexture(gl.TEXTURE0);
     gl.useProgram(program);
+    /*
+     * This one is allowed to fail. It is the second-largest thing asked of the
+     * card and the first that is optional, so a device that cannot spare the
+     * memory should lose the harmonics and keep the capture — which means asking
+     * whether it worked, rather than leaving the shader to read an empty texture
+     * for the rest of the session.
+     */
+    var shErr = gl.getError();
+    note('harmonics upload', shErr === gl.NO_ERROR ? 'accepted' : 'REFUSED (error ' + shErr + ') — flat colour');
+    if (shErr !== gl.NO_ERROR) {
+      gl.uniform1f(u_shOn, 0);
+      hasSh = false;
+      shFailed = true;
+      return;
+    }
     gl.uniform1i(u_shTex, 3);
     gl.uniform1f(u_shOn, 1);
     hasSh = true;
@@ -1759,6 +1820,13 @@
      * refused and the viewer draws nothing at all.
      */
     var maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    note('file', FORMAT + ' · ' + (ab.byteLength / 1048576).toFixed(1) + 'MB');
+    note('card', (function () {
+      var info = gl.getExtension('WEBGL_debug_renderer_info');
+      return info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+    })());
+    note('card limits', 'largest texture ' + maxTex + ' (holds ' + (maxTex * 1024 / 1e6).toFixed(1)
+      + 'M splats) · float targets ' + (HDR_OK ? 'yes' : 'no'));
     if (FORMAT === 'ply') worker.postMessage({ ply: ab, maxTex: maxTex }, [ab]);
     else if (FORMAT === 'spz') worker.postMessage({ spz: ab, maxTex: maxTex }, [ab]);
     else worker.postMessage({ splat: ab, maxTex: maxTex }, [ab]);

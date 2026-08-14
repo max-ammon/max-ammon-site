@@ -49,16 +49,24 @@ let vertexCount = 0;
  * a row is exactly 12288 bytes and the texture needs no padding except at the
  * end of the last one — which means what the parsers write can be handed to the
  * card as it stands, instead of being copied into a second array of its own.
+ *
+ * Signed bytes, so that nought means nought. A texture that fails to allocate —
+ * and 24 bytes a splat is a real allocation on a phone — reads back as zeroes,
+ * and zeroes have to mean a capture with no harmonics rather than a capture with
+ * every coefficient at its full negative, which is what an unsigned byte scale
+ * would have said. A picture that loses its harmonics should lose its sheen, not
+ * turn inside out.
  */
-let shCoeffs = null; // Uint8Array, 24 per splat, padded to whole rows, or null
+let shCoeffs = null; // Int8Array, 24 per splat, padded to whole rows, or null
 const SH_COEFFS = 8;
 const SH_PER_SPLAT = SH_COEFFS * 3;
 const SH_ROW_SPLATS = 512;
 const SH_ROW_BYTES = SH_ROW_SPLATS * SH_PER_SPLAT; // 12288 = 3072 texels of RGBA8
 const shBytesFor = (n) => Math.ceil(n / SH_ROW_SPLATS) * SH_ROW_BYTES;
+// The coefficient times 128, which is .spz's own scale with its bias removed.
 const quantSh = (v) => {
-  const q = Math.round(v * 128 + 128);
-  return q < 0 ? 0 : q > 255 ? 255 : q;
+  const q = Math.round(v * 128);
+  return q < -128 ? -128 : q > 127 ? 127 : q;
 };
 
 /*
@@ -403,10 +411,8 @@ function processPlyBuffer(inputBuffer) {
   // three, a degree-2 or higher one has all of them, and the rest stay zero,
   // which is the same as not having them.
   const plyKept = Math.min(SH_COEFFS, restPerChannel);
-  // 128 is the byte that means nought: a file carrying only the first three
-  // coefficients must leave the other five saying nothing, and an array of
-  // zeroes would say minus one in every one of them.
-  const plySh = restPerChannel >= 3 ? new Uint8Array(shBytesFor(count)).fill(128) : null;
+  // Signed, so the bands this file does not carry are already saying nothing.
+  const plySh = restPerChannel >= 3 ? new Int8Array(shBytesFor(count)) : null;
   const plyHdr = types['f_dc_0'] ? new Uint16Array(count * 4) : null;
 
   const out = new ArrayBuffer(ROW_LENGTH * count);
@@ -544,9 +550,8 @@ async function processSpzBuffer(inputBuffer) {
   const shBytes = numPoints * shDim * 3;
   const spzSh = shDim >= 3 && o + shBytes <= raw.length ? raw.subarray(o, o + shBytes) : null;
   const spzKept = Math.min(SH_COEFFS, shDim);
-  // 128 is nought — see the .ply reader: the bands this file does not carry have
-  // to say nothing rather than minus one.
-  shCoeffs = spzSh ? new Uint8Array(shBytesFor(numPoints)).fill(128) : null;
+  // Signed, so the bands past this file's degree are already saying nothing.
+  shCoeffs = spzSh ? new Int8Array(shBytesFor(numPoints)) : null;
   hdrColor = new Uint16Array(numPoints * 4);
 
   const posScale = 1 / (1 << fractionalBits);
@@ -590,7 +595,7 @@ async function processSpzBuffer(inputBuffer) {
       // copy and not a conversion: out of the file and into the texture as-is.
       const s = i * shDim * 3;
       const d = i * SH_PER_SPLAT;
-      for (let v = 0; v < spzKept * 3; v++) shCoeffs[d + v] = spzSh[s + v];
+      for (let v = 0; v < spzKept * 3; v++) shCoeffs[d + v] = spzSh[s + v] - 128;
     }
 
     // rotation -> quaternion (x, y, z, w)
@@ -685,7 +690,7 @@ function fitToTexture() {
    * dropping them now is 24 bytes a splat given back on the device that ran out
    * of room to begin with, rather than allocated and thrown away a moment later.
    */
-  shCoeffs = null;
+  shCoeffs = null; // signed zeroes read as no harmonics, which is what is wanted
   const out = new ArrayBuffer(keep * ROW_LENGTH);
   const src = new Uint8Array(buffer);
   const dst = new Uint8Array(out);
