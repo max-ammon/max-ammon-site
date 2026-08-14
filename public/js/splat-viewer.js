@@ -647,9 +647,23 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    /*
+     * Asking whether it was given, not only whether it is complete. A card that
+     * has run out of room refuses the storage here and says so with an error,
+     * and a texture with no storage behind it can still report a complete
+     * framebuffer — at which point the splats are drawn into nothing, the
+     * tone-mapping pass reads nothing back, and the screen is black with every
+     * other thing about the load looking perfectly correct. Which is the whole
+     * failure this viewer had on a phone holding a 70MB cloud.
+     */
+    var hdrErr = gl.getError();
     gl.bindFramebuffer(gl.FRAMEBUFFER, hdrFbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, hdrTex, 0);
-    hdrReady = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+    var hdrStatus = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    hdrReady = hdrStatus === gl.FRAMEBUFFER_COMPLETE && hdrErr === gl.NO_ERROR;
+    note('float target', w + '×' + h + ' rgba16f ≈ ' + Math.round((w * h * 8) / 1048576) + 'MB · '
+      + (hdrStatus === gl.FRAMEBUFFER_COMPLETE ? 'complete' : 'incomplete (' + hdrStatus + ')')
+      + ' · error ' + hdrErr + (hdrReady ? '' : ' — falling back'));
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.activeTexture(gl.TEXTURE0);
     hdrW = w;
@@ -1293,6 +1307,12 @@
     gl.clear(gl.COLOR_BUFFER_BIT);
     if (textureReady && drawCount > 0) {
       gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, drawCount);
+      // Once, on the first frame that actually draws: what was drawn, where it
+      // went, and whether the card minded.
+      if (DEBUG && !diag['first draw']) {
+        note('first draw', drawCount + ' splats into ' + (useHdr ? 'the float target' : 'the canvas')
+          + ' at ' + canvas.width + '×' + canvas.height + ' · error ' + gl.getError());
+      }
     }
     // The backdrop goes in last on purpose. Splats composite front-to-back with
     // premultiplied "under" blending, which reads the destination alpha to know
