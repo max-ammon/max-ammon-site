@@ -49,7 +49,7 @@ function addFrames(mediaId, paths) {
  * instead of leaving a dead link on the card.
  */
 const qLinkModel = db.prepare('SELECT id, title FROM models WHERE id = ? AND published = 1');
-const qLinkSplat = db.prepare('SELECT id, title FROM splats WHERE id = ? AND published = 1');
+const qLinkSplat = db.prepare('SELECT id, title FROM splats WHERE id = ? AND published = 1 AND unlisted = 0');
 
 function projectLinks(p) {
   const links = [];

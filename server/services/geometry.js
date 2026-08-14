@@ -70,10 +70,12 @@ function parseView(s) {
 
 /*
  * Cross-link to the same subject captured as a Gaussian splat, so a model and
- * its scan stay connected. Only while that splat is still published, and tagged
- * ?from=geometry so leaving its viewer returns to this listing.
+ * its scan stay connected. Only while that splat is still published and still
+ * listed — an unlisted one is reachable by its link and by nothing else, and a
+ * link on a page anyone can read is exactly the else. Tagged ?from=geometry so
+ * leaving its viewer returns to this listing.
  */
-const qLinkSplat = db.prepare('SELECT id, title FROM splats WHERE id = ? AND published = 1');
+const qLinkSplat = db.prepare('SELECT id, title FROM splats WHERE id = ? AND published = 1 AND unlisted = 0');
 const qLinkProject = db.prepare('SELECT id, title FROM gallery_projects WHERE id = ? AND published = 1');
 function modelLinks(m) {
   const links = [];

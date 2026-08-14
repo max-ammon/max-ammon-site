@@ -50,7 +50,13 @@
                         <input type="text" name="year" value="<%= s.year %>" placeholder="2025">
                     </label>
                     <label class="field pub"><input type="checkbox" name="published" <%= s.published ? 'checked' : '' %>> Visible</label>
+                    <label class="field pub" title="Keep it off every listing, but leave it reachable by its own link — for showing one capture to one person"><input type="checkbox" name="unlisted" <%= s.unlisted ? 'checked' : '' %>> By&nbsp;link&nbsp;only</label>
                     <label class="field pub" title="Turn on if the splat appears upside down in the viewer"><input type="checkbox" name="flip_up" <%= s.flip_up ? 'checked' : '' %>> Flip&nbsp;vertical</label>
+                    <% if (s.published && s.unlisted) { %>
+                    <p class="field full muted" style="margin:0;">Not in the splats page, the gallery or anywhere else — only this link:
+                        <a href="/splats/<%= s.id %>/<%= (s.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') %>" target="_blank" rel="noopener">/splats/<%= s.id %>/…</a>
+                    </p>
+                    <% } %>
                     <label class="field full">Description
                         <textarea name="description" placeholder="A short description of this capture."><%= s.description %></textarea>
                     </label>
@@ -112,6 +118,7 @@
                 <label>Splat file <span class="muted">(.ply, .splat or .spz)</span> <input type="file" name="splat" accept=".ply,.splat,.spz" required></label>
                 <label>360&deg; backdrop <span class="muted">(optional &mdash; an equirectangular JPG/PNG/WebP, as exported from an HDRI; browsers can't read .hdr or .exr)</span> <input type="file" name="background" accept="image/*"></label>
                 <label class="checkbox"><input type="checkbox" name="published" checked> Visible on the site</label>
+                <label class="checkbox"><input type="checkbox" name="unlisted"> By link only <span class="muted">(kept off the splats page, the gallery and every other listing, but anyone with its link can open it)</span></label>
                 <label class="checkbox"><input type="checkbox" name="flip_up"> Flip vertical <span class="muted">(turn on if the splat loads upside down — you can also change this later)</span></label>
                 <button class="btn" type="submit">Add splat</button>
             </form>

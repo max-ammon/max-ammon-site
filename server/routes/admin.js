@@ -877,6 +877,7 @@ router.post('/splats', splatFields, async (req, res) => {
     splat_path: toPublicPath(splat.path),
     splat_format: splatExt(splat),
     published: req.body.published === 'on',
+    unlisted: req.body.unlisted === 'on',
     flip_up: req.body.flip_up === 'on',
     background_path: background ? toPublicPath(background.path) : '',
   };
@@ -894,6 +895,7 @@ router.post('/splats/:id', splatFields, async (req, res) => {
     year: req.body.year,
     description: req.body.description,
     published: req.body.published === 'on',
+    unlisted: req.body.unlisted === 'on',
     flip_up: req.body.flip_up === 'on',
     link_model_id: req.body.link_model_id,
     link_project_id: req.body.link_project_id,

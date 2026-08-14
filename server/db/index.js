@@ -71,6 +71,7 @@ addColumnIfMissing('splats', 'grade_shadows', 'REAL NOT NULL DEFAULT 0');
 addColumnIfMissing('splats', 'grade_mids', 'REAL NOT NULL DEFAULT 0');
 addColumnIfMissing('splats', 'grade_highs', 'REAL NOT NULL DEFAULT 0');
 addColumnIfMissing('splats', 'grade_gamma', 'REAL NOT NULL DEFAULT 1');
+addColumnIfMissing('splats', 'unlisted', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('models', 'link_project_id', 'INTEGER');
 addColumnIfMissing('models', 'smooth_normals', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('models', 'metalness', 'REAL');

@@ -241,6 +241,7 @@ CREATE TABLE IF NOT EXISTS splats (
   link_project_id INTEGER,                    -- optional: the gallery project this capture belongs to
   sort         INTEGER NOT NULL DEFAULT 0,
   published    INTEGER NOT NULL DEFAULT 1,
+  unlisted     INTEGER NOT NULL DEFAULT 0,    -- 1 = reachable by its link, but in no listing
   flip_up      INTEGER NOT NULL DEFAULT 0,    -- 1 = flip the up axis (fixes upside-down captures)
   exposure     REAL NOT NULL DEFAULT 1,        -- viewer brightness multiplier (owner-set)
   splat_scale  REAL NOT NULL DEFAULT 1,        -- how large each splat is drawn (owner-set; 1 = as captured)

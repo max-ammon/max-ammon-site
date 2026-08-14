@@ -12,18 +12,25 @@ const { formatBytes, slugify } = require('../lib/format');
 const { imgUrl } = require('../lib/images');
 
 const qAll = db.prepare('SELECT * FROM splats ORDER BY sort, id');
-const qPublished = db.prepare('SELECT * FROM splats WHERE published = 1 ORDER BY sort, id');
+/*
+ * The listing leaves out the unlisted ones. That is the whole of what unlisted
+ * means: the splat is published — it answers at its own address, for anyone who
+ * has it — but it appears in nothing that enumerates splats. Anywhere else that
+ * names a splat without being asked for that splat has to make the same test:
+ * the gallery's cross-link and the geometry page's both do.
+ */
+const qPublished = db.prepare('SELECT * FROM splats WHERE published = 1 AND unlisted = 0 ORDER BY sort, id');
 const qOne = db.prepare('SELECT * FROM splats WHERE id = ?');
 const qNextSort = db.prepare('SELECT COALESCE(MIN(sort), 1) - 1 AS s FROM splats'); // new items go to the top
 const storage = require('./storage');
 
 const insSplat = db.prepare(`INSERT INTO splats
-  (title, year, description, thumb_path, aspect_ratio, splat_path, splat_format, sort, published, flip_up, background_path)
-  VALUES (@title, @year, @description, @thumb_path, @aspect_ratio, @splat_path, @splat_format, @sort, @published, @flip_up, @background_path)`);
+  (title, year, description, thumb_path, aspect_ratio, splat_path, splat_format, sort, published, unlisted, flip_up, background_path)
+  VALUES (@title, @year, @description, @thumb_path, @aspect_ratio, @splat_path, @splat_format, @sort, @published, @unlisted, @flip_up, @background_path)`);
 
 const updSplat = db.prepare(`UPDATE splats SET
   title=@title, year=@year, description=@description, thumb_path=@thumb_path,
-  aspect_ratio=@aspect_ratio, splat_path=@splat_path, splat_format=@splat_format, published=@published, flip_up=@flip_up,
+  aspect_ratio=@aspect_ratio, splat_path=@splat_path, splat_format=@splat_format, published=@published, unlisted=@unlisted, flip_up=@flip_up,
   link_model_id=@link_model_id, link_project_id=@link_project_id, background_path=@background_path
   WHERE id=@id`);
 
@@ -104,7 +111,16 @@ function setDefaultView(id, v) {
   const nums = [v && v.tx, v && v.ty, v && v.tz, v && v.dist, v && v.yaw, v && v.pitch].map(parseFloat);
   if (nums.some((n) => !isFinite(n))) return null;
   let [tx, ty, tz, dist, yaw, pitch] = nums;
-  dist = Math.min(500, Math.max(0.05, dist));
+  /*
+   * Wide on purpose. This used to cut the distance at 500, which is a sensible
+   * number only for a capture a few units across: save a view of one whose
+   * coordinates are metres of a landscape and the distance that was recorded
+   * was not the one the camera was at — it came back as 500, which for a cloud
+   * a thousand wide is inside the thing, where an orbit reads as turning on the
+   * spot. The viewer clamps this against the size of the actual cloud when it
+   * loads, so all this has to do is refuse a number that is not a number.
+   */
+  dist = Math.min(1e6, Math.max(1e-4, dist));
   pitch = Math.min(MAX_PITCH, Math.max(-MAX_PITCH, pitch));
   // Keep yaw in [-PI, PI] so stored values stay tidy and comparable.
   yaw = Math.atan2(Math.sin(yaw), Math.cos(yaw));
@@ -269,6 +285,7 @@ function createSplat(data) {
     splat_format: data.splat_format || '',
     sort,
     published: data.published ? 1 : 0,
+    unlisted: data.unlisted ? 1 : 0,
     flip_up: data.flip_up ? 1 : 0,
     background_path: data.background_path || '',
   });
@@ -298,6 +315,7 @@ function updateSplat(id, data) {
     splat_path: nextSplat,
     splat_format: nextFormat,
     published: data.published ? 1 : 0,
+    unlisted: data.unlisted ? 1 : 0,
     flip_up: data.flip_up ? 1 : 0,
     link_model_id: data.link_model_id ? Number(data.link_model_id) : null,
     link_project_id: data.link_project_id ? Number(data.link_project_id) : null,
