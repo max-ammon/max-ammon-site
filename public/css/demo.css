@@ -516,11 +516,19 @@ a.ci-value:hover { text-decoration: underline; }
    to it unchanged — that class is already relative, so the laid-over frames
    have their containing block without anything being added here.
 
-   Its one addition is the mask the script drives. Everything but the size and
-   the no-repeat is set per frame from the script, since which frame is being
-   revealed and which is being covered changes with the scroll position. Sized
-   to the box rather than left to tile: a gradient the script has run off the
-   edge of the picture must simply be off it, not wrapped around. */
+   The two parts a frame plays during a wipe are here rather than in the script,
+   because a mask is a picture a browser has to draw and one it is handed afresh
+   on every animation frame of a scroll is one it can be caught painting without.
+   So there is a single mask, defined once, and the script only slides it.
+
+   The frame being revealed wears the seam: a mask three times the width of the
+   picture — opaque, then the fade, then nothing — whose boundary is put where
+   the wipe has reached. Three times, so that whichever way it is slid the
+   picture is still covered by it: outside a mask is outside the frame, and a
+   mask that ran short would take the picture with it.
+
+   The frame being covered needs a hard edge, and a hard edge is a clip rather
+   than a mask — a shape cut, not a stencil painted — so it has none at all. */
 .wipe-frames {
   display: inline-block;
   vertical-align: baseline;
@@ -536,10 +544,17 @@ a.ci-value:hover { text-decoration: underline; }
   /* Before the script has had a frame to run — and if it never does — only the
      first frame shows, which is exactly the single picture this replaces. */
   opacity: 0;
+}
+/* The frame being revealed. The seam is 7% of the picture, which across a mask
+   three times as wide is 2.3333% — the script's SEAM is the same number and the
+   two have to stay in step. */
+.wipe-frames .wf-in {
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 33.3333%, transparent 35.6667%);
+  mask-image: linear-gradient(to right, #000 0, #000 33.3333%, transparent 35.6667%);
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
+  -webkit-mask-size: 300% 100%;
+  mask-size: 300% 100%;
 }
 .wipe-frames .wf-base { opacity: 1; }
 .wipe-frames .wf:not(.wf-base) {

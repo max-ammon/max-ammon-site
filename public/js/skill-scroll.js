@@ -249,13 +249,23 @@
     return clamp01((rawPass(el) - WIPE_IN) / (WIPE_END - WIPE_IN));
   }
 
-  function setMask(f, m) {
-    // Mask strings cost more to parse than a number, and most animation frames
-    // leave the hidden ones exactly as they were, so only write what changed.
-    if (f.__mask === m) return;
-    f.__mask = m;
-    f.style.webkitMaskImage = m;
-    f.style.maskImage = m;
+  /*
+   * Which of the three parts a frame is playing. The mask and the clip that go
+   * with a part are in the stylesheet, so this is a class rather than a set of
+   * properties, and it is only touched when a frame actually changes part —
+   * which is a few times a pass, not sixty times a second.
+   */
+  function setRole(f, role) {
+    if (f.__role === role) return;
+    f.__role = role;
+    f.classList.toggle('wf-in', role === 'in');
+    f.classList.toggle('wf-out', role === 'out');
+    // Whatever the last part left behind is not this one's to inherit.
+    if (role !== 'in') {
+      f.style.webkitMaskPosition = '';
+      f.style.maskPosition = '';
+    }
+    if (role !== 'out') f.style.clipPath = '';
   }
 
   function updateWipe(el) {
@@ -283,21 +293,47 @@
     var edge = frac * (100 + SEAM);
     var lead = edge - SEAM;
 
+    /*
+     * The incoming frame's soft edge is one fixed picture, three times the width
+     * of the frame — opaque, then the seam, then nothing — slid along until its
+     * boundary sits where the wipe has got to. Sliding a mask moves where it is
+     * sampled; rewriting one makes the browser draw it again, and a browser that
+     * is asked to redraw a mask on every animation frame of a scroll can be
+     * caught painting the frame without it. That is what this used to do.
+     *
+     * With the mask three times the width, its own position runs 0% to 50% as
+     * the boundary crosses the picture: a percentage places the image's left
+     * edge across (frame - mask) = -2 widths, so the boundary, one width in from
+     * that edge, lands at 1 - 2p of the way across.
+     */
+    var maskPos = (50 * (1 - lead / 100)).toFixed(3) + '% 0';
+
     for (var k = 0; k < frames.length; k++) {
       var f = frames[k];
       if (k === nextIdx) {
         f.style.opacity = '1';
-        setMask(f, 'linear-gradient(to right, #000 ' + lead.toFixed(2) + '%, transparent ' + edge.toFixed(2) + '%)');
+        setRole(f, 'in');
+        f.style.webkitMaskPosition = maskPos;
+        f.style.maskPosition = maskPos;
       } else if (k === cur) {
         f.style.opacity = '1';
-        // Cut off flush with the seam, not faded out across it: past `lead` the
-        // incoming frame is fully opaque and covers this one anyway, and before
-        // it this one has to be gone or it shows through wherever the new frame
-        // is transparent.
-        setMask(f, nextIdx < 0 ? 'none'
-          : 'linear-gradient(to right, transparent ' + lead.toFixed(2) + '%, #000 ' + lead.toFixed(2) + '%)');
+        /*
+         * Cut off flush with the seam, not faded out across it: past `lead` the
+         * incoming frame is fully opaque and covers this one anyway, and before
+         * it this one has to be gone or it shows through wherever the new frame
+         * is transparent. A hard edge needs no mask at all — clip-path cuts the
+         * shape rather than painting a stencil over it, which is one less thing
+         * for a browser to rasterise and get wrong.
+         */
+        if (nextIdx < 0) {
+          setRole(f, 'whole');
+        } else {
+          setRole(f, 'out');
+          f.style.clipPath = 'inset(0 0 0 ' + Math.max(0, lead).toFixed(2) + '%)';
+        }
       } else {
         f.style.opacity = '0';
+        setRole(f, 'hidden');
       }
     }
   }
