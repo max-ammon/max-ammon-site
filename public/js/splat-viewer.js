@@ -787,6 +787,7 @@
   var modelRadius = 1;
   var minDist = 0.05;
   var maxDist = 500;
+  var droppedForSize = 0; // splats this card had no room for
 
   /*
    * ---- adaptive quality ------------------------------------------------------
@@ -1042,7 +1043,10 @@
      * like it has stopped working. Both are invisible without a number.
      */
     var round = function (v) { return v >= 100 ? Math.round(v) : +v.toFixed(2); };
-    var cam = ' · ' + round(dist) + ' from a cloud of ' + round(modelRadius)
+    var cut = droppedForSize
+      ? ' · ' + Math.round(droppedForSize / 1000) + 'k dropped — this card\'s texture limit'
+      : '';
+    var cam = cut + ' · ' + round(dist) + ' from a cloud of ' + round(modelRadius)
       + (dist <= minDist * 1.001 ? ' (as close as it goes)' : '')
       + (dist >= maxDist * 0.999 ? ' (as far as it goes)' : '');
     qualityEl.textContent = (atRest
@@ -1105,6 +1109,10 @@
       // Every device starts with the whole cloud; only a measured stall thins it.
       totalSplats = d.vertexCount;
       renderCount = totalSplats;
+      // ...or the card's own ceiling, which is a property of the device rather
+      // than of the moment, so it is worth saying rather than leaving to be
+      // guessed at from a capture that looks thinner here than elsewhere.
+      droppedForSize = d.dropped || 0;
       initCamera(d.bounds);
     }
     if (d.texdata) uploadTexture(d);
@@ -1165,6 +1173,17 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32UI, d.texwidth, d.texheight, 0, gl.RGBA_INTEGER, gl.UNSIGNED_INT, d.texdata);
+    /*
+     * A refused texture is the quietest failure this viewer has: the call
+     * returns, the texture stays empty, every splat reads zeroes, and the screen
+     * is black with nothing in the console. So ask, and say so.
+     */
+    var texErr = gl.getError();
+    if (texErr !== gl.NO_ERROR) {
+      fail('This capture is larger than this device can hold (the graphics card refused a '
+        + d.texwidth + '×' + d.texheight + ' texture). It should open on a desktop browser.');
+      return;
+    }
     textureReady = true;
     gl.useProgram(program);
     gl.uniform1f(u_hdrOn, d.hdr ? 1 : 0);
@@ -1733,9 +1752,16 @@
     }
     if (labelEl) labelEl.textContent = 'Preparing…';
     if (barEl) barEl.style.width = '100%';
-    if (FORMAT === 'ply') worker.postMessage({ ply: ab }, [ab]);
-    else if (FORMAT === 'spz') worker.postMessage({ spz: ab }, [ab]);
-    else worker.postMessage({ splat: ab }, [ab]);
+    /*
+     * How big a texture this card will take goes with the file: the worker packs
+     * the cloud into one and only this side can ask. A capture past what the
+     * card can hold has to be cut down before it is packed, or the upload is
+     * refused and the viewer draws nothing at all.
+     */
+    var maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    if (FORMAT === 'ply') worker.postMessage({ ply: ab, maxTex: maxTex }, [ab]);
+    else if (FORMAT === 'spz') worker.postMessage({ spz: ab, maxTex: maxTex }, [ab]);
+    else worker.postMessage({ splat: ab, maxTex: maxTex }, [ab]);
   }
 
   load().catch(function (e) {

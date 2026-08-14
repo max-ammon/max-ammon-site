@@ -178,6 +178,16 @@ function generateTexture() {
   let shdata = null;
   let shwidth = 0;
   let shheight = 0;
+  /*
+   * The harmonics have their own texture and their own ceiling: half as many
+   * splats to a row means twice the rows, so a card that can just hold the cloud
+   * cannot hold these. Better not to build them at all than to hand over
+   * something that will be refused — that is 24 bytes a splat not allocated on
+   * exactly the device that had no room to spare. The picture is then the flat
+   * colour it was before harmonics existed, which the readout says.
+   */
+  const maxRows = maxSplats === Infinity ? Infinity : maxSplats / 1024;
+  if (shCoeffs && Math.ceil(vertexCount / 512) > maxRows) shCoeffs = null;
   if (shCoeffs) {
     shwidth = 512 * 6;
     shheight = Math.ceil(vertexCount / 512);
@@ -623,18 +633,63 @@ function throttledSort() {
   }, 0);
 }
 
+/*
+ * What this GPU can actually hold. The cloud goes to the card as a texture two
+ * texels wide per splat, a thousand splats to a row, so the number of splats it
+ * can take is its largest texture times a thousand. A card is only obliged to
+ * manage 2048 of those rows and a phone often stops at 4096, where a desktop is
+ * at 16384 — which is how one capture can be perfectly fine on a computer and
+ * nothing but black on a phone. Asking for a texture past the limit does not
+ * half-work: it is refused, the texture stays empty, every splat reads zeroes
+ * and nothing is drawn.
+ *
+ * So the cloud is cut to what will fit, and what is cut is the least of it. The
+ * order is by size times opacity — a splat's share of what you actually see —
+ * so the parts that go are the small faint ones that a capture of a sky has
+ * hundreds of thousands of.
+ */
+let maxSplats = Infinity;
+let droppedForSize = 0;
+
+function fitToTexture() {
+  droppedForSize = 0;
+  if (!(vertexCount > maxSplats)) return;
+  const keep = maxSplats;
+  const out = new ArrayBuffer(keep * ROW_LENGTH);
+  const src = new Uint8Array(buffer);
+  const dst = new Uint8Array(out);
+  const sh = shCoeffs ? new Float32Array(keep * SH_PER_SPLAT) : null;
+  const hdr = hdrColor ? new Float32Array(keep * 4) : null;
+  for (let r = 0; r < keep; r++) {
+    const from = importanceIndex[r];
+    dst.set(src.subarray(from * ROW_LENGTH, from * ROW_LENGTH + ROW_LENGTH), r * ROW_LENGTH);
+    if (sh) sh.set(shCoeffs.subarray(from * SH_PER_SPLAT, from * SH_PER_SPLAT + SH_PER_SPLAT), r * SH_PER_SPLAT);
+    if (hdr) hdr.set(hdrColor.subarray(from * 4, from * 4 + 4), r * 4);
+  }
+  droppedForSize = vertexCount - keep;
+  buffer = out;
+  shCoeffs = sh;
+  hdrColor = hdr;
+  vertexCount = keep;
+  importanceIndex = new Uint32Array(0); // the order it described is gone
+  computeImportanceIndex();
+}
+
 function ingest() {
   vertexCount = Math.floor(buffer.byteLength / ROW_LENGTH);
   sortedForCount = -1;
   if (!vertexCount) throw new Error('The splat file appears to be empty.');
   computeImportanceIndex();
-  self.postMessage({ bounds: computeBounds(), vertexCount });
+  fitToTexture();
+  self.postMessage({ bounds: computeBounds(), vertexCount, dropped: droppedForSize });
   generateTexture();
 }
 
 self.onmessage = async (e) => {
   const d = e.data;
   try {
+    // Sent with the file: only the main thread has a GL context to ask.
+    if (typeof d.maxTex === 'number' && d.maxTex > 0) maxSplats = d.maxTex * 1024;
     if (d.ply) {
       buffer = processPlyBuffer(d.ply);
       ingest();
