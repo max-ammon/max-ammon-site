@@ -36,9 +36,30 @@ let vertexCount = 0;
  * itself quantises most coarsely, which says what its own authors think it is
  * worth.
  */
-let shCoeffs = null; // Float32Array, 24 per splat, or null when there are none
+/*
+ * Held as the bytes they end up as, not as floats. A coefficient is quantised to
+ * a byte on .spz's own scale before it reaches the card, so a float per
+ * coefficient is four times the memory for precision that is thrown away a
+ * moment later — and at 24 coefficient-bytes a splat against a 32-byte record,
+ * floats here were the largest thing this worker held, larger than the cloud
+ * itself. On a phone that is the difference between a capture opening and the
+ * tab being taken away.
+ *
+ * The array is the texture, too. A row is 512 splats and a splat is 24 bytes, so
+ * a row is exactly 12288 bytes and the texture needs no padding except at the
+ * end of the last one — which means what the parsers write can be handed to the
+ * card as it stands, instead of being copied into a second array of its own.
+ */
+let shCoeffs = null; // Uint8Array, 24 per splat, padded to whole rows, or null
 const SH_COEFFS = 8;
 const SH_PER_SPLAT = SH_COEFFS * 3;
+const SH_ROW_SPLATS = 512;
+const SH_ROW_BYTES = SH_ROW_SPLATS * SH_PER_SPLAT; // 12288 = 3072 texels of RGBA8
+const shBytesFor = (n) => Math.ceil(n / SH_ROW_SPLATS) * SH_ROW_BYTES;
+const quantSh = (v) => {
+  const q = Math.round(v * 128 + 128);
+  return q < 0 ? 0 : q > 255 ? 255 : q;
+};
 
 /*
  * Full-precision colour, likewise beside the record rather than in it. The
@@ -49,7 +70,7 @@ const SH_PER_SPLAT = SH_COEFFS * 3;
  * its colour is gone for good. Kept here, it survives to the tone mapping, which
  * is the part that is supposed to decide what to do with light above white.
  */
-let hdrColor = null; // Float32Array, 4 per splat (rgb + alpha), or null
+let hdrColor = null; // Uint16Array of halves, 4 per splat (rgb + alpha), or null
 
 // ---- half-float packing (for the covariance texture) ----------------------
 const _floatView = new Float32Array(1);
@@ -110,8 +131,9 @@ function generateTexture() {
     // colour: as halves where the file gave us more than a byte's worth, and as
     // the four bytes the record holds where it did not.
     if (hdrColor) {
-      texdata[8 * i + 3] = packHalf2x16(hdrColor[4 * i + 0], hdrColor[4 * i + 1]);
-      texdata[8 * i + 7] = packHalf2x16(hdrColor[4 * i + 2], hdrColor[4 * i + 3]);
+      // Already halves: two of them are a texel slot, no conversion needed.
+      texdata[8 * i + 3] = ((hdrColor[4 * i + 1] << 16) | hdrColor[4 * i + 0]) >>> 0;
+      texdata[8 * i + 7] = ((hdrColor[4 * i + 3] << 16) | hdrColor[4 * i + 2]) >>> 0;
     } else {
       texdata_c[4 * (8 * i + 7) + 0] = u_buffer[32 * i + 24 + 0];
       texdata_c[4 * (8 * i + 7) + 1] = u_buffer[32 * i + 24 + 1];
@@ -187,18 +209,14 @@ function generateTexture() {
    * colour it was before harmonics existed, which the readout says.
    */
   const maxRows = maxSplats === Infinity ? Infinity : maxSplats / 1024;
-  if (shCoeffs && Math.ceil(vertexCount / 512) > maxRows) shCoeffs = null;
+  if (shCoeffs && Math.ceil(vertexCount / SH_ROW_SPLATS) > maxRows) shCoeffs = null;
   if (shCoeffs) {
-    shwidth = 512 * 6;
-    shheight = Math.ceil(vertexCount / 512);
-    shdata = new Uint8Array(shwidth * shheight * 4);
-    for (let i = 0; i < vertexCount; i++) {
-      const base = (i >> 9) * shwidth * 4 + (i & 0x1ff) * 6 * 4;
-      for (let v = 0; v < SH_PER_SPLAT; v++) {
-        const q = Math.round(shCoeffs[i * SH_PER_SPLAT + v] * 128 + 128);
-        shdata[base + v] = q < 0 ? 0 : q > 255 ? 255 : q;
-      }
-    }
+    // Written in the texture's own layout, so this is the texture: handed over
+    // rather than copied into one.
+    shwidth = SH_ROW_SPLATS * 6;
+    shheight = Math.ceil(vertexCount / SH_ROW_SPLATS);
+    shdata = shCoeffs;
+    shCoeffs = null; // it goes with the message; this side must not keep it
   }
 
   const msg = { texdata, texwidth, texheight, shdata, shwidth, shheight, hdr: !!hdrColor };
@@ -385,17 +403,20 @@ function processPlyBuffer(inputBuffer) {
   // three, a degree-2 or higher one has all of them, and the rest stay zero,
   // which is the same as not having them.
   const plyKept = Math.min(SH_COEFFS, restPerChannel);
-  const plySh = restPerChannel >= 3 ? new Float32Array(count * SH_PER_SPLAT) : null;
-  const plyHdr = types['f_dc_0'] ? new Float32Array(count * 4) : null;
+  // 128 is the byte that means nought: a file carrying only the first three
+  // coefficients must leave the other five saying nothing, and an array of
+  // zeroes would say minus one in every one of them.
+  const plySh = restPerChannel >= 3 ? new Uint8Array(shBytesFor(count)).fill(128) : null;
+  const plyHdr = types['f_dc_0'] ? new Uint16Array(count * 4) : null;
 
   const out = new ArrayBuffer(ROW_LENGTH * count);
   for (let j = 0; j < count; j++) {
     row = sizeIndex[j];
     if (plySh) {
       for (let k = 0; k < plyKept; k++) {
-        plySh[j * SH_PER_SPLAT + k * 3 + 0] = attrs['f_rest_' + k];
-        plySh[j * SH_PER_SPLAT + k * 3 + 1] = attrs['f_rest_' + (restPerChannel + k)];
-        plySh[j * SH_PER_SPLAT + k * 3 + 2] = attrs['f_rest_' + (2 * restPerChannel + k)];
+        plySh[j * SH_PER_SPLAT + k * 3 + 0] = quantSh(attrs['f_rest_' + k]);
+        plySh[j * SH_PER_SPLAT + k * 3 + 1] = quantSh(attrs['f_rest_' + (restPerChannel + k)]);
+        plySh[j * SH_PER_SPLAT + k * 3 + 2] = quantSh(attrs['f_rest_' + (2 * restPerChannel + k)]);
       }
     }
     const position = new Float32Array(out, j * ROW_LENGTH, 3);
@@ -434,9 +455,9 @@ function processPlyBuffer(inputBuffer) {
       rgba[0] = (0.5 + SH_C0 * attrs.f_dc_0) * 255;
       rgba[1] = (0.5 + SH_C0 * attrs.f_dc_1) * 255;
       rgba[2] = (0.5 + SH_C0 * attrs.f_dc_2) * 255;
-      plyHdr[j * 4 + 0] = 0.5 + SH_C0 * attrs.f_dc_0;
-      plyHdr[j * 4 + 1] = 0.5 + SH_C0 * attrs.f_dc_1;
-      plyHdr[j * 4 + 2] = 0.5 + SH_C0 * attrs.f_dc_2;
+      plyHdr[j * 4 + 0] = floatToHalf(0.5 + SH_C0 * attrs.f_dc_0);
+      plyHdr[j * 4 + 1] = floatToHalf(0.5 + SH_C0 * attrs.f_dc_1);
+      plyHdr[j * 4 + 2] = floatToHalf(0.5 + SH_C0 * attrs.f_dc_2);
     } else {
       rgba[0] = attrs.red;
       rgba[1] = attrs.green;
@@ -447,7 +468,7 @@ function processPlyBuffer(inputBuffer) {
     } else {
       rgba[3] = 255;
     }
-    if (plyHdr) plyHdr[j * 4 + 3] = rgba[3] / 255;
+    if (plyHdr) plyHdr[j * 4 + 3] = floatToHalf(rgba[3] / 255);
   }
   shCoeffs = plySh;
   hdrColor = plyHdr;
@@ -523,8 +544,10 @@ async function processSpzBuffer(inputBuffer) {
   const shBytes = numPoints * shDim * 3;
   const spzSh = shDim >= 3 && o + shBytes <= raw.length ? raw.subarray(o, o + shBytes) : null;
   const spzKept = Math.min(SH_COEFFS, shDim);
-  shCoeffs = spzSh ? new Float32Array(numPoints * SH_PER_SPLAT) : null;
-  hdrColor = new Float32Array(numPoints * 4);
+  // 128 is nought — see the .ply reader: the bands this file does not carry have
+  // to say nothing rather than minus one.
+  shCoeffs = spzSh ? new Uint8Array(shBytesFor(numPoints)).fill(128) : null;
+  hdrColor = new Uint16Array(numPoints * 4);
 
   const posScale = 1 / (1 << fractionalBits);
   const out = new ArrayBuffer(ROW_LENGTH * numPoints);
@@ -557,18 +580,17 @@ async function processSpzBuffer(inputBuffer) {
     for (let c = 0; c < 3; c++) {
       const fdc = (colors[i * 3 + c] / 255 - 0.5) / SPZ_COLOR_SCALE;
       rgba[c] = (0.5 + SH_C0 * fdc) * 255;
-      hdrColor[i * 4 + c] = 0.5 + SH_C0 * fdc;
+      hdrColor[i * 4 + c] = floatToHalf(0.5 + SH_C0 * fdc);
     }
     rgba[3] = alphas[i]; // already sigmoid(opacity)*255, exactly what .splat stores
-    hdrColor[i * 4 + 3] = alphas[i] / 255;
+    hdrColor[i * 4 + 3] = floatToHalf(alphas[i] / 255);
 
     if (spzSh) {
+      // .spz quantises these to the very bytes the card is given, so this is a
+      // copy and not a conversion: out of the file and into the texture as-is.
       const s = i * shDim * 3;
-      for (let k = 0; k < spzKept; k++) {
-        for (let c = 0; c < 3; c++) {
-          shCoeffs[i * SH_PER_SPLAT + k * 3 + c] = (spzSh[s + k * 3 + c] - 128) / 128;
-        }
-      }
+      const d = i * SH_PER_SPLAT;
+      for (let v = 0; v < spzKept * 3; v++) shCoeffs[d + v] = spzSh[s + v];
     }
 
     // rotation -> quaternion (x, y, z, w)
@@ -655,20 +677,26 @@ function fitToTexture() {
   droppedForSize = 0;
   if (!(vertexCount > maxSplats)) return;
   const keep = maxSplats;
+  /*
+   * The harmonics go here rather than later. Their texture holds half as many
+   * splats to a row as the cloud's does, so it needs twice the rows — and a
+   * cloud that has just been cut down to every row the card has cannot leave
+   * room for twice as many. They could not survive this in any case, and
+   * dropping them now is 24 bytes a splat given back on the device that ran out
+   * of room to begin with, rather than allocated and thrown away a moment later.
+   */
+  shCoeffs = null;
   const out = new ArrayBuffer(keep * ROW_LENGTH);
   const src = new Uint8Array(buffer);
   const dst = new Uint8Array(out);
-  const sh = shCoeffs ? new Float32Array(keep * SH_PER_SPLAT) : null;
-  const hdr = hdrColor ? new Float32Array(keep * 4) : null;
+  const hdr = hdrColor ? new Uint16Array(keep * 4) : null;
   for (let r = 0; r < keep; r++) {
     const from = importanceIndex[r];
     dst.set(src.subarray(from * ROW_LENGTH, from * ROW_LENGTH + ROW_LENGTH), r * ROW_LENGTH);
-    if (sh) sh.set(shCoeffs.subarray(from * SH_PER_SPLAT, from * SH_PER_SPLAT + SH_PER_SPLAT), r * SH_PER_SPLAT);
     if (hdr) hdr.set(hdrColor.subarray(from * 4, from * 4 + 4), r * 4);
   }
   droppedForSize = vertexCount - keep;
   buffer = out;
-  shCoeffs = sh;
   hdrColor = hdr;
   vertexCount = keep;
   importanceIndex = new Uint32Array(0); // the order it described is gone
