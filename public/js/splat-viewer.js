@@ -782,6 +782,11 @@
   var initial = null;
   var autoFramed = null; // the computed framing, kept for "Clear default view"
   var haveData = false;
+  // How far the camera may travel. Set from the size of the cloud once it has
+  // been measured (see initCamera); these hold until then.
+  var modelRadius = 1;
+  var minDist = 0.05;
+  var maxDist = 500;
 
   /*
    * ---- adaptive quality ------------------------------------------------------
@@ -1030,9 +1035,19 @@
     // between a capture that changes as you move around it and one that cannot,
     // and nothing else on screen would tell you which you are looking at.
     var sh = hasSh ? ' · view-dependent' : ' · flat colour';
-    qualityEl.textContent = atRest
+    /*
+     * Where the camera is, against how big the capture is. A camera closer than
+     * the cloud is a camera inside it, which is what turns orbiting into looking
+     * around — and being pinned against either limit is what makes zooming feel
+     * like it has stopped working. Both are invisible without a number.
+     */
+    var round = function (v) { return v >= 100 ? Math.round(v) : +v.toFixed(2); };
+    var cam = ' · ' + round(dist) + ' from a cloud of ' + round(modelRadius)
+      + (dist <= minDist * 1.001 ? ' (as close as it goes)' : '')
+      + (dist >= maxDist * 0.999 ? ' (as far as it goes)' : '');
+    qualityEl.textContent = (atRest
       ? 'at rest: ' + MAX_SCALE + '× · ' + splats + ' splats' + sh
-      : 'moving: ' + renderScale.toFixed(2) + '× of ' + MAX_SCALE + '× · ' + Math.round(lastFps) + ' fps · ' + splats + ' splats' + sh;
+      : 'moving: ' + renderScale.toFixed(2) + '× of ' + MAX_SCALE + '× · ' + Math.round(lastFps) + ' fps · ' + splats + ' splats' + sh) + cam;
     qualityEl.hidden = false;
   }
 
@@ -1106,10 +1121,30 @@
   };
 
   function initCamera(b) {
+    /*
+     * How far the camera may go, in the units this capture happens to be in.
+     * They were fixed numbers — never nearer than 0.05, never further than 500 —
+     * which is a silent assumption that every capture is a few units across. A
+     * capture whose coordinates are metres of a landscape is thousands, and 500
+     * away from something thousands wide is inside it: the camera cannot get out
+     * far enough to orbit, so dragging turns on the spot like looking around a
+     * room, and the whole of the zoom is spent within the object.
+     *
+     * Tied to the size of the actual cloud, both ends move with it. The old
+     * numbers stay as the outer bounds so that nothing that worked before is
+     * given less room than it had — this only ever adds range where a capture
+     * needed it.
+     */
+    modelRadius = b.radius > 0 ? b.radius : 1;
+    minDist = Math.max(1e-4, Math.min(0.05, modelRadius * 0.02));
+    maxDist = Math.max(500, modelRadius * 40);
+
     if (DEFAULT_VIEW) {
       // The owner picked where this splat opens; Reset returns here too.
       target = DEFAULT_VIEW.t.slice();
-      dist = DEFAULT_VIEW.d;
+      // Through the same limits: a view saved while the camera was stuck at an
+      // old ceiling should not put every visitor back there.
+      dist = Math.max(minDist, Math.min(maxDist, DEFAULT_VIEW.d));
       yaw = DEFAULT_VIEW.y;
       pitch = DEFAULT_VIEW.p;
     } else {
@@ -1246,8 +1281,8 @@
   }
   function dollyBy(factor) {
     dist *= factor;
-    if (dist < 0.05) dist = 0.05;
-    if (dist > 500) dist = 500;
+    if (dist < minDist) dist = minDist;
+    if (dist > maxDist) dist = maxDist;
   }
 
   canvas.addEventListener('pointerdown', function (ev) {
