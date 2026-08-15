@@ -112,9 +112,29 @@
    * what allows the browser to hand one back at all, so it is worth doing even
    * though this viewer rebuilds from scratch on a reload rather than restoring.
    */
+  /*
+   * A device that has had the graphics card taken away once will do it again on
+   * the same capture, so a reload that changes nothing is a reload that fails
+   * the same way. What is remembered is against this splat on this device: open
+   * a smaller share of it next time, and keep halving on each loss until it is
+   * something the device can actually hold. Clearing the site's data forgets it.
+   */
+  var CAP_KEY = 'splatCap:' + SPLAT_ID;
+  function rememberedCap() {
+    try {
+      return Number(window.localStorage.getItem(CAP_KEY)) || 0;
+    } catch (e) {
+      return 0;
+    }
+  }
   canvas.addEventListener('webglcontextlost', function (e) {
     e.preventDefault();
-    fail('The browser took the graphics card back from this 3D view, usually because the device was short of memory. Reload the page to start it again.');
+    var next = Math.max(2e5, Math.round((rememberedCap() || totalSplats || 1e6) * 0.5));
+    try {
+      window.localStorage.setItem(CAP_KEY, String(next));
+    } catch (err) {}
+    fail('This device could not hold the whole capture, so the browser took the graphics card back. '
+      + 'Reload the page and it will open a lighter version — about ' + (next / 1e6).toFixed(1) + ' million splats.');
   });
 
   /*
@@ -956,13 +976,23 @@
   // is the small, faint splats that fill the gaps between the big ones, so
   // holding any back is what makes a capture look see-through.
   var MIN_SPLATS = 150000;
+  // What a coarse-pointer device opens with, before any frame has been timed.
+  var FIRST_FRAME_SPLATS = 400000;
   var totalSplats = 0;
   var renderCount = 0;
 
-  // Never thin the cloud past this, however slow the device: below roughly
-  // two-thirds the gaps start to show, and a soft image beats a transparent one.
+  /*
+   * How far the cloud may be thinned. Two-thirds is where the gaps start to
+   * show, and a soft picture beats a see-through one — but that is a judgement
+   * about looks, and it only applies to a device that has a picture at all. A
+   * phone that cannot draw two-thirds of this capture in the time its watchdog
+   * allows does not get a gappy picture, it gets a lost context and a black
+   * screen, so where the pointer is coarse the floor goes much lower and the
+   * measurements are allowed to find it.
+   */
   function splatFloor() {
-    return Math.max(Math.min(totalSplats, MIN_SPLATS), Math.round(totalSplats * 0.65));
+    var share = IS_MOBILE ? 0.2 : 0.65;
+    return Math.max(Math.min(totalSplats, MIN_SPLATS), Math.round(totalSplats * share));
   }
 
   var focalX = 1000;
@@ -1010,7 +1040,15 @@
   function settleToRest() {
     if (atRest) return;
     atRest = true;
-    if (renderCount < totalSplats) {
+    /*
+     * A still frame is allowed to take as long as it likes — but only where
+     * taking too long costs time. On a phone a single frame that runs long
+     * enough is not slow, it is dead: the watchdog concludes the graphics card
+     * has hung and takes it away, and the viewer goes black mid-capture. So
+     * where the pointer is coarse the still frame climbs by the same measured
+     * steps as everything else instead of asking for the whole cloud at once.
+     */
+    if (renderCount < totalSplats && !IS_MOBILE) {
       renderCount = totalSplats; // whatever was held back, the still frame gets it
       lastPosted = ''; // re-sort at the full count
     }
@@ -1197,9 +1235,16 @@
       return;
     }
     if (d.bounds) {
-      // Every device starts with the whole cloud; only a measured stall thins it.
       totalSplats = d.vertexCount;
-      renderCount = totalSplats;
+      /*
+       * A desktop starts with the whole cloud and only a measured stall thins
+       * it. A phone cannot: the measurement arrives after the frame, and on a
+       * phone the first frame of a capture this size is the one that hangs the
+       * card long enough to have it taken away. So it opens with a fraction and
+       * the same feedback loop raises it — a second of climbing against a black
+       * screen that never recovers.
+       */
+      renderCount = IS_MOBILE ? Math.min(totalSplats, FIRST_FRAME_SPLATS) : totalSplats;
       // ...or the card's own ceiling, which is a property of the device rather
       // than of the moment, so it is worth saying rather than leaving to be
       // guessed at from a capture that looks thinner here than elsewhere.
@@ -1888,16 +1933,23 @@
      * refused and the viewer draws nothing at all.
      */
     var maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
-    note('file', FORMAT + ' · ' + (ab.byteLength / 1048576).toFixed(1) + 'MB');
+    var cap = rememberedCap();
+    note('file', FORMAT + ' · ' + (ab.byteLength / 1048576).toFixed(1) + 'MB'
+      + (cap ? ' · opening lighter after a lost context: ' + cap + ' splats' : ''));
     note('card', (function () {
       var info = gl.getExtension('WEBGL_debug_renderer_info');
       return info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
     })());
     note('card limits', 'largest texture ' + maxTex + ' (holds ' + (maxTex * 1024 / 1e6).toFixed(1)
       + 'M splats) · float targets ' + (HDR_OK ? 'yes' : 'no'));
-    if (FORMAT === 'ply') worker.postMessage({ ply: ab, maxTex: maxTex }, [ab]);
-    else if (FORMAT === 'spz') worker.postMessage({ spz: ab, maxTex: maxTex }, [ab]);
-    else worker.postMessage({ splat: ab, maxTex: maxTex }, [ab]);
+    var msg = { maxTex: maxTex };
+    // Only after a loss: a cap that cuts the cloud itself, so the 70MB of it on
+    // the card comes down too rather than only what is drawn from it.
+    if (cap) msg.maxSplats = cap;
+    if (FORMAT === 'ply') msg.ply = ab;
+    else if (FORMAT === 'spz') msg.spz = ab;
+    else msg.splat = ab;
+    worker.postMessage(msg, [ab]);
   }
 
   load().catch(function (e) {

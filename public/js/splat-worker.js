@@ -721,8 +721,10 @@ function ingest() {
 self.onmessage = async (e) => {
   const d = e.data;
   try {
-    // Sent with the file: only the main thread has a GL context to ask.
+    // Sent with the file: only the main thread has a GL context to ask, and only
+    // it knows whether this device has already failed to hold this capture.
     if (typeof d.maxTex === 'number' && d.maxTex > 0) maxSplats = d.maxTex * 1024;
+    if (typeof d.maxSplats === 'number' && d.maxSplats > 0) maxSplats = Math.min(maxSplats, d.maxSplats);
     if (d.ply) {
       buffer = processPlyBuffer(d.ply);
       ingest();
