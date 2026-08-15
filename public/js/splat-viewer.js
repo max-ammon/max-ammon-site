@@ -332,6 +332,25 @@
     // what to do about it.
     '        base.rgb = max(base.rgb + sh, vec3(0.0));\n' +
     '    }\n' +
+    /*
+     * No colour below black — after the harmonics, never before, because a splat
+     * whose own colour is negative may be lifted back above it by them and the
+     * reference evaluation clamps only at the end.
+     *
+     * A .spz stores colour on a scale that reaches below zero: a quarter of the
+     * possible bytes decode negative, which is where the dark parts of a dark
+     * capture sit. Carrying colour as bytes clamped that away on the way in;
+     * carrying it at full precision, as it now is, does not. And the float path
+     * raises colour to the power 2.2 to reach linear light, which is undefined
+     * for a negative number — one driver quietly returns nothing much, another
+     * returns whatever it likes, per channel, which is a spray of pure red and
+     * green and blue through the picture.
+     *
+     * That is why it appeared only where the harmonics were skipped: the line
+     * above already ends in a max against zero, and had been doing this job for
+     * every capture that had them.
+     */
+    '    base.rgb = max(base.rgb, vec3(0.0));\n' +
     '    base.a = clamp(base.a * splatAlpha, 0.0, 1.0);\n' +
     '    vColor = clamp(pos2d.z/pos2d.w+1.0, 0.0, 1.0) * base;\n' +
     '    vPosition = position;\n' +
