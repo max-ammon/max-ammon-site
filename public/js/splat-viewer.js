@@ -640,6 +640,7 @@
       hdrTex = gl.createTexture();
       hdrFbo = gl.createFramebuffer();
     }
+    clearErrors();
     gl.activeTexture(gl.TEXTURE1); // unit 0 stays with the splat data texture
     gl.bindTexture(gl.TEXTURE_2D, hdrTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
@@ -768,6 +769,34 @@
    * anything would report.
    */
   var shTexture = gl.createTexture();
+  /*
+   * Given storage and pointed at straight away, before anything is drawn, even
+   * though the file may never send any harmonics.
+   *
+   * The shader samples u_sh with an ordinary sampler2D. A uniform nobody sets is
+   * nought, so a capture without harmonics left that sampler aimed at unit 0 —
+   * which holds the cloud, an integer texture. A float sampler on an integer
+   * texture is a type mismatch, and where a desktop driver shrugs and returns
+   * something, ANGLE on an Adreno refuses the draw outright: every frame
+   * rejected, nothing drawn, a black screen with no error the viewer ever read.
+   *
+   * That is why it was the two largest captures and only on the phone. They are
+   * the only ones whose harmonics do not fit — 512 splats to a row needs 4484
+   * rows for this cloud against the 4096 that card allows — so they were the only
+   * ones that ever left the sampler pointing at the wrong kind of texture.
+   *
+   * One pixel of nothing is enough: it is never read while shOn is 0, and signed
+   * zeroes mean no harmonics in any case.
+   */
+  gl.activeTexture(gl.TEXTURE3);
+  gl.bindTexture(gl.TEXTURE_2D, shTexture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8_SNORM, 1, 1, 0, gl.RGBA, gl.BYTE, new Int8Array(4));
+  gl.activeTexture(gl.TEXTURE0);
+  gl.uniform1i(u_shTex, 3);
 
   // Per-instance splat index (the depth-sorted order from the worker).
   var indexBuffer = gl.createBuffer();
@@ -818,6 +847,19 @@
    * Anyone with the link can turn it on, which is the point — the person with
    * the device is not necessarily the person who can log in.
    */
+  /*
+   * An error is queued until it is read, and reading gives the oldest one — so
+   * checking whether a call succeeded means clearing what was already waiting
+   * first, or the answer belongs to something else entirely. Getting this wrong
+   * is how the float target came to look refused when the refusal was a draw
+   * several steps earlier.
+   */
+  function clearErrors() {
+    var n = 0;
+    while (n < 32 && gl.getError() !== gl.NO_ERROR) n++;
+    return n;
+  }
+
   var DEBUG = /(?:^|[?&])debug\b/.test(window.location.search);
   var diag = {};
   var diagEl = null;
@@ -1226,6 +1268,7 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    clearErrors();
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32UI, d.texwidth, d.texheight, 0, gl.RGBA_INTEGER, gl.UNSIGNED_INT, d.texdata);
     /*
      * A refused texture is the quietest failure this viewer has: the call
@@ -1263,6 +1306,7 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    clearErrors();
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8_SNORM, d.shwidth, d.shheight, 0, gl.RGBA, gl.BYTE, d.shdata);
     gl.activeTexture(gl.TEXTURE0);
     gl.useProgram(program);
@@ -1310,8 +1354,12 @@
       // Once, on the first frame that actually draws: what was drawn, where it
       // went, and whether the card minded.
       if (DEBUG && !diag['first draw']) {
+        // Read straight after the draw, with nothing else in between, so the
+        // answer is this draw's and not something older still waiting.
+        var drawErr = gl.getError();
         note('first draw', drawCount + ' splats into ' + (useHdr ? 'the float target' : 'the canvas')
-          + ' at ' + canvas.width + '×' + canvas.height + ' · error ' + gl.getError());
+          + ' at ' + canvas.width + '×' + canvas.height + ' · error ' + drawErr
+          + (drawErr === 1282 ? ' (INVALID_OPERATION — the draw was refused)' : ''));
       }
     }
     // The backdrop goes in last on purpose. Splats composite front-to-back with
