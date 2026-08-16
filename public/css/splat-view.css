@@ -19,9 +19,12 @@ body.splat-body {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 16px;
-  height: 54px;
-  padding: 0 16px;
+  gap: 8px 16px;
+  /* Tall enough for one row of controls, and taller if they need more than one
+     — see .splat-tools, which wraps rather than running off the edge. */
+  box-sizing: border-box;
+  min-height: 54px;
+  padding: 8px 16px;
   background: rgba(10, 12, 16, 0.92);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 3;
@@ -59,9 +62,19 @@ body.splat-body {
   color: #9aa0a6;
   font-size: 0.85rem;
 }
+/* The controls take the width they need and no more, but they may not take more
+   than there is: a phone is narrower than this row wants to be. A visitor has
+   three of them and fits; a logged-in owner has nine and does not, and they used
+   to keep their full width and simply run off the right-hand edge onto a page
+   that cannot scroll sideways (the body is overflow: hidden) — which quietly put
+   Reset view and the walk out of reach on a phone. Allowed to shrink and wrap,
+   they fold onto as many lines as they need and the bar grows to hold them. */
 .splat-tools {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
 }
 .splat-tools button {
@@ -77,6 +90,13 @@ body.splat-body {
 }
 .splat-tools button:hover {
   background: rgba(255, 255, 255, 0.16);
+}
+
+@media (max-width: 600px) {
+  .splat-bar {
+    gap: 8px 12px;
+    padding: 8px 12px;
+  }
 }
 .splat-exposure {
   display: flex;
