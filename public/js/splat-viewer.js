@@ -26,6 +26,7 @@
   var WALK_OK = SELF.getAttribute('data-walk') === '1';
   var WALK_FLOOR = parseFloat(SELF.getAttribute('data-walk-floor')) || 0;
   var WALK_START = SELF.getAttribute('data-walk-start') === '1';
+  var WALK_SPEED = parseFloat(SELF.getAttribute('data-walk-speed')) || 1;
   var GAMMA = parseFloat(SELF.getAttribute('data-gamma')) || 1;      // 0.5 .. 2, 1 neutral
   var SHADOWS = parseFloat(SELF.getAttribute('data-shadows')) || 0;  // the three bands,
   var MIDS = parseFloat(SELF.getAttribute('data-mids')) || 0;        // -1 .. +1 each,
@@ -1533,7 +1534,10 @@
    *
    * How fast is scaled to the capture, since one is measured in metres of a
    * landscape and the next in nothing in particular. A third of the cloud's
-   * radius a second crosses any of them in about six seconds.
+   * radius a second crosses any of them in about six seconds — and where that
+   * guess is wrong for a particular capture, the owner's multiplier corrects it,
+   * since how large a thing measures and how large it feels to cross are not the
+   * same thing.
    */
   var walking = false;
   var walkPos = [0, 0, 0];
@@ -1581,7 +1585,7 @@
 
   function walkStride(sign) {
     var f = walkAxes()[0];
-    var v = modelRadius * 0.06 * sign;
+    var v = modelRadius * 0.06 * WALK_SPEED * sign;
     for (var i = 0; i < 3; i++) walkPos[i] += f[i] * v;
     walkPos[1] = WALK_FLOOR;
     applyWalk();
@@ -1603,7 +1607,7 @@
     var fwd = clamp1((walkKeys.w ? 1 : 0) - (walkKeys.s ? 1 : 0) + stickF);
     var side = clamp1((walkKeys.d ? 1 : 0) - (walkKeys.a ? 1 : 0) + stickS);
     if (fwd || side) {
-      var v = modelRadius * 0.35 * (walkKeys.shift ? 3 : 1) * dt;
+      var v = modelRadius * 0.35 * WALK_SPEED * (walkKeys.shift ? 3 : 1) * dt;
       for (var i = 0; i < 3; i++) walkPos[i] += (ax[0][i] * fwd + ax[1][i] * side) * v;
       walkPos[1] = WALK_FLOOR; // the ground is the ground
       applyWalk();
@@ -2195,6 +2199,7 @@
   var walkOnEl = document.getElementById('splatWalkOn');
   var walkStartEl = document.getElementById('splatWalkStart');
   var walkHereEl = document.getElementById('splatWalkHere');
+  var walkSpeedEl = document.getElementById('splatWalkSpeed');
   var walkFloorOut = document.getElementById('splatWalkFloorOut');
   if (walkOnEl || walkHereEl) {
     var showFloor = function () {
@@ -2212,7 +2217,8 @@
         body:
           'walk_enabled=' + (WALK_OK ? '1' : '0') +
           '&walk_floor=' + encodeURIComponent(WALK_FLOOR) +
-          '&walk_start=' + (WALK_START ? '1' : '0'),
+          '&walk_start=' + (WALK_START ? '1' : '0') +
+          '&walk_speed=' + encodeURIComponent(WALK_SPEED),
         credentials: 'same-origin',
       })
         .then(function (r) {
@@ -2235,6 +2241,28 @@
         WALK_START = walkStartEl.checked;
         showFloor();
         saveWalk(null);
+      });
+    }
+    /*
+     * Speed takes effect as it is dragged and is written back once it settles —
+     * the same live-then-save shape as the other sliders, and the only way to
+     * judge it: a step is a thing you feel at walking pace, not a number.
+     */
+    if (walkSpeedEl) {
+      var speedOut = document.getElementById('splatWalkSpeedOut');
+      var speedTimer = null;
+      var readSpeed = function (save) {
+        WALK_SPEED = parseFloat(walkSpeedEl.value) || 1;
+        if (speedOut) speedOut.textContent = WALK_SPEED.toFixed(2) + '×';
+        if (!save) return;
+        if (speedTimer) clearTimeout(speedTimer);
+        speedTimer = setTimeout(function () {
+          saveWalk(null);
+        }, 500);
+      };
+      readSpeed(false);
+      walkSpeedEl.addEventListener('input', function () {
+        readSpeed(true);
       });
     }
     if (walkHereEl) {

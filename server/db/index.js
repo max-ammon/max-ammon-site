@@ -75,6 +75,7 @@ addColumnIfMissing('splats', 'unlisted', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('splats', 'walk_enabled', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('splats', 'walk_floor', 'REAL NOT NULL DEFAULT 0');
 addColumnIfMissing('splats', 'walk_start', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('splats', 'walk_speed', 'REAL NOT NULL DEFAULT 1');
 addColumnIfMissing('models', 'link_project_id', 'INTEGER');
 addColumnIfMissing('models', 'smooth_normals', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('models', 'metalness', 'REAL');

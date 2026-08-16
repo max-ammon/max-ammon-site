@@ -941,8 +941,8 @@ router.post('/splats/:id/splat-alpha', (req, res) => {
 });
 
 // Owner-only, from the viewer's Walk panel: whether visitors are offered the
-// walk-around mode on this capture, the height they walk at, and whether it is
-// where the capture opens.
+// walk-around mode on this capture, the height they walk at, whether it is where
+// the capture opens, and how fast a step is.
 router.post('/splats/:id/walk', (req, res) => {
   res.json({
     ok: true,
@@ -950,7 +950,8 @@ router.post('/splats/:id/walk', (req, res) => {
       Number(req.params.id),
       req.body.walk_enabled === '1',
       req.body.walk_floor,
-      req.body.walk_start === '1'
+      req.body.walk_start === '1',
+      req.body.walk_speed
     ),
   });
 });

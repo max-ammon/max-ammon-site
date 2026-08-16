@@ -132,11 +132,15 @@
                 <input type="checkbox" id="splatWalkStart" <%= splat.walk_start ? 'checked' : '' %>>
                 Open already walking
             </label>
+            <label class="gm-row">Speed
+                <input type="range" id="splatWalkSpeed" min="0.1" max="5" step="0.05" value="<%= splat.walk_speed || 1 %>">
+                <output id="splatWalkSpeedOut"></output>
+            </label>
             <div class="gm-row gm-actions">
                 <button type="button" id="splatWalkHere">Walk at this height</button>
             </div>
             <div class="gm-file" id="splatWalkFloorOut"></div>
-            <div class="gm-file">Move the camera to head height where you want people to stand, then set it. Visitors get a button that puts them on that level: W A S D or the arrows to move and drag to look, or a thumb pad in the corner on a phone. Opening already walking suits a capture that is a place rather than an object; it needs the walk to be offered.</div>
+            <div class="gm-file">Move the camera to head height where you want people to stand, then set it. Visitors get a button that puts them on that level: W A S D or the arrows to move and drag to look, or a thumb pad in the corner on a phone. Opening already walking suits a capture that is a place rather than an object; it needs the walk to be offered. Speed is a multiplier on a step already scaled to this capture's size — try walking and drag it until crossing the place takes as long as it should.</div>
         </div>
 
         <%# Owner-only aim for the 360 backdrop. A panorama faces wherever the
@@ -172,6 +176,7 @@
             data-walk="<%= splat.walk_enabled ? '1' : '0' %>"
             data-walk-floor="<%= splat.walk_floor || 0 %>"
             data-walk-start="<%= splat.walk_start ? '1' : '0' %>"
+            data-walk-speed="<%= splat.walk_speed || 1 %>"
             data-bg="<%= splat.background_url %>"
             data-bg-yaw="<%= splat.background_yaw || 0 %>"
             data-wb="<%= splat.white_balance || 0 %>"

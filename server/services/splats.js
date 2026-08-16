@@ -45,11 +45,14 @@ const setGradeStmt = db.prepare(`UPDATE splats SET
   grade_shadows = @shadows, grade_mids = @mids, grade_highs = @highs, grade_gamma = @gamma
   WHERE id = @id`);
 const setYawStmt = db.prepare('UPDATE splats SET background_yaw = ? WHERE id = ?');
-const setWalkStmt = db.prepare('UPDATE splats SET walk_enabled = ?, walk_floor = ?, walk_start = ? WHERE id = ?');
+const setWalkStmt = db.prepare(
+  'UPDATE splats SET walk_enabled = ?, walk_floor = ?, walk_start = ?, walk_speed = ? WHERE id = ?'
+);
 
 /*
- * Walking a capture on foot. Three things: whether visitors are offered it at
- * all, the height they walk at, and whether the capture opens already walking.
+ * Walking a capture on foot. Four things: whether visitors are offered it at
+ * all, the height they walk at, whether the capture opens already walking, and
+ * how fast a step is.
  *
  * The height is a coordinate in the capture's own units, not a person's height,
  * because a capture may be measured in metres or in nothing in particular. The
@@ -60,15 +63,23 @@ const setWalkStmt = db.prepare('UPDATE splats SET walk_enabled = ?, walk_floor =
  * room is not improved by first being shown from outside its own walls. It can
  * only mean anything where the walk is offered, so it is stored as given and
  * read as false wherever it isn't.
+ *
+ * Speed is a multiplier rather than a rate: the viewer already scales a step to
+ * the size of the cloud, which is the only way one number could suit both a room
+ * and a hillside. This adjusts that guess, because how large a capture measures
+ * and how large it feels to cross are not the same thing.
  */
-function setWalk(id, enabled, floor, start) {
+function setWalk(id, enabled, floor, start, speed) {
   const on = enabled ? 1 : 0;
   let n = parseFloat(floor);
   if (!isFinite(n)) n = 0;
   n = Math.round(n * 1e4) / 1e4;
   const first = start ? 1 : 0;
-  setWalkStmt.run(on, n, first, Number(id));
-  return { walk_enabled: on, walk_floor: n, walk_start: first };
+  let s = parseFloat(speed);
+  if (!isFinite(s) || s <= 0) s = 1;
+  s = Math.round(Math.min(5, Math.max(0.1, s)) * 100) / 100;
+  setWalkStmt.run(on, n, first, s, Number(id));
+  return { walk_enabled: on, walk_floor: n, walk_start: first, walk_speed: s };
 }
 
 /*
