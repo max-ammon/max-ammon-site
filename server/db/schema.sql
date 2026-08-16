@@ -244,6 +244,7 @@ CREATE TABLE IF NOT EXISTS splats (
   unlisted     INTEGER NOT NULL DEFAULT 0,    -- 1 = reachable by its link, but in no listing
   walk_enabled INTEGER NOT NULL DEFAULT 0,    -- 1 = offer visitors the walk-around mode
   walk_floor   REAL NOT NULL DEFAULT 0,       -- eye height to walk at, in the model own units
+  walk_start   INTEGER NOT NULL DEFAULT 0,    -- 1 = open already walking, rather than orbiting
   flip_up      INTEGER NOT NULL DEFAULT 0,    -- 1 = flip the up axis (fixes upside-down captures)
   exposure     REAL NOT NULL DEFAULT 1,        -- viewer brightness multiplier (owner-set)
   splat_scale  REAL NOT NULL DEFAULT 1,        -- how large each splat is drawn (owner-set; 1 = as captured)

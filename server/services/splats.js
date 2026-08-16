@@ -45,23 +45,30 @@ const setGradeStmt = db.prepare(`UPDATE splats SET
   grade_shadows = @shadows, grade_mids = @mids, grade_highs = @highs, grade_gamma = @gamma
   WHERE id = @id`);
 const setYawStmt = db.prepare('UPDATE splats SET background_yaw = ? WHERE id = ?');
-const setWalkStmt = db.prepare('UPDATE splats SET walk_enabled = ?, walk_floor = ? WHERE id = ?');
+const setWalkStmt = db.prepare('UPDATE splats SET walk_enabled = ?, walk_floor = ?, walk_start = ? WHERE id = ?');
 
 /*
- * Walking a capture on foot. Two things: whether visitors are offered it at all,
- * and the height they walk at — which is a coordinate in the capture's own
- * units, not a person's height, because a capture may be measured in metres or
- * in nothing in particular. The owner sets it by standing where it looks right
- * and saying so, which is the only way to get it right without knowing the
- * scale of the thing.
+ * Walking a capture on foot. Three things: whether visitors are offered it at
+ * all, the height they walk at, and whether the capture opens already walking.
+ *
+ * The height is a coordinate in the capture's own units, not a person's height,
+ * because a capture may be measured in metres or in nothing in particular. The
+ * owner sets it by standing where it looks right and saying so, which is the
+ * only way to get it right without knowing the scale of the thing.
+ *
+ * Opening on foot is for the captures that are places rather than objects — a
+ * room is not improved by first being shown from outside its own walls. It can
+ * only mean anything where the walk is offered, so it is stored as given and
+ * read as false wherever it isn't.
  */
-function setWalk(id, enabled, floor) {
+function setWalk(id, enabled, floor, start) {
   const on = enabled ? 1 : 0;
   let n = parseFloat(floor);
   if (!isFinite(n)) n = 0;
   n = Math.round(n * 1e4) / 1e4;
-  setWalkStmt.run(on, n, Number(id));
-  return { walk_enabled: on, walk_floor: n };
+  const first = start ? 1 : 0;
+  setWalkStmt.run(on, n, first, Number(id));
+  return { walk_enabled: on, walk_floor: n, walk_start: first };
 }
 
 /*

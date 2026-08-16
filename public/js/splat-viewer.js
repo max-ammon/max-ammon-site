@@ -25,6 +25,7 @@
   var TINT = parseFloat(SELF.getAttribute('data-tint')) || 0; // -1 green .. +1 magenta
   var WALK_OK = SELF.getAttribute('data-walk') === '1';
   var WALK_FLOOR = parseFloat(SELF.getAttribute('data-walk-floor')) || 0;
+  var WALK_START = SELF.getAttribute('data-walk-start') === '1';
   var GAMMA = parseFloat(SELF.getAttribute('data-gamma')) || 1;      // 0.5 .. 2, 1 neutral
   var SHADOWS = parseFloat(SELF.getAttribute('data-shadows')) || 0;  // the three bands,
   var MIDS = parseFloat(SELF.getAttribute('data-mids')) || 0;        // -1 .. +1 each,
@@ -1327,6 +1328,18 @@
     initial = { target: target.slice(), dist: dist, yaw: yaw, pitch: pitch };
     autoFramed = { target: b.center.slice(), dist: Math.max(b.radius * 2.6, 0.5), yaw: 0, pitch: START_PITCH };
     haveData = true;
+    /*
+     * Some captures are places rather than objects, and a room is not improved
+     * by first being shown from outside its own walls — so those can open on
+     * foot instead. Here, at the end of the framing, because walking starts from
+     * where the camera already is: the default view the owner saved, dropped to
+     * the floor and facing the way it faced. Reset still returns to the view
+     * itself, standing back outside.
+     *
+     * Only where the walk is offered at all, and never on a phone, which has no
+     * keyboard to walk with and is left with the orbit.
+     */
+    if (WALK_OK && WALK_START && !IS_MOBILE) setWalking(true);
   }
   function uploadTexture(d) {
     gl.activeTexture(gl.TEXTURE0);
@@ -2078,19 +2091,26 @@
    */
   registerPanel(document.getElementById('splatWalkSetup'), document.getElementById('splatWalkPanel'));
   var walkOnEl = document.getElementById('splatWalkOn');
+  var walkStartEl = document.getElementById('splatWalkStart');
   var walkHereEl = document.getElementById('splatWalkHere');
   var walkFloorOut = document.getElementById('splatWalkFloorOut');
   if (walkOnEl || walkHereEl) {
     var showFloor = function () {
-      if (walkFloorOut)
-        walkFloorOut.textContent =
-          'Walking at height ' + WALK_FLOOR.toFixed(2) + (WALK_OK ? '' : ' — not offered to visitors yet');
+      if (!walkFloorOut) return;
+      // What this capture will actually do, rather than what was ticked: opening
+      // on foot means nothing where the walk isn't offered.
+      var opens = WALK_OK && WALK_START ? ' · opens walking' : '';
+      walkFloorOut.textContent =
+        'Walking at height ' + WALK_FLOOR.toFixed(2) + (WALK_OK ? opens : ' — not offered to visitors yet');
     };
     var saveWalk = function (btn) {
       fetch('/admin/splats/' + encodeURIComponent(SPLAT_ID) + '/walk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'walk_enabled=' + (WALK_OK ? '1' : '0') + '&walk_floor=' + encodeURIComponent(WALK_FLOOR),
+        body:
+          'walk_enabled=' + (WALK_OK ? '1' : '0') +
+          '&walk_floor=' + encodeURIComponent(WALK_FLOOR) +
+          '&walk_start=' + (WALK_START ? '1' : '0'),
         credentials: 'same-origin',
       })
         .then(function (r) {
@@ -2104,6 +2124,13 @@
     if (walkOnEl) {
       walkOnEl.addEventListener('change', function () {
         WALK_OK = walkOnEl.checked;
+        showFloor();
+        saveWalk(null);
+      });
+    }
+    if (walkStartEl) {
+      walkStartEl.addEventListener('change', function () {
+        WALK_START = walkStartEl.checked;
         showFloor();
         saveWalk(null);
       });

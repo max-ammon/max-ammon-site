@@ -122,11 +122,15 @@
                 <input type="checkbox" id="splatWalkOn" <%= splat.walk_enabled ? 'checked' : '' %>>
                 Offer this to visitors
             </label>
+            <label class="gm-row gm-check">
+                <input type="checkbox" id="splatWalkStart" <%= splat.walk_start ? 'checked' : '' %>>
+                Open already walking
+            </label>
             <div class="gm-row gm-actions">
                 <button type="button" id="splatWalkHere">Walk at this height</button>
             </div>
             <div class="gm-file" id="splatWalkFloorOut"></div>
-            <div class="gm-file">Move the camera to head height where you want people to stand, then set it. Visitors get a button that puts them on that level: W A S D or the arrows to move, drag to look.</div>
+            <div class="gm-file">Move the camera to head height where you want people to stand, then set it. Visitors get a button that puts them on that level: W A S D or the arrows to move, drag to look. Opening already walking suits a capture that is a place rather than an object; it needs the walk to be offered, and a phone still opens orbiting either way.</div>
         </div>
 
         <%# Owner-only aim for the 360 backdrop. A panorama faces wherever the
@@ -161,6 +165,7 @@
             data-splat-alpha="<%= splat.splat_alpha || 1 %>"
             data-walk="<%= splat.walk_enabled ? '1' : '0' %>"
             data-walk-floor="<%= splat.walk_floor || 0 %>"
+            data-walk-start="<%= splat.walk_start ? '1' : '0' %>"
             data-bg="<%= splat.background_url %>"
             data-bg-yaw="<%= splat.background_yaw || 0 %>"
             data-wb="<%= splat.white_balance || 0 %>"

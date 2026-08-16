@@ -941,9 +941,18 @@ router.post('/splats/:id/splat-alpha', (req, res) => {
 });
 
 // Owner-only, from the viewer's Walk panel: whether visitors are offered the
-// walk-around mode on this capture, and the height they walk at.
+// walk-around mode on this capture, the height they walk at, and whether it is
+// where the capture opens.
 router.post('/splats/:id/walk', (req, res) => {
-  res.json({ ok: true, ...splatsSvc.setWalk(Number(req.params.id), req.body.walk_enabled === '1', req.body.walk_floor) });
+  res.json({
+    ok: true,
+    ...splatsSvc.setWalk(
+      Number(req.params.id),
+      req.body.walk_enabled === '1',
+      req.body.walk_floor,
+      req.body.walk_start === '1'
+    ),
+  });
 });
 
 // Owner-only grade — white balance, tint, the three tonal bands and gamma —
