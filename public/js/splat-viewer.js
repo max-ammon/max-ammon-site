@@ -23,6 +23,8 @@
   var BG_YAW = parseFloat(SELF.getAttribute('data-bg-yaw')) || 0; // whole turns
   var WB = parseFloat(SELF.getAttribute('data-wb')) || 0;    // -1 cool .. +1 warm
   var TINT = parseFloat(SELF.getAttribute('data-tint')) || 0; // -1 green .. +1 magenta
+  var WALK_OK = SELF.getAttribute('data-walk') === '1';
+  var WALK_FLOOR = parseFloat(SELF.getAttribute('data-walk-floor')) || 0;
   var GAMMA = parseFloat(SELF.getAttribute('data-gamma')) || 1;      // 0.5 .. 2, 1 neutral
   var SHADOWS = parseFloat(SELF.getAttribute('data-shadows')) || 0;  // the three bands,
   var MIDS = parseFloat(SELF.getAttribute('data-mids')) || 0;        // -1 .. +1 each,
@@ -51,6 +53,7 @@
   var qualityEl = document.getElementById('splatQuality'); // owner-only readout
   var resetBtn = document.getElementById('splatReset');
   var fullBtn = document.getElementById('splatFull');
+  var walkBtn = document.getElementById('splatWalkBtn');
 
   function fail(msg) {
     if (loadingEl) loadingEl.style.display = 'none';
@@ -1497,6 +1500,127 @@
     if (dist > maxDist) dist = maxDist;
   }
 
+  /*
+   * ---- walking through it ---------------------------------------------------
+   * The same camera, driven from the other end. Orbiting keeps a point and
+   * circles it; walking keeps a position and turns on the spot — so all this has
+   * to do is hold a position and put the orbit's target one step in front of it.
+   * `eyePosition` is target plus dist along the look direction, so a target set
+   * to position minus that same vector puts the eye exactly at the position,
+   * whatever dist happens to be. Every other part of the viewer — the sort, the
+   * projection, the quality loop — carries on unaware.
+   *
+   * Which way is up belongs to the capture: a flipped one has it the other way,
+   * and the ground plane is the height the owner stood at. The camera's own
+   * right-hand axis is cross(up, forward), the same expression the view matrix
+   * is built from, so a step to the right is a step to the right of the screen
+   * in both cases rather than only in the unflipped one.
+   *
+   * How fast is scaled to the capture, since one is measured in metres of a
+   * landscape and the next in nothing in particular. A third of the cloud's
+   * radius a second crosses any of them in about six seconds.
+   */
+  var walking = false;
+  var walkPos = [0, 0, 0];
+  var walkKeys = {};
+  var walkFrame = 0;
+  var walkLast = 0;
+  // Whatever can start or stop the walk — the visitor's button, and the owner's
+  // way of trying it before turning it on. Escape has to reach all of them.
+  var walkToggles = [];
+  function walkToggle(el, off) {
+    if (!el) return;
+    walkToggles.push({ el: el, off: off });
+    el.addEventListener('click', function () {
+      if (!haveData) return;
+      setWalking(!walking);
+    });
+  }
+
+  function walkDir() {
+    // Where the camera looks: the orbit's direction, reversed.
+    var cp = Math.cos(pitch);
+    return [-cp * Math.sin(yaw), -Math.sin(pitch), -cp * Math.cos(yaw)];
+  }
+
+  function walkAxes() {
+    var f = walkDir();
+    // Flattened onto the ground: the up axis is y, whichever sign it has.
+    f = normalize([f[0], 0, f[2]]);
+    var r = normalize(cross(UP, f));
+    return [f, r];
+  }
+
+  function applyWalk() {
+    var d = walkDir();
+    for (var i = 0; i < 3; i++) target[i] = walkPos[i] + dist * d[i];
+  }
+
+  function walkStride(sign) {
+    var f = walkAxes()[0];
+    var v = modelRadius * 0.06 * sign;
+    for (var i = 0; i < 3; i++) walkPos[i] += f[i] * v;
+    walkPos[1] = WALK_FLOOR;
+    applyWalk();
+    invalidate();
+  }
+
+  function walkStep(now) {
+    walkFrame = 0;
+    if (!walking) return;
+    var dt = walkLast ? Math.min(0.1, (now - walkLast) / 1000) : 0;
+    walkLast = now;
+    var ax = walkAxes();
+    var fwd = (walkKeys.w ? 1 : 0) - (walkKeys.s ? 1 : 0);
+    var side = (walkKeys.d ? 1 : 0) - (walkKeys.a ? 1 : 0);
+    if (fwd || side) {
+      var v = modelRadius * 0.35 * (walkKeys.shift ? 3 : 1) * dt;
+      for (var i = 0; i < 3; i++) walkPos[i] += (ax[0][i] * fwd + ax[1][i] * side) * v;
+      walkPos[1] = WALK_FLOOR; // the ground is the ground
+      applyWalk();
+      invalidate();
+      markInteracting();
+    }
+    if (walking && (fwd || side)) walkFrame = window.requestAnimationFrame(walkStep);
+    else walkLast = 0;
+  }
+
+  function walkTick() {
+    if (!walking || walkFrame) return;
+    walkLast = 0;
+    walkFrame = window.requestAnimationFrame(walkStep);
+  }
+
+  function setWalking(on) {
+    if (on === walking) return;
+    walking = on;
+    walkKeys = {};
+    if (walking) {
+      // Start from where the camera already is, dropped to the floor.
+      var eye = eyePosition();
+      walkPos = [eye[0], WALK_FLOOR, eye[2]];
+      applyWalk();
+    } else {
+      // Leave looking at what you were looking at, from where you stood.
+      var d = walkDir();
+      target = [walkPos[0] + dist * d[0], walkPos[1] + dist * d[1], walkPos[2] + dist * d[2]];
+    }
+    walkToggles.forEach(function (t) {
+      t.el.classList.toggle('is-on', walking);
+      t.el.textContent = walking ? 'Stop walking' : t.off;
+    });
+    if (hintEl) {
+      if (walking) {
+        hintEl.textContent = 'W A S D or the arrows to walk · shift to hurry · drag to look · Esc to stop';
+        hintEl.classList.remove('gone');
+      } else {
+        hintEl.textContent = 'Drag to orbit · scroll to zoom · right-drag to pan';
+        hintEl.classList.add('gone');
+      }
+    }
+    invalidate();
+  }
+
   canvas.addEventListener('pointerdown', function (ev) {
     dragging = true;
     dragMode = ev.button === 2 || ev.shiftKey ? 'pan' : 'orbit';
@@ -1515,7 +1639,12 @@
     var dy = ev.clientY - lastY;
     lastX = ev.clientX;
     lastY = ev.clientY;
-    if (dragMode === 'pan') panBy(dx, dy);
+    if (walking) {
+      // Turning on the spot rather than around a point: the same yaw and pitch,
+      // and then the target is put back in front of where you are standing.
+      orbitBy(dx, dy);
+      applyWalk();
+    } else if (dragMode === 'pan') panBy(dx, dy);
     else orbitBy(dx, dy);
     markInteracting();
   });
@@ -1532,6 +1661,12 @@
     'wheel',
     function (ev) {
       ev.preventDefault();
+      if (walking) {
+        // On foot there is nothing to zoom towards, so the wheel is a step.
+        walkStride(ev.deltaY < 0 ? 1 : -1);
+        markInteracting();
+        return;
+      }
       dismissHint();
       dollyBy(Math.exp(ev.deltaY * 0.001));
       markInteracting();
@@ -1577,6 +1712,7 @@
         lastX = ev.touches[0].clientX;
         lastY = ev.touches[0].clientY;
         orbitBy(dx, dy);
+        if (walking) applyWalk();
       } else if (ev.touches.length === 2) {
         ev.preventDefault();
         var nd = spread(ev.touches);
@@ -1598,6 +1734,7 @@
   // ---- toolbar --------------------------------------------------------------
   if (resetBtn) {
     resetBtn.addEventListener('click', function () {
+      setWalking(false);
       if (!initial) return;
       target = initial.target.slice();
       dist = initial.dist;
@@ -1872,6 +2009,131 @@
         bgYawEl.value = 0;
         readYaw();
       });
+    }
+  }
+
+  /*
+   * The walk, from the visitor's side. The button is only in the page where the
+   * owner turned it on for this capture, and it is taken back out on a device
+   * with no keyboard to walk with — a touch screen is left with the orbit, which
+   * is the better control there anyway.
+   */
+  if (walkBtn) {
+    if (IS_MOBILE) walkBtn.hidden = true;
+    else walkToggle(walkBtn, 'Walk around');
+  }
+
+  /*
+   * Keys, on the window rather than the canvas: walking should not depend on
+   * having clicked the picture first. Anything typed into a field is left alone,
+   * and the arrows are swallowed only while walking, so the page still scrolls
+   * with them the rest of the time.
+   */
+  function walkKeyName(ev) {
+    var k = ev.key;
+    if (k === 'ArrowUp' || k === 'w' || k === 'W') return 'w';
+    if (k === 'ArrowDown' || k === 's' || k === 'S') return 's';
+    if (k === 'ArrowLeft' || k === 'a' || k === 'A') return 'a';
+    if (k === 'ArrowRight' || k === 'd' || k === 'D') return 'd';
+    return '';
+  }
+  function typingIn(el) {
+    if (!el) return false;
+    var t = el.tagName;
+    return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || el.isContentEditable;
+  }
+  window.addEventListener('keydown', function (ev) {
+    if (ev.ctrlKey || ev.metaKey || ev.altKey || typingIn(ev.target)) return;
+    if (ev.key === 'Escape' && walking) {
+      setWalking(false);
+      return;
+    }
+    if (!walking) return;
+    var name = walkKeyName(ev);
+    if (!name) {
+      if (ev.key === 'Shift') walkKeys.shift = true;
+      return;
+    }
+    ev.preventDefault();
+    walkKeys[name] = true;
+    walkKeys.shift = ev.shiftKey;
+    dismissHint();
+    walkTick();
+  });
+  window.addEventListener('keyup', function (ev) {
+    if (ev.key === 'Shift') walkKeys.shift = false;
+    var name = walkKeyName(ev);
+    if (name) walkKeys[name] = false;
+    if (walking) walkTick();
+  });
+  // Keys held when the page loses focus would otherwise still be held on return.
+  window.addEventListener('blur', function () {
+    walkKeys = {};
+  });
+
+  /*
+   * The owner's half: whether to offer it at all, and the height it happens at.
+   * The height is a coordinate in this capture's own units — no one could guess
+   * it — so it is set by standing where it looks right and saying so.
+   */
+  registerPanel(document.getElementById('splatWalkSetup'), document.getElementById('splatWalkPanel'));
+  var walkOnEl = document.getElementById('splatWalkOn');
+  var walkHereEl = document.getElementById('splatWalkHere');
+  var walkFloorOut = document.getElementById('splatWalkFloorOut');
+  if (walkOnEl || walkHereEl) {
+    var showFloor = function () {
+      if (walkFloorOut)
+        walkFloorOut.textContent =
+          'Walking at height ' + WALK_FLOOR.toFixed(2) + (WALK_OK ? '' : ' — not offered to visitors yet');
+    };
+    var saveWalk = function (btn) {
+      fetch('/admin/splats/' + encodeURIComponent(SPLAT_ID) + '/walk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'walk_enabled=' + (WALK_OK ? '1' : '0') + '&walk_floor=' + encodeURIComponent(WALK_FLOOR),
+        credentials: 'same-origin',
+      })
+        .then(function (r) {
+          if (btn) flash(btn, r.ok ? 'Saved ✓' : 'Failed');
+        })
+        .catch(function () {
+          if (btn) flash(btn, 'Failed');
+        });
+    };
+    showFloor();
+    if (walkOnEl) {
+      walkOnEl.addEventListener('change', function () {
+        WALK_OK = walkOnEl.checked;
+        showFloor();
+        saveWalk(null);
+      });
+    }
+    if (walkHereEl) {
+      walkHereEl.addEventListener('click', function () {
+        if (!haveData) return;
+        // Where the camera's eye is now, in the capture's own units.
+        WALK_FLOOR = walking ? walkPos[1] : eyePosition()[1];
+        WALK_FLOOR = Math.round(WALK_FLOOR * 1e4) / 1e4;
+        if (walking) {
+          walkPos[1] = WALK_FLOOR;
+          applyWalk();
+          invalidate();
+        }
+        showFloor();
+        saveWalk(walkHereEl);
+      });
+    }
+    /*
+     * Setting the height means standing at it, and the walk is what stands. So
+     * where the visitor's button isn't in the page yet — the walk is still off —
+     * the owner gets one of their own, in the panel, to try it with.
+     */
+    if (!walkBtn && !IS_MOBILE && walkHereEl) {
+      var tryWalk = document.createElement('button');
+      tryWalk.type = 'button';
+      tryWalk.textContent = 'Try walking';
+      walkHereEl.parentNode.appendChild(tryWalk);
+      walkToggle(tryWalk, 'Try walking');
     }
   }
 

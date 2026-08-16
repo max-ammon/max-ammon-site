@@ -20,8 +20,15 @@
             <button id="splatColourBtn" type="button" title="White balance and tint — only you see this; changes save automatically">Colour</button>
             <button id="splatLookBtn" type="button" title="How large and how opaque the splats themselves are drawn — only you see this; changes save automatically">Splats</button>
             <% if (splat.background_url) { %><button id="splatBackdropBtn" type="button" title="Aim the 360 backdrop — only you see this; it saves automatically">Backdrop</button><% } %>
+            <button id="splatWalkSetup" type="button" title="Offer visitors a walk through this capture, and set the height they walk at — only you see this">Walk</button>
             <button id="splatSetView" type="button" title="Save the current camera as the view everyone starts at">Set default view</button>
             <button id="splatClearView" type="button" title="Go back to automatic framing"<%= splat.view ? '' : ' hidden' %>>Clear</button>
+            <% } %>
+            <%# Offered to everyone, but only where the owner has turned it on for
+                this capture. The viewer hides it again on a device with no
+                keyboard to walk with. %>
+            <% if (splat.walk_enabled) { %>
+            <button id="splatWalkBtn" type="button" title="Walk through this capture on foot">Walk around</button>
             <% } %>
             <button id="splatReset" type="button">Reset view</button>
             <button id="splatFull" type="button" title="Fullscreen" aria-label="Fullscreen">&#9974;</button>
@@ -105,6 +112,23 @@
             <div class="gm-file">1× is the capture untouched. Larger size closes the gaps in a sparse capture and costs more to draw; smaller opens it into the points it is made of. Opacity below 1 makes the whole cloud see-through; above it, faint splats firm up (a splat never goes past solid).</div>
         </div>
 
+        <%# Owner-only: the walk. Whether visitors are offered it at all, and the
+            height they walk at — which is a coordinate in this capture's own
+            units, so it is set by standing where it looks right rather than by
+            typing a number nobody could guess. %>
+        <div class="view-panel" id="splatWalkPanel" hidden>
+            <div class="gm-head">Walk around <span class="gm-note">only you see this</span></div>
+            <label class="gm-row gm-check">
+                <input type="checkbox" id="splatWalkOn" <%= splat.walk_enabled ? 'checked' : '' %>>
+                Offer this to visitors
+            </label>
+            <div class="gm-row gm-actions">
+                <button type="button" id="splatWalkHere">Walk at this height</button>
+            </div>
+            <div class="gm-file" id="splatWalkFloorOut"></div>
+            <div class="gm-file">Move the camera to head height where you want people to stand, then set it. Visitors get a button that puts them on that level: W A S D or the arrows to move, drag to look.</div>
+        </div>
+
         <%# Owner-only aim for the 360 backdrop. A panorama faces wherever the
             camera did when it was shot, which is rarely where you want it. %>
         <% if (splat.background_url) { %>
@@ -135,6 +159,8 @@
             data-exposure="<%= splat.exposure || 1 %>"
             data-splat-scale="<%= splat.splat_scale || 1 %>"
             data-splat-alpha="<%= splat.splat_alpha || 1 %>"
+            data-walk="<%= splat.walk_enabled ? '1' : '0' %>"
+            data-walk-floor="<%= splat.walk_floor || 0 %>"
             data-bg="<%= splat.background_url %>"
             data-bg-yaw="<%= splat.background_yaw || 0 %>"
             data-wb="<%= splat.white_balance || 0 %>"

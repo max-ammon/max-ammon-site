@@ -940,6 +940,12 @@ router.post('/splats/:id/splat-alpha', (req, res) => {
   res.json({ ok: true, splat_alpha: splatsSvc.setSplatAlpha(Number(req.params.id), req.body.splat_alpha) });
 });
 
+// Owner-only, from the viewer's Walk panel: whether visitors are offered the
+// walk-around mode on this capture, and the height they walk at.
+router.post('/splats/:id/walk', (req, res) => {
+  res.json({ ok: true, ...splatsSvc.setWalk(Number(req.params.id), req.body.walk_enabled === '1', req.body.walk_floor) });
+});
+
 // Owner-only grade — white balance, tint, the three tonal bands and gamma —
 // saved live from the viewer's Colour panel, all six together.
 router.post('/splats/:id/grade', (req, res) => {
