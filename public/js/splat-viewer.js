@@ -55,6 +55,8 @@
   var resetBtn = document.getElementById('splatReset');
   var fullBtn = document.getElementById('splatFull');
   var walkBtn = document.getElementById('splatWalkBtn');
+  var stickEl = document.getElementById('splatStick');
+  var knobEl = document.getElementById('splatStickKnob');
 
   function fail(msg) {
     if (loadingEl) loadingEl.style.display = 'none';
@@ -1336,10 +1338,10 @@
      * the floor and facing the way it faced. Reset still returns to the view
      * itself, standing back outside.
      *
-     * Only where the walk is offered at all, and never on a phone, which has no
-     * keyboard to walk with and is left with the orbit.
+     * Only where the walk is offered at all — on a phone as much as anywhere,
+     * since the thumb pad appears with it.
      */
-    if (WALK_OK && WALK_START && !IS_MOBILE) setWalking(true);
+    if (WALK_OK && WALK_START) setWalking(true);
   }
   function uploadTexture(d) {
     gl.activeTexture(gl.TEXTURE0);
@@ -1537,7 +1539,15 @@
   var walkPos = [0, 0, 0];
   var walkKeys = {};
   var walkFrame = 0;
-  var walkLast = 0;
+  // The timestamp the last step was taken at, or -1 for "no step yet" — which is
+  // a state of its own rather than a time of zero, since zero is a time.
+  var walkLast = -1;
+  // How far the thumb pad is pushed, forward and sideways, each -1 .. 1.
+  var stickF = 0;
+  var stickS = 0;
+  function clamp1(v) {
+    return v < -1 ? -1 : v > 1 ? 1 : v;
+  }
   // Whatever can start or stop the walk — the visitor's button, and the owner's
   // way of trying it before turning it on. Escape has to reach all of them.
   var walkToggles = [];
@@ -1581,11 +1591,17 @@
   function walkStep(now) {
     walkFrame = 0;
     if (!walking) return;
-    var dt = walkLast ? Math.min(0.1, (now - walkLast) / 1000) : 0;
+    var dt = walkLast >= 0 ? Math.min(0.1, (now - walkLast) / 1000) : 0;
     walkLast = now;
     var ax = walkAxes();
-    var fwd = (walkKeys.w ? 1 : 0) - (walkKeys.s ? 1 : 0);
-    var side = (walkKeys.d ? 1 : 0) - (walkKeys.a ? 1 : 0);
+    /*
+     * Keys and the thumb pad add into the same two numbers. A key is all or
+     * nothing; the pad is however far it has been pushed, so a careful nudge
+     * moves slowly — which is the whole point of it on a screen with no shift
+     * to hold. Clamped, so having both at once cannot outrun either.
+     */
+    var fwd = clamp1((walkKeys.w ? 1 : 0) - (walkKeys.s ? 1 : 0) + stickF);
+    var side = clamp1((walkKeys.d ? 1 : 0) - (walkKeys.a ? 1 : 0) + stickS);
     if (fwd || side) {
       var v = modelRadius * 0.35 * (walkKeys.shift ? 3 : 1) * dt;
       for (var i = 0; i < 3; i++) walkPos[i] += (ax[0][i] * fwd + ax[1][i] * side) * v;
@@ -1595,12 +1611,12 @@
       markInteracting();
     }
     if (walking && (fwd || side)) walkFrame = window.requestAnimationFrame(walkStep);
-    else walkLast = 0;
+    else walkLast = -1;
   }
 
   function walkTick() {
     if (!walking || walkFrame) return;
-    walkLast = 0;
+    walkLast = -1;
     walkFrame = window.requestAnimationFrame(walkStep);
   }
 
@@ -1608,6 +1624,9 @@
     if (on === walking) return;
     walking = on;
     walkKeys = {};
+    stickF = 0;
+    stickS = 0;
+    showStick();
     if (walking) {
       // Start from where the camera already is, dropped to the floor.
       var eye = eyePosition();
@@ -1624,7 +1643,9 @@
     });
     if (hintEl) {
       if (walking) {
-        hintEl.textContent = 'W A S D or the arrows to walk · shift to hurry · drag to look · Esc to stop';
+        hintEl.textContent = IS_MOBILE
+          ? 'Push the pad to walk · drag the picture to look · Reset view to stop'
+          : 'W A S D or the arrows to walk · shift to hurry · drag to look · Esc to stop';
         hintEl.classList.remove('gone');
       } else {
         hintEl.textContent = 'Drag to orbit · scroll to zoom · right-drag to pan';
@@ -1632,6 +1653,81 @@
       }
     }
     invalidate();
+  }
+
+  /*
+   * The thumb pad. A phone has no W A S D, and asking a finger to both walk and
+   * look at once is asking it to do two things — so movement gets a pad of its
+   * own in the corner and the rest of the picture stays what it always was:
+   * drag it to look. Only while walking, and only where the pointer is coarse.
+   *
+   * It reads as a direction and a distance rather than as four buttons: pushed a
+   * little walks slowly, pushed to the edge walks at full speed. That is what
+   * replaces the shift key, which a screen hasn't got.
+   */
+  var stickId = null;
+
+  function knobHome() {
+    if (knobEl) knobEl.style.transform = 'translate(0px, 0px)';
+  }
+
+  function showStick() {
+    if (!stickEl) return;
+    var want = walking && IS_MOBILE;
+    stickEl.hidden = !want;
+    knobHome();
+    // The description sits in a band across the bottom on a phone; the pad goes
+    // above it rather than under it, the same way the hint does.
+    if (want && captionEl) {
+      var fromBottom = stage.getBoundingClientRect().bottom - captionEl.getBoundingClientRect().top;
+      if (fromBottom > 0) stickEl.style.bottom = Math.round(fromBottom + 12) + 'px';
+    }
+  }
+
+  function stickAt(ev) {
+    var r = stickEl.getBoundingClientRect();
+    var R = r.width / 2;
+    var dx = ev.clientX - (r.left + R);
+    var dy = ev.clientY - (r.top + r.height / 2);
+    var m = Math.hypot(dx, dy);
+    if (m > R && m > 0) {
+      dx *= R / m;
+      dy *= R / m;
+    }
+    stickS = R ? dx / R : 0;
+    stickF = R ? -dy / R : 0; // up the screen is forward
+    if (knobEl) knobEl.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px)';
+  }
+
+  if (stickEl) {
+    stickEl.addEventListener('pointerdown', function (ev) {
+      if (stickId !== null) return;
+      stickId = ev.pointerId;
+      ev.preventDefault();
+      if (stickEl.setPointerCapture) {
+        try {
+          stickEl.setPointerCapture(ev.pointerId);
+        } catch (e) {}
+      }
+      dismissHint();
+      stickAt(ev);
+      walkTick();
+    });
+    stickEl.addEventListener('pointermove', function (ev) {
+      if (ev.pointerId !== stickId) return;
+      ev.preventDefault();
+      stickAt(ev);
+      walkTick();
+    });
+    var releaseStick = function (ev) {
+      if (ev.pointerId !== stickId) return;
+      stickId = null;
+      stickF = 0;
+      stickS = 0;
+      knobHome();
+    };
+    stickEl.addEventListener('pointerup', releaseStick);
+    stickEl.addEventListener('pointercancel', releaseStick);
   }
 
   canvas.addEventListener('pointerdown', function (ev) {
@@ -1729,10 +1825,20 @@
       } else if (ev.touches.length === 2) {
         ev.preventDefault();
         var nd = spread(ev.touches);
-        if (touchDist > 0) dollyBy(touchDist / (nd || 1));
-        touchDist = nd;
         var m = midpoint(ev.touches);
-        panBy(m[0] - touchMidX, m[1] - touchMidY);
+        /*
+         * Pinching and two-finger panning both move the orbit's target, which is
+         * the one thing that cannot move while walking — it is what holds the
+         * eye where the walker stands. On foot, two fingers pinch a step forward
+         * or back instead, and nothing pans.
+         */
+        if (walking) {
+          if (touchDist > 0 && nd > 0) walkStride((nd - touchDist) * 0.02);
+        } else {
+          if (touchDist > 0) dollyBy(touchDist / (nd || 1));
+          panBy(m[0] - touchMidX, m[1] - touchMidY);
+        }
+        touchDist = nd;
         touchMidX = m[0];
         touchMidY = m[1];
       }
@@ -2027,14 +2133,10 @@
 
   /*
    * The walk, from the visitor's side. The button is only in the page where the
-   * owner turned it on for this capture, and it is taken back out on a device
-   * with no keyboard to walk with — a touch screen is left with the orbit, which
-   * is the better control there anyway.
+   * owner turned it on for this capture — and it is offered on a phone too, now
+   * that there is a thumb pad to walk with.
    */
-  if (walkBtn) {
-    if (IS_MOBILE) walkBtn.hidden = true;
-    else walkToggle(walkBtn, 'Walk around');
-  }
+  walkToggle(walkBtn, 'Walk around');
 
   /*
    * Keys, on the window rather than the canvas: walking should not depend on
@@ -2155,7 +2257,7 @@
      * where the visitor's button isn't in the page yet — the walk is still off —
      * the owner gets one of their own, in the panel, to try it with.
      */
-    if (!walkBtn && !IS_MOBILE && walkHereEl) {
+    if (!walkBtn && walkHereEl) {
       var tryWalk = document.createElement('button');
       tryWalk.type = 'button';
       tryWalk.textContent = 'Try walking';

@@ -46,6 +46,12 @@
         </div>
 
         <div class="splat-hint" id="splatHint">Drag to orbit &middot; scroll to zoom &middot; right-drag to pan</div>
+
+        <%# The thumb pad for walking on a touch screen. Hidden until the viewer
+            is both walking and on a coarse pointer; a mouse walks with the keys. %>
+        <div class="splat-stick" id="splatStick" hidden aria-hidden="true">
+            <span class="splat-stick-knob" id="splatStickKnob"></span>
+        </div>
         <% if (isOwner) { %>
         <%# What the adaptive quality settled on — only you see this. %>
         <div class="splat-quality" id="splatQuality" hidden></div>
@@ -130,7 +136,7 @@
                 <button type="button" id="splatWalkHere">Walk at this height</button>
             </div>
             <div class="gm-file" id="splatWalkFloorOut"></div>
-            <div class="gm-file">Move the camera to head height where you want people to stand, then set it. Visitors get a button that puts them on that level: W A S D or the arrows to move, drag to look. Opening already walking suits a capture that is a place rather than an object; it needs the walk to be offered, and a phone still opens orbiting either way.</div>
+            <div class="gm-file">Move the camera to head height where you want people to stand, then set it. Visitors get a button that puts them on that level: W A S D or the arrows to move and drag to look, or a thumb pad in the corner on a phone. Opening already walking suits a capture that is a place rather than an object; it needs the walk to be offered.</div>
         </div>
 
         <%# Owner-only aim for the 360 backdrop. A panorama faces wherever the

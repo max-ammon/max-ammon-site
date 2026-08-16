@@ -255,6 +255,38 @@ body.splat-body {
   pointer-events: none;
 }
 
+/* The thumb pad for walking on a touch screen. Bottom left, where a thumb
+   already is when a phone is held; the viewer shows it only while walking and
+   lifts it above the description band if there is one. touch-action: none so a
+   push moves the walker rather than the page. */
+.splat-stick {
+  position: absolute;
+  left: 18px;
+  bottom: 22px;
+  z-index: 4;
+  width: 116px;
+  height: 116px;
+  border-radius: 50%;
+  background: rgba(10, 12, 16, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(3px);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.splat-stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+}
+
 .splat-error {
   position: absolute;
   left: 50%;
